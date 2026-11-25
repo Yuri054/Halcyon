@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' media: data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'">
+  <title>Halcyon game menu</title>
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/dashboard.css">
+  <link rel="stylesheet" href="styles/overlays.css">
+  <link rel="stylesheet" href="styles/themes.css">
+  <style>
+    /* This window floats over a running game: nothing but the blade and a dimmer. */
+    html, body { background: transparent !important; }
+  </style>
+</head>
+<body data-accent="emerald" data-theme="halcyon" data-input="pad" class="is-overlay">
+  <div id="layers"></div>
+  <div id="hints"></div>
+  <div id="toasts"></div>
+  <script type="module" src="js/gamemenu.js"></script>
+</body>
+</html>

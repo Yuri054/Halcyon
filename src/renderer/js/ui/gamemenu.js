@@ -1,0 +1,197 @@
+// Per-game options, collection membership, and the custom game editor.
+import { h } from '../core/dom.js';
+import { api, state, game as findGame, fmt, downloadLabel } from '../core/state.js';
+import { app } from '../core/bus.js';
+import { openPanel, confirm } from './dialog.js';
+import { keyboard } from './osk.js';
+import { browse } from './browser.js';
+import { toast } from './toast.js';
+import { artImg, fallbackArt } from './art.js';
+
+const cover = (g) => h('div', { class: 'panel__art' }, fallbackArt(g), artImg(g.art.cover, 'panel__art-img', { lazy: false }));
+
+function controllerLabel(g) {
+  if (g.controllerOverride === 'yes') return 'Works (set by you)';
+  if (g.controllerOverride === 'no') return 'Not supported (set by you)';
+  return { full: 'Full', partial: 'Partial', none: 'None', unknown: g.source === 'steam' ? 'Not checked' : 'Assumed' }[g.controller] || 'Assumed';
+}
+
+async function report(promise, okMessage) {
+  const result = await promise;
+  if (result && result.ok === false) toast(result.error || 'Something went wrong', { type: 'error' });
+  else if (okMessage) toast(okMessage);
+  return result;
+}
+
+export async function gameMenu(id) {
+  const panel = openPanel();
+  let selected = 'play';
+  for (;;) {
+    const g = findGame(id);
+    if (!g) break;
+    const choice = await panel.ask({
+      title: g.name,
+      subtitle: [g.platform, fmt.ago(g.lastPlayed), fmt.playtime(g.playtimeMin), fmt.size(g.sizeBytes)].filter(Boolean).join('  ·  '),
+      art: cover(g),
+      selected,
+      items: [
+        { label: g.installed ? 'Play' : 'Install', value: 'play', iconName: g.installed ? 'play' : 'download', sub: g.status || (g.download ? downloadLabel(g.download) : !g.installed ? 'Steam will ask where to put it' : null) },
+        { label: g.favorite ? 'Remove from favorites' : 'Add to favorites', value: 'fav', iconName: g.favorite ? 'starFill' : 'star' },
+        { label: 'Collections', value: 'collections', iconName: 'layers', hint: g.collections.length || '' },
+        { heading: 'Customize' },
+        { label: 'Set cover art', value: 'cover', iconName: 'image' },
+        { label: 'Set background', value: 'background', iconName: 'screen' },
+        { label: 'Find artwork online', value: 'scrape', iconName: 'download', sub: state.lib.scraper.hasKey ? 'SteamGridDB' : 'Needs a SteamGridDB key, under Settings' },
+        g.hasCustomArt && { label: 'Reset artwork', value: 'resetArt', iconName: 'refresh' },
+        g.source === 'custom'
+          ? { label: 'Edit game', value: 'edit', iconName: 'pencil' }
+          : { label: 'Rename', value: 'rename', iconName: 'pencil', hint: g.name !== g.originalName ? 'Custom' : '' },
+        { label: 'Controller support', value: 'controller', iconName: 'pad', hint: controllerLabel(g), verb: 'Change', sub: 'Decides whether the controller filter hides this game' },
+        { label: g.hidden ? 'Unhide' : 'Hide from library', value: 'hide', iconName: 'eyeOff' },
+        g.source === 'custom' && { label: 'Delete game', value: 'delete', iconName: 'trash', danger: true },
+        g.source === 'steam' && { heading: 'Steam' },
+        g.source === 'steam' && g.download && { label: 'Manage download', value: 'download', iconName: 'download', sub: downloadLabel(g.download) },
+        g.source === 'steam' && { label: 'View in the Steam store', value: 'steamStore', iconName: 'cloud' },
+        g.source === 'steam' && g.installed && { label: 'Uninstall', value: 'uninstall', iconName: 'trash', danger: true, sub: 'Steam asks before removing anything' },
+        { heading: g.source === 'custom' ? 'Command' : 'Location' },
+        { label: g.detail || 'Unknown', value: 'noop', disabled: true },
+      ],
+    });
+    if (choice == null) break;
+    selected = choice;
+
+    if (choice === 'play') { await panel.close(); return app.launch(id); }
+    if (choice === 'download') { await panel.close(); return app.downloads({ focusApp: g.id.slice(6) }); }
+    if (choice === 'steamStore') await report(api.steam.action('store', g.id.slice(6)), 'Opening the store page in Steam');
+    if (choice === 'uninstall') await report(api.steam.action('uninstall', g.id.slice(6)), 'Confirm the uninstall in Steam');
+    if (choice === 'fav') await api.game.patch(id, { favorite: !g.favorite });
+    if (choice === 'hide') {
+      await api.game.patch(id, { hidden: !g.hidden });
+      toast(g.hidden ? `${g.name} is visible again` : `${g.name} hidden. Find it under Collections › Hidden.`, { iconName: 'eyeOff' });
+      if (!g.hidden) break;
+    }
+    if (choice === 'collections') await collectionsPicker(id, panel);
+    if (choice === 'cover' || choice === 'background') {
+      const file = await browse({ mode: 'image', title: choice === 'cover' ? 'Choose cover art' : 'Choose a background', start: '~/Pictures' });
+      if (file) await api.game.patch(id, { [choice]: file });
+    }
+    if (choice === 'scrape') {
+      if (!state.lib.scraper.hasKey) toast('Add your SteamGridDB API key under Settings › artwork first.', { type: 'error', title: 'No API key' });
+      else {
+        const res = await report(api.scraper.run([id]));
+        if (res && res.ok) toast(res.found ? 'New artwork saved' : 'SteamGridDB has nothing for this title. Renaming the game can help.', { title: g.name, iconName: 'image' });
+      }
+    }
+    if (choice === 'controller') {
+      // Automatic -> works -> does not work -> automatic
+      const next = g.controllerOverride === 'yes' ? 'no' : g.controllerOverride === 'no' ? null : 'yes';
+      await api.game.patch(id, { controller: next });
+      if (next === 'no' && state.lib.settings.controllerOnly) {
+        toast(`${g.name} hidden. Find it under Collections › No controller.`, { iconName: 'pad' });
+        break;
+      }
+    }
+    if (choice === 'resetArt') await api.game.patch(id, { cover: null, background: null });
+    if (choice === 'rename') {
+      const name = await keyboard({ title: 'Rename game', value: g.name, placeholder: g.originalName });
+      if (name != null) await api.game.patch(id, { name: name.trim() === g.originalName ? null : name.trim() });
+    }
+    if (choice === 'edit') { await editCustomGame(id, panel); }
+    if (choice === 'delete') {
+      if (await confirm({ title: `Delete ${g.name}?`, subtitle: 'This removes the entry from Halcyon. Nothing on disk is touched.', yes: 'Delete', danger: true, iconName: 'trash' })) {
+        await api.custom.remove(id);
+        toast(`${g.name} removed`, { iconName: 'trash' });
+        break;
+      }
+    }
+  }
+  await panel.close();
+}
+
+export async function collectionsPicker(id, panel) {
+  let selected = null;
+  for (;;) {
+    const g = findGame(id);
+    if (!g) return;
+    const choice = await panel.ask({
+      title: 'Collections',
+      subtitle: g.name,
+      selected,
+      items: [
+        ...state.lib.collections.map((c) => ({ label: c.name, value: c.id, iconName: 'layers', checked: g.collections.includes(c.id), verb: 'Toggle' })),
+        { label: 'New collection', value: 'new', iconName: 'plus' },
+      ],
+    });
+    if (choice == null) return;
+    selected = choice;
+    if (choice === 'new') {
+      const name = await keyboard({ title: 'Name this collection', placeholder: 'Couch co-op' });
+      if (name && name.trim()) {
+        const res = await api.collections.create(name);
+        if (res.ok) { await api.game.patch(id, { collections: [...g.collections, res.id] }); selected = res.id; }
+      }
+    } else {
+      const has = g.collections.includes(choice);
+      await api.game.patch(id, { collections: has ? g.collections.filter((c) => c !== choice) : [...g.collections, choice] });
+    }
+  }
+}
+
+/** Create (id = null) or edit a manually added game. Returns the saved id or null. */
+export async function editCustomGame(id = null, existingPanel = null) {
+  const panel = existingPanel || openPanel();
+  const existing = id ? findGame(id)?.custom : null;
+  const draft = { id, name: '', command: '', cwd: '', cover: '', background: '', ...(existing || {}) };
+  const base = (p) => p.split('/').pop();
+  let selected = 'name';
+  let saved = null;
+
+  for (;;) {
+    const choice = await panel.ask({
+      title: id ? 'Edit game' : 'Add a game',
+      subtitle: 'Any program, script or launcher command',
+      selected,
+      items: [
+        { label: 'Name', value: 'name', iconName: 'pencil', sub: draft.name || 'Required' },
+        { label: 'Browse for program', value: 'browse', iconName: 'folder', sub: 'Pick an executable, script or AppImage' },
+        { label: 'Launch command', value: 'command', iconName: 'terminal', sub: draft.command || 'Required — e.g. flatpak run org.example.Game' },
+        { label: 'Working folder', value: 'cwd', iconName: 'folder', sub: draft.cwd || 'Home folder' },
+        { label: 'Cover art', value: 'cover', iconName: 'image', sub: draft.cover ? base(draft.cover) : 'None' },
+        { label: 'Background', value: 'background', iconName: 'screen', sub: draft.background ? base(draft.background) : 'None' },
+        { heading: ' ' },
+        { label: id ? 'Save changes' : 'Add to library', value: 'save', iconName: 'check', disabled: !(draft.name.trim() && draft.command.trim()) },
+      ],
+    });
+    if (choice == null) break;
+    selected = choice;
+
+    if (choice === 'name') {
+      const v = await keyboard({ title: 'Game name', value: draft.name, placeholder: 'My Game' });
+      if (v != null) draft.name = v.trim();
+    } else if (choice === 'browse') {
+      const file = await browse({ mode: 'exec', title: 'Choose the game program', start: draft.cwd || '~' });
+      if (file) {
+        draft.command = /\s|["'$]/.test(file) ? `"${file.replace(/(["$`\\])/g, '\\$1')}"` : file;
+        draft.cwd = file.slice(0, file.lastIndexOf('/')) || '/';
+        if (!draft.name) draft.name = base(file).replace(/\.(sh|appimage|x86_64|x86|bin|exe|py)$/i, '').replace(/[_-]+/g, ' ');
+        selected = 'save';
+      }
+    } else if (choice === 'command') {
+      const v = await keyboard({ title: 'Launch command', value: draft.command, placeholder: 'flatpak run org.example.Game' });
+      if (v != null) draft.command = v.trim();
+    } else if (choice === 'cwd') {
+      const dir = await browse({ mode: 'dir', title: 'Working folder', start: draft.cwd || '~' });
+      if (dir) draft.cwd = dir;
+    } else if (choice === 'cover' || choice === 'background') {
+      const file = await browse({ mode: 'image', title: choice === 'cover' ? 'Choose cover art' : 'Choose a background', start: '~/Pictures' });
+      if (file) draft[choice] = file;
+    } else if (choice === 'save') {
+      const res = await report(api.custom.save(draft), id ? 'Game updated' : `${draft.name} added to your library`);
+      if (res.ok) { saved = res.id; break; }
+    }
+  }
+  if (!existingPanel) await panel.close();
+  return saved;
+}
+
+export { report };

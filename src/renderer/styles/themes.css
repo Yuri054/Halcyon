@@ -1,0 +1,845 @@
+/* Themes. The default look lives in the other stylesheets; each theme here is a
+   set of overrides keyed on body[data-theme]. Accent colors apply to all of them. */
+
+/* ================================================================ classic
+   After the mid-2000s console dashboards: a bright colour wash with light
+   ribbons, glossy square tiles with floor reflections, solid blades. */
+[data-theme='classic'] {
+  --bg: #0b1410;
+  --glass: rgba(34, 44, 40, 0.92);
+  --stroke: rgba(255, 255, 255, 0.16);
+  --ink-dim: rgba(255, 255, 255, 0.78);
+  --ink-faint: rgba(255, 255, 255, 0.5);
+}
+[data-theme='classic'] #bg {
+  background:
+    radial-gradient(120% 85% at 50% 108%, #f4f7f5 0%, color-mix(in srgb, var(--accent) 55%, #dfe6e2) 22%, transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-deep) 55%, #0a0f0c) 0%, color-mix(in srgb, var(--accent) 62%, #20302a) 46%, color-mix(in srgb, var(--accent) 78%, #cfd8d3) 100%);
+}
+[data-theme='classic'] .bg__img { display: none; }
+/* Light ribbons sweeping across the wash. */
+[data-theme='classic'] .bg__aurora {
+  inset: -30% -10%; opacity: 1 !important; filter: blur(0.5rem);
+  background:
+    radial-gradient(ellipse 75% 46% at 30% 96%, transparent 62%, rgba(255, 255, 255, 0.2) 63.5%, rgba(255, 255, 255, 0.05) 67%, transparent 70%),
+    radial-gradient(ellipse 96% 58% at 68% 104%, transparent 62%, rgba(255, 255, 255, 0.16) 63.2%, rgba(255, 255, 255, 0.04) 66%, transparent 69%),
+    radial-gradient(ellipse 120% 70% at 44% 112%, transparent 63%, rgba(255, 255, 255, 0.1) 64%, transparent 68%);
+  animation: ribbons 46s ease-in-out infinite alternate;
+}
+@keyframes ribbons {
+  from { transform: translate3d(-2.5%, 0, 0) rotate(-1.5deg); }
+  to { transform: translate3d(2.5%, -1.5%, 0) rotate(1.5deg); }
+}
+[data-theme='classic'] .bg__shade {
+  background: linear-gradient(180deg, rgba(4, 8, 6, 0.62) 0%, rgba(4, 8, 6, 0.12) 24%, transparent 58%, rgba(4, 8, 6, 0.5) 100%);
+}
+
+/* Chrome: heavier, plainer type and a silver-ringed orb. */
+[data-theme='classic'] .tab { font-size: 2.5rem; font-weight: 600; letter-spacing: -0.03em; text-shadow: 0 0.12rem 0.5rem rgba(0, 0, 0, 0.35); }
+[data-theme='classic'] .tab.is-active { font-weight: 700; }
+[data-theme='classic'] .tab::after { height: 0.3rem; border-radius: 0; background: #fff; }
+[data-theme='classic'] .tab.is-focused { text-shadow: 0 0 1.2rem rgba(255, 255, 255, 0.7); }
+[data-theme='classic'] .orb { box-shadow: 0 0 0 0.24rem #dfe4e2, 0 0 0 0.34rem rgba(0, 0, 0, 0.35), 0 0.4rem 1rem rgba(0, 0, 0, 0.4), inset 0 -0.3rem 0.6rem rgba(0, 0, 0, 0.35); animation: none; }
+[data-theme='classic'] .block__title { font-weight: 600; font-size: 1.2rem; color: #fff; text-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.4); }
+[data-theme='classic'] .context__title { font-weight: 600; font-size: 2.1rem; text-shadow: 0 0.12rem 0.6rem rgba(0, 0, 0, 0.45); }
+[data-theme='classic'] .context__meta, [data-theme='classic'] .hint, [data-theme='classic'] #date { color: #fff; text-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.5); }
+[data-theme='classic'] #clock { font-weight: 500; }
+
+/* Tiles: square, fully lit, glossy, with a reflection on the floor. */
+[data-theme='classic'] .tile__body {
+  border-radius: 0; filter: none;
+  box-shadow: 0 0.5rem 1.2rem rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+[data-theme='classic'] .tile__body::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 46%; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.07) 70%, transparent);
+  border-radius: 0 0 50% 50% / 0 0 14% 14%;
+}
+[data-theme='classic'] .block--hero .tile__body, [data-theme='classic'] .block--covers .tile__body {
+  -webkit-box-reflect: below 0.25rem linear-gradient(transparent 82%, rgba(255, 255, 255, 0.22));
+}
+[data-theme='classic'] .tile.is-focused .tile__body {
+  animation: none;
+  box-shadow: 0 0 0 0.28rem #fff, 0 0 0 0.5rem var(--accent), 0 0 1.6rem rgba(255, 255, 255, 0.55), 0 1.4rem 2.6rem rgba(0, 0, 0, 0.45);
+}
+[data-theme='classic'] .tile__title, [data-theme='classic'] .tile__label { font-weight: 650; }
+[data-theme='classic'] .tile--hero .tile__title, [data-theme='classic'] .tile--hero .tile__label { font-weight: 600; letter-spacing: -0.035em; }
+[data-theme='classic'] .tile__eyebrow { color: #fff; }
+[data-theme='classic'] .tile__cta { border-radius: 0.2rem; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent) 48%, var(--accent-deep)); color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45), 0 0.4rem 1rem rgba(0, 0, 0, 0.35); }
+[data-theme='classic'] .tone-slate .tile__body { background: linear-gradient(180deg, #6d7a74, #2f3834); }
+[data-theme='classic'] .tone-glass .tile__body { background: linear-gradient(180deg, #8a9690, #49534e); backdrop-filter: none; }
+[data-theme='classic'] .tone-ghost .tile__body { background: linear-gradient(180deg, rgba(120, 132, 126, 0.55), rgba(60, 70, 65, 0.55)); color: #fff; }
+[data-theme='classic'] .tone-accent .tile__body { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent-deep)); }
+[data-theme='classic'] .badge { border-radius: 0.15rem; }
+
+/* Chips, cards and rows: solid and bevelled instead of glass. */
+[data-theme='classic'] .chip { border-radius: 0.2rem; backdrop-filter: none; color: #fff; font-weight: 600; background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
+[data-theme='classic'] .chip.is-active { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent-deep)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55); }
+[data-theme='classic'] .chip.is-focused { background: #fff; color: #10201a; }
+[data-theme='classic'] .card { border-radius: 0; backdrop-filter: none; background: linear-gradient(180deg, #56625c, #252d29); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0.8rem 1.8rem rgba(0, 0, 0, 0.4); }
+[data-theme='classic'] .row { border-radius: 0; }
+[data-theme='classic'] .row.is-focused, [data-theme='classic'] .key.is-focused {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 62%, #fff) 0%, var(--accent) 46%, var(--accent-deep) 100%);
+  color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 0 0 0.16rem #fff, 0 0.5rem 1.2rem rgba(0, 0, 0, 0.45);
+}
+[data-theme='classic'] .row.is-focused .row__check.is-on { color: #fff; }
+[data-theme='classic'] .row--danger.is-focused .row__label, [data-theme='classic'] .row--danger.is-focused .row__icon { color: #fff; }
+[data-theme='classic'] .row.is-focused .row__meter i { background: #fff; }
+[data-theme='classic'] .row.is-focused .switch.is-on { background: rgba(0, 0, 0, 0.4); }
+[data-theme='classic'] .key { border-radius: 0.15rem; background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06)); }
+[data-theme='classic'] .key.is-focused .glyph { background: rgba(0, 0, 0, 0.25); color: #fff; }
+
+/* Blades: solid brushed panels with a thick coloured spine. */
+[data-theme='classic'] .panel, [data-theme='classic'] .osk, [data-theme='classic'] .browser {
+  backdrop-filter: none; border-radius: 0;
+  background: linear-gradient(180deg, #5d6963 0%, #353e3a 16%, #1b211e 100%);
+}
+[data-theme='classic'] .osk, [data-theme='classic'] .browser { box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.3), inset 0 0.5rem 0 -0.02rem var(--accent); }
+[data-theme='classic'] .panel__edge { width: 0.9rem; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent) 35%, var(--accent-deep)); box-shadow: none; }
+[data-theme='classic'] .panel__head { padding-left: 3.6rem; }
+[data-theme='classic'] .panel__list { padding-left: 2.6rem; }
+[data-theme='classic'] .layer--left .panel__head { padding-left: 2.6rem; padding-right: 3.4rem; }
+[data-theme='classic'] .layer--left .panel__list { padding-left: 1.7rem; padding-right: 2.6rem; }
+[data-theme='classic'] .panel__title { font-weight: 650; letter-spacing: -0.03em; }
+[data-theme='classic'] .layer__scrim { backdrop-filter: none; background: rgba(6, 12, 9, 0.6); }
+[data-theme='classic'] .launch__title { font-weight: 600; }
+[data-theme='classic'] .launch__cover { border-radius: 0; }
+[data-theme='classic'] .toast { border-radius: 0.3rem; background: linear-gradient(180deg, #5d6963, #1f2622); }
+[data-theme='classic'] #boot { background: radial-gradient(60% 60% at 50% 46%, color-mix(in srgb, var(--accent) 60%, #dfe6e2), color-mix(in srgb, var(--accent-deep) 70%, #050806) 78%); }
+[data-theme='classic'] .boot__ring { stroke: #fff; filter: drop-shadow(0 0 0.5rem #fff); }
+[data-theme='classic'] .boot__word { font-weight: 600; }
+
+/* =============================================================== midnight
+   True black, no haze: nothing glows that does not have to. */
+[data-theme='midnight'] {
+  --bg: #000;
+  --glass: rgba(12, 12, 13, 0.96);
+  --stroke: rgba(255, 255, 255, 0.1);
+}
+[data-theme='midnight'] .bg__aurora { display: none; }
+[data-theme='midnight'] .bg__img { filter: blur(2.2rem) saturate(0.9) brightness(0.26); }
+[data-theme='midnight'] .bg__shade { background: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.5) 30%, rgba(0, 0, 0, 0.6) 62%, #000 100%); }
+[data-theme='midnight'] .orb { animation: none; box-shadow: none; }
+[data-theme='midnight'] .tile__body { border-radius: 0.15rem; background: #0a0a0b; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+[data-theme='midnight'] .tile.is-focused .tile__body { animation: none; box-shadow: 0 0 0 0.16rem #fff, 0 0 0 0.36rem var(--accent); }
+[data-theme='midnight'] .tone-glass .tile__body, [data-theme='midnight'] .tone-ghost .tile__body { backdrop-filter: none; background: #0e0e10; }
+[data-theme='midnight'] .tone-slate .tile__body { background: #15171a; }
+[data-theme='midnight'] .card, [data-theme='midnight'] .chip { backdrop-filter: none; }
+[data-theme='midnight'] .panel, [data-theme='midnight'] .osk, [data-theme='midnight'] .browser { backdrop-filter: none; background: #060607; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+[data-theme='midnight'] .panel__edge { box-shadow: none; width: 0.16rem; }
+[data-theme='midnight'] .layer__scrim { backdrop-filter: none; background: rgba(0, 0, 0, 0.8); }
+[data-theme='midnight'] .row.is-focused { background: #fff; box-shadow: 0 0 0 0.16rem var(--accent); }
+[data-theme='midnight'] .chip.is-focused, [data-theme='midnight'] .key.is-focused { box-shadow: 0 0 0 0.16rem var(--accent); }
+[data-theme='midnight'] .toast { background: #0a0a0b; backdrop-filter: none; }
+[data-theme='midnight'] .layer--launch { background: rgba(0, 0, 0, 0.92); backdrop-filter: none; }
+
+/* =============================================================== 360
+   After the final (2011+) Xbox 360 dashboard: a pale grey backdrop with soft
+   light streaks, lowercase pivot headings, flat square tiles in green, grey
+   and white, a bright green focus frame and light pop-up menus. The accent is
+   always the dashboard green. No Microsoft artwork, fonts or sounds are used;
+   Segoe UI is picked up only if it happens to be installed. */
+[data-theme='metro360'] {
+  --bg: #e4e4e4;
+  --ink: #262626;
+  --ink-dim: #5f5f5f;
+  --ink-faint: #9b9b9b;
+  --stroke: rgba(0, 0, 0, 0.1);
+  --glass: #f4f4f4;
+  --accent: #52b043;
+  --accent-deep: #107c10;
+  --on-accent: #fff;
+  --x-green: #107c10;
+  --x-lime: #7cc242;
+  --x-grey: #4d4d4d;
+  --x-tile: #d2d2d2;
+  --gutter: 7.2rem;
+}
+[data-theme='metro360'] body, body[data-theme='metro360'] {
+  font-family: 'Segoe UI', 'Selawik', 'Open Sans', 'Inter Variable', sans-serif;
+}
+body[data-theme='metro360'] { background: var(--bg); }
+
+/* Backdrop: pale grey with large soft diagonal streaks of light. Game art is not used. */
+[data-theme='metro360'] #bg {
+  background:
+    linear-gradient(118deg, transparent 0 28%, rgba(255, 255, 255, 0.75) 38%, transparent 52%),
+    linear-gradient(126deg, transparent 0 55%, rgba(255, 255, 255, 0.55) 63%, transparent 74%),
+    linear-gradient(112deg, transparent 0 8%, rgba(255, 255, 255, 0.4) 16%, transparent 26%),
+    radial-gradient(120% 90% at 30% 10%, #f3f3f3 0%, #e2e2e2 55%, #cfcfcf 100%);
+}
+[data-theme='metro360'] .bg__img, [data-theme='metro360'] .bg__aurora { display: none; }
+[data-theme='metro360'] .bg__shade { background: none; }
+
+/* Pivot headings: lowercase words, the current one dark, the rest grey; no bars, no orb. */
+[data-theme='metro360'] #top { height: 9.4rem; padding-bottom: 1.4rem; gap: 2.6rem; }
+[data-theme='metro360'] .orb, [data-theme='metro360'] .bumper { display: none; }
+[data-theme='metro360'] #tabs { gap: 2.4rem; }
+[data-theme='metro360'] .tab { font-size: 2.65rem; font-weight: 400; letter-spacing: -0.01em; color: #a2a2a2; padding-bottom: 0; text-shadow: none; }
+[data-theme='metro360'] .tab::after { display: none; }
+[data-theme='metro360'] .tab.is-active { color: #262626; font-weight: 400; }
+[data-theme='metro360'] .tab.is-focused { color: var(--x-green); text-shadow: none; }
+[data-theme='metro360'] .tab:hover { color: #5f5f5f; }
+[data-theme='metro360'] #clock { font-weight: 400; color: #262626; }
+[data-theme='metro360'] #date { color: #5f5f5f; letter-spacing: 0.02em; }
+[data-theme='metro360'] .pad { color: var(--x-green); }
+[data-theme='metro360'] .pad .icon { filter: none; }
+[data-theme='metro360'] .pad b { color: #262626; }
+[data-theme='metro360'] .pad--none { color: #9b9b9b; }
+[data-theme='metro360'] #stage { top: 9.4rem; }
+/* Content sits just under the pivots rather than in the middle of the screen. */
+[data-theme='metro360'] .view { justify-content: flex-start; padding-top: 2.2rem; }
+[data-theme='metro360'] .view--games { padding-top: 0; }
+
+/* Rails and tiles: flat, square, tightly packed. */
+[data-theme='metro360'] .blocks { gap: 1.6rem; -webkit-mask-image: none; mask-image: none; }
+[data-theme='metro360'] .block__title { font-size: 1.15rem; font-weight: 400; color: #5f5f5f; height: 1.6rem; margin-bottom: 0.6rem; letter-spacing: 0; }
+[data-theme='metro360'] .block__tiles { gap: 0.55rem; grid-template-rows: repeat(2, 14.2rem); }
+[data-theme='metro360'] .block--hero .block__tiles, [data-theme='metro360'] .block--covers .block__tiles { grid-template-rows: 28.95rem; }
+[data-theme='metro360'] .tile--hero { width: 51.5rem; }
+[data-theme='metro360'] .tile--wide { width: 25.2rem; }
+[data-theme='metro360'] .tile--square { width: 14.2rem; }
+[data-theme='metro360'] .block--covers .tile--cover { width: 19.3rem; }
+[data-theme='metro360'] .tile__body {
+  border-radius: 0; filter: none; color: #fff; background: var(--x-grey);
+  box-shadow: none; transition: box-shadow 0.12s ease, transform 0.18s ease;
+}
+[data-theme='metro360'] .tile.is-focused .tile__body,
+[data-theme='metro360'] .tile--hero.is-focused .tile__body,
+[data-theme='metro360'] .tile--wide.is-focused .tile__body {
+  transform: none; animation: none;
+  box-shadow: 0 0 0 0.3rem var(--x-lime), 0 0.6rem 1.4rem rgba(0, 0, 0, 0.18);
+}
+[data-theme='metro360'] .tile__sheen { display: none; }
+[data-theme='metro360'] .tile__shade { background: linear-gradient(180deg, transparent 58%, rgba(0, 0, 0, 0.62) 100%); }
+[data-theme='metro360'] .tile__caption { left: 1rem; right: 1rem; bottom: 0.8rem; }
+[data-theme='metro360'] .tile__title { font-size: 1.15rem; font-weight: 400; text-shadow: none; }
+[data-theme='metro360'] .tile--hero .tile__caption { left: 1.5rem; right: 1.5rem; bottom: 1.3rem; }
+[data-theme='metro360'] .tile--hero .tile__title { font-size: 2.4rem; font-weight: 300; letter-spacing: -0.02em; margin-bottom: 0.4rem; }
+[data-theme='metro360'] .tile--hero .tile__logo { max-height: 8.5rem; }
+[data-theme='metro360'] .tile__eyebrow { color: #fff; font-weight: 400; letter-spacing: 0; text-transform: lowercase; font-size: 1.05rem; text-shadow: none; margin-bottom: 0.5rem; }
+[data-theme='metro360'] .tile__meta { color: rgba(255, 255, 255, 0.85); font-size: 0.95rem; }
+[data-theme='metro360'] .tile__cta {
+  border-radius: 0; background: var(--x-green); color: #fff; box-shadow: none;
+  padding: 0.55rem 1.2rem 0.55rem 0.9rem; font-weight: 400;
+}
+[data-theme='metro360'] .badge { border-radius: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: none; box-shadow: none; }
+
+/* Action tiles: solid green, grey or white with an icon top-left and a label bottom-left. */
+[data-theme='metro360'] .tile--action .tile__body { filter: none; }
+[data-theme='metro360'] .tone-accent .tile__body { background: var(--x-green); }
+[data-theme='metro360'] .tone-slate .tile__body { background: var(--x-grey); }
+[data-theme='metro360'] .tone-violet .tile__body { background: #2d7d32; }
+[data-theme='metro360'] .tone-gold .tile__body { background: #5c9e31; }
+[data-theme='metro360'] .tone-danger .tile__body { background: #6b6b6b; }
+[data-theme='metro360'] .tone-glass .tile__body { background: #fbfbfb; color: #262626; backdrop-filter: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06); }
+[data-theme='metro360'] .tone-ghost .tile__body { background: var(--x-tile); color: #3c3c3c; }
+[data-theme='metro360'] .tone-glass.is-focused .tile__body, [data-theme='metro360'] .tone-ghost.is-focused .tile__body { box-shadow: 0 0 0 0.3rem var(--x-lime), 0 0.6rem 1.4rem rgba(0, 0, 0, 0.18); }
+[data-theme='metro360'] .tile__icon { top: 1rem; left: 1rem; width: 2.2rem; height: 2.2rem; }
+[data-theme='metro360'] .tile__icon svg { stroke-width: 1.5; }
+[data-theme='metro360'] .tile__count { font-weight: 300; font-size: 2.3rem; top: 0.8rem; right: 1rem; }
+[data-theme='metro360'] .tile__label { left: 1rem; right: 1rem; bottom: 0.85rem; font-size: 1.15rem; font-weight: 400; text-shadow: none; letter-spacing: 0; }
+[data-theme='metro360'] .tile--hero .tile__label { font-size: 2.4rem; font-weight: 300; }
+[data-theme='metro360'] .tile--hero .tile__icon { color: #fff; }
+[data-theme='metro360'] .tile--uninstalled .tile__img, [data-theme='metro360'] .tile--uninstalled .art-fallback { filter: grayscale(1) brightness(0.8) contrast(0.9); }
+[data-theme='metro360'] .art-fallback { background: linear-gradient(160deg, #5d5d5d, #3a3a3a); }
+[data-theme='metro360'] .art-fallback::before { display: none; }
+[data-theme='metro360'] .tile__progress-track i { box-shadow: none; }
+
+/* Games wall and chips. */
+[data-theme='metro360'] .wall { gap: 0.55rem; -webkit-mask-image: none; mask-image: none; grid-template-rows: repeat(2, 19rem); grid-auto-columns: 12.66rem; }
+[data-theme='metro360'] .chips { -webkit-mask-image: none; mask-image: none; }
+[data-theme='metro360'] .chip { border-radius: 0; background: rgba(255, 255, 255, 0.7); color: #3c3c3c; box-shadow: none; backdrop-filter: none; font-weight: 400; }
+[data-theme='metro360'] .chip.is-active { background: var(--x-green); color: #fff; box-shadow: none; }
+[data-theme='metro360'] .chip.is-focused { background: #fff; color: #262626; transform: none; box-shadow: 0 0 0 0.24rem var(--x-lime); }
+[data-theme='metro360'] .empty__title { color: #262626; }
+[data-theme='metro360'] .store-note .empty__title { color: #262626; }
+
+/* Footer context and button prompts: dark text on the light backdrop, coloured face buttons. */
+[data-theme='metro360'] .context__title { font-weight: 300; color: #262626; font-size: 2.1rem; }
+[data-theme='metro360'] .context__meta { color: #5f5f5f; }
+[data-theme='metro360'] .context__warn { color: #b35c00; }
+[data-theme='metro360'] .context__fav { color: var(--x-green); }
+[data-theme='metro360'] .hint { color: #3c3c3c; }
+[data-theme='metro360'] .glyph { background: #fff; color: #3c3c3c; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
+body[data-theme='metro360'][data-input='pad'] .glyph--accept { background: #5ba31a; color: #fff; }
+body[data-theme='metro360'][data-input='pad'] .glyph--back { background: #d8261c; color: #fff; }
+body[data-theme='metro360'][data-input='pad'] .glyph--x { background: #1a6bc9; color: #fff; }
+body[data-theme='metro360'][data-input='pad'] .glyph--y { background: #f0b40f; color: #2b2000; }
+
+/* Settings cards: white panels with dark text. */
+[data-theme='metro360'] .card { border-radius: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: none; box-shadow: none; padding: 0.4rem; }
+[data-theme='metro360'] .row { border-radius: 0; color: #262626; }
+[data-theme='metro360'] .row.is-focused, [data-theme='metro360'] .key.is-focused {
+  background: var(--x-green); color: #fff; transform: none; text-shadow: none;
+  box-shadow: none;
+}
+[data-theme='metro360'] .row.is-focused .row__sub { opacity: 0.85; }
+[data-theme='metro360'] .row.is-focused .row__check.is-on { color: #fff; }
+[data-theme='metro360'] .row--danger .row__label, [data-theme='metro360'] .row--danger .row__icon { color: #c4262e; }
+[data-theme='metro360'] .row--danger.is-focused .row__label, [data-theme='metro360'] .row--danger.is-focused .row__icon { color: #fff; }
+[data-theme='metro360'] .row__swatch { box-shadow: none; }
+[data-theme='metro360'] .switch { background: #bdbdbd; box-shadow: none; border-radius: 0; }
+[data-theme='metro360'] .switch i { border-radius: 0; box-shadow: none; }
+[data-theme='metro360'] .switch.is-on { background: var(--x-green); }
+[data-theme='metro360'] .row.is-focused .switch { background: rgba(0, 0, 0, 0.25); }
+[data-theme='metro360'] .row.is-focused .switch.is-on { background: #fff; }
+[data-theme='metro360'] .row.is-focused .switch.is-on i { background: var(--x-green); }
+[data-theme='metro360'] .row__meter { background: rgba(0, 0, 0, 0.12); border-radius: 0; }
+[data-theme='metro360'] .row__meter i { border-radius: 0; background: var(--x-green); }
+[data-theme='metro360'] .row.is-focused .row__meter { background: rgba(255, 255, 255, 0.3); }
+[data-theme='metro360'] .row.is-focused .row__meter i { background: #fff; }
+[data-theme='metro360'] .battery__cell i { background: var(--x-green); }
+
+/* Pop-up menus: a light sheet over a white veil, green highlight. */
+[data-theme='metro360'] .layer__scrim { background: rgba(232, 232, 232, 0.72); backdrop-filter: none; }
+[data-theme='metro360'] .panel, [data-theme='metro360'] .osk, [data-theme='metro360'] .browser {
+  background: #f7f7f7; color: #262626; backdrop-filter: none; border-radius: 0;
+  box-shadow: 0 0 3rem rgba(0, 0, 0, 0.18);
+}
+[data-theme='metro360'] .panel__edge { display: none; }
+[data-theme='metro360'] .panel__title { font-weight: 300; color: #262626; }
+[data-theme='metro360'] .panel__subtitle { color: #5f5f5f; }
+[data-theme='metro360'] .panel__heading { color: #8a8a8a; letter-spacing: 0.04em; text-transform: lowercase; font-weight: 400; font-size: 0.95rem; }
+[data-theme='metro360'] .panel__art { border-radius: 0; box-shadow: none; }
+[data-theme='metro360'] .osk, [data-theme='metro360'] .browser { box-shadow: 0 0 3rem rgba(0, 0, 0, 0.18), inset 0 0.3rem 0 var(--x-green); }
+[data-theme='metro360'] .osk__title { color: #5f5f5f; }
+[data-theme='metro360'] .osk__field { background: #fff; border-radius: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16); color: #262626; }
+[data-theme='metro360'] .key { border-radius: 0; background: #e3e3e3; color: #262626; box-shadow: none; }
+[data-theme='metro360'] .key--wide { background: #d4d4d4; }
+[data-theme='metro360'] .key--done { background: #c9e3bf; }
+[data-theme='metro360'] .key.is-focused .glyph { background: rgba(255, 255, 255, 0.25); color: #fff; }
+[data-theme='metro360'] .browser__path { color: var(--x-green); }
+[data-theme='metro360'] .browser__places, [data-theme='metro360'] .browser__preview { border-color: rgba(0, 0, 0, 0.1); }
+[data-theme='metro360'] .browser__empty, [data-theme='metro360'] .browser__preview-empty { color: #8a8a8a; }
+
+/* The Guide keeps the console's dark blade, opened from the left. */
+[data-theme='metro360'] .layer--left .layer__scrim { background: rgba(0, 0, 0, 0.35); }
+[data-theme='metro360'] .layer--left .panel { background: #1d1d1d; color: #f2f2f2; box-shadow: 1rem 0 3rem rgba(0, 0, 0, 0.35); }
+[data-theme='metro360'] .layer--left .panel__title { color: #fff; }
+[data-theme='metro360'] .layer--left .panel__subtitle { color: #b4b4b4; }
+[data-theme='metro360'] .layer--left .panel__heading { color: #8f8f8f; }
+[data-theme='metro360'] .layer--left .row { color: #f2f2f2; }
+[data-theme='metro360'] .layer--left .row--danger .row__label, [data-theme='metro360'] .layer--left .row--danger .row__icon { color: #ff8c8c; }
+[data-theme='metro360'] .layer--left .row--danger.is-focused .row__label, [data-theme='metro360'] .layer--left .row--danger.is-focused .row__icon { color: #fff; }
+[data-theme='metro360'] .layer--left .row__meter { background: rgba(255, 255, 255, 0.18); }
+[data-theme='metro360'] .orb--guide { display: grid; box-shadow: none; animation: none; background: radial-gradient(circle at 35% 30%, #c8f0a8, var(--x-lime) 35%, var(--x-green) 85%); }
+/* The in-game menu window floats over a game: keep its veil dark. */
+body.is-overlay[data-theme='metro360'] .layer__scrim { background: rgba(0, 0, 0, 0.4); }
+
+/* Launch card, toasts and start-up. */
+[data-theme='metro360'] .layer--launch { background: rgba(236, 236, 236, 0.94); backdrop-filter: none; }
+[data-theme='metro360'] .launch__cover { border-radius: 0; box-shadow: 0 0 0 0.3rem var(--x-lime), 0 1.4rem 3rem rgba(0, 0, 0, 0.25); }
+[data-theme='metro360'] .launch__status { color: var(--x-green); letter-spacing: 0.04em; text-transform: lowercase; font-weight: 400; font-size: 1.2rem; }
+[data-theme='metro360'] .launch__title { color: #262626; font-weight: 300; }
+[data-theme='metro360'] .launch__sub { color: #5f5f5f; }
+[data-theme='metro360'] .launch__bar { background: rgba(0, 0, 0, 0.1); border-radius: 0; }
+[data-theme='metro360'] .launch__bar i { background: linear-gradient(90deg, transparent, var(--x-green), transparent); }
+[data-theme='metro360'] .toast { border-radius: 0.2rem; background: #262626; color: #fff; backdrop-filter: none; height: 4.2rem; }
+[data-theme='metro360'] .toast__orb { width: 4.2rem; height: 4.2rem; border-radius: 0; background: var(--x-green); color: #fff; box-shadow: none; }
+[data-theme='metro360'] .toast--error .toast__orb { background: #c4262e; color: #fff; box-shadow: none; }
+[data-theme='metro360'] .toast__title { color: #b4b4b4; letter-spacing: 0.04em; text-transform: lowercase; font-weight: 400; }
+[data-theme='metro360'] #boot { background: #f2f2f2; }
+[data-theme='metro360'] #boot::before { background: radial-gradient(40% 44% at 50% 46%, rgba(124, 194, 66, 0.25), transparent 72%); }
+[data-theme='metro360'] .boot__track { stroke: rgba(0, 0, 0, 0.08); }
+[data-theme='metro360'] .boot__ring { stroke: var(--x-green); filter: none; }
+[data-theme='metro360'] .boot__core { background: radial-gradient(circle at 35% 30%, #c8f0a8, var(--x-lime) 35%, var(--x-green) 85%); box-shadow: none; }
+[data-theme='metro360'] .boot__word { color: #3c3c3c; font-weight: 400; text-transform: lowercase; }
+[data-theme='metro360'] #saver { background: rgba(10, 10, 10, 0.92); }
+[data-theme='metro360'] #saverDate { color: var(--x-lime); }
+[data-theme='metro360'] .price__now { background: rgba(0, 0, 0, 0.72); border-radius: 0; box-shadow: none; color: #fff; }
+[data-theme='metro360'] .price__cut { border-radius: 0; background: var(--x-green); color: #fff; }
+[data-theme='metro360'] .price__was { color: rgba(255, 255, 255, 0.85); }
+
+/* =========================================================== 360 (base)
+   A copy of 360 Light's rules, so that theme stays exactly as it is; the 360
+   specifics follow below and override these.
+   After the final (2011+) Xbox 360 dashboard: a pale grey backdrop with soft
+   light streaks, lowercase pivot headings, flat square tiles in green, grey
+   and white, a bright green focus frame and light pop-up menus. The accent is
+   always the dashboard green. No Microsoft artwork, fonts or sounds are used;
+   Segoe UI is picked up only if it happens to be installed. */
+[data-theme='x360'] {
+  --bg: #e4e4e4;
+  --ink: #262626;
+  --ink-dim: #5f5f5f;
+  --ink-faint: #9b9b9b;
+  --stroke: rgba(0, 0, 0, 0.1);
+  --glass: #f4f4f4;
+  --accent: #52b043;
+  --accent-deep: #107c10;
+  --on-accent: #fff;
+  --x-green: #107c10;
+  --x-lime: #7cc242;
+  --x-grey: #4d4d4d;
+  --x-tile: #d2d2d2;
+  --gutter: 7.2rem;
+}
+[data-theme='x360'] body, body[data-theme='x360'] {
+  font-family: 'Segoe UI', 'Selawik', 'Open Sans', 'Inter Variable', sans-serif;
+}
+body[data-theme='x360'] { background: var(--bg); }
+
+/* Backdrop: pale grey with large soft diagonal streaks of light. Game art is not used. */
+[data-theme='x360'] #bg {
+  background:
+    linear-gradient(118deg, transparent 0 28%, rgba(255, 255, 255, 0.75) 38%, transparent 52%),
+    linear-gradient(126deg, transparent 0 55%, rgba(255, 255, 255, 0.55) 63%, transparent 74%),
+    linear-gradient(112deg, transparent 0 8%, rgba(255, 255, 255, 0.4) 16%, transparent 26%),
+    radial-gradient(120% 90% at 30% 10%, #f3f3f3 0%, #e2e2e2 55%, #cfcfcf 100%);
+}
+[data-theme='x360'] .bg__img, [data-theme='x360'] .bg__aurora { display: none; }
+[data-theme='x360'] .bg__shade { background: none; }
+
+/* Pivot headings: lowercase words, the current one dark, the rest grey; no bars, no orb. */
+[data-theme='x360'] #top { height: 9.4rem; padding-bottom: 1.4rem; gap: 2.6rem; }
+[data-theme='x360'] .orb, [data-theme='x360'] .bumper { display: none; }
+[data-theme='x360'] #tabs { gap: 2.4rem; }
+[data-theme='x360'] .tab { font-size: 2.65rem; font-weight: 400; letter-spacing: -0.01em; color: #a2a2a2; padding-bottom: 0; text-shadow: none; }
+[data-theme='x360'] .tab::after { display: none; }
+[data-theme='x360'] .tab.is-active { color: #262626; font-weight: 400; }
+[data-theme='x360'] .tab.is-focused { color: var(--x-green); text-shadow: none; }
+[data-theme='x360'] .tab:hover { color: #5f5f5f; }
+[data-theme='x360'] #clock { font-weight: 400; color: #262626; }
+[data-theme='x360'] #date { color: #5f5f5f; letter-spacing: 0.02em; }
+[data-theme='x360'] .pad { color: var(--x-green); }
+[data-theme='x360'] .pad .icon { filter: none; }
+[data-theme='x360'] .pad b { color: #262626; }
+[data-theme='x360'] .pad--none { color: #9b9b9b; }
+[data-theme='x360'] #stage { top: 9.4rem; }
+/* Content sits just under the pivots rather than in the middle of the screen. */
+[data-theme='x360'] .view { justify-content: flex-start; padding-top: 2.2rem; }
+[data-theme='x360'] .view--games { padding-top: 0; }
+
+/* Rails and tiles: flat, square, tightly packed. */
+[data-theme='x360'] .blocks { gap: 1.6rem; -webkit-mask-image: none; mask-image: none; }
+[data-theme='x360'] .block__title { font-size: 1.15rem; font-weight: 400; color: #5f5f5f; height: 1.6rem; margin-bottom: 0.6rem; letter-spacing: 0; }
+[data-theme='x360'] .block__tiles { gap: 0.55rem; grid-template-rows: repeat(2, 14.2rem); }
+[data-theme='x360'] .block--hero .block__tiles, [data-theme='x360'] .block--covers .block__tiles { grid-template-rows: 28.95rem; }
+[data-theme='x360'] .tile--hero { width: 51.5rem; }
+[data-theme='x360'] .tile--wide { width: 25.2rem; }
+[data-theme='x360'] .tile--square { width: 14.2rem; }
+[data-theme='x360'] .block--covers .tile--cover { width: 19.3rem; }
+[data-theme='x360'] .tile__body {
+  border-radius: 0; filter: none; color: #fff; background: var(--x-grey);
+  box-shadow: none; transition: box-shadow 0.12s ease, transform 0.18s ease;
+}
+[data-theme='x360'] .tile.is-focused .tile__body,
+[data-theme='x360'] .tile--hero.is-focused .tile__body,
+[data-theme='x360'] .tile--wide.is-focused .tile__body {
+  transform: none; animation: none;
+  box-shadow: 0 0 0 0.3rem var(--x-lime), 0 0.6rem 1.4rem rgba(0, 0, 0, 0.18);
+}
+[data-theme='x360'] .tile__sheen { display: none; }
+[data-theme='x360'] .tile__shade { background: linear-gradient(180deg, transparent 58%, rgba(0, 0, 0, 0.62) 100%); }
+[data-theme='x360'] .tile__caption { left: 1rem; right: 1rem; bottom: 0.8rem; }
+[data-theme='x360'] .tile__title { font-size: 1.15rem; font-weight: 400; text-shadow: none; }
+[data-theme='x360'] .tile--hero .tile__caption { left: 1.5rem; right: 1.5rem; bottom: 1.3rem; }
+[data-theme='x360'] .tile--hero .tile__title { font-size: 2.4rem; font-weight: 300; letter-spacing: -0.02em; margin-bottom: 0.4rem; }
+[data-theme='x360'] .tile--hero .tile__logo { max-height: 8.5rem; }
+[data-theme='x360'] .tile__eyebrow { color: #fff; font-weight: 400; letter-spacing: 0; text-transform: lowercase; font-size: 1.05rem; text-shadow: none; margin-bottom: 0.5rem; }
+[data-theme='x360'] .tile__meta { color: rgba(255, 255, 255, 0.85); font-size: 0.95rem; }
+[data-theme='x360'] .tile__cta {
+  border-radius: 0; background: var(--x-green); color: #fff; box-shadow: none;
+  padding: 0.55rem 1.2rem 0.55rem 0.9rem; font-weight: 400;
+}
+[data-theme='x360'] .badge { border-radius: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: none; box-shadow: none; }
+
+/* Action tiles: solid green, grey or white with an icon top-left and a label bottom-left. */
+[data-theme='x360'] .tile--action .tile__body { filter: none; }
+[data-theme='x360'] .tone-accent .tile__body { background: var(--x-green); }
+[data-theme='x360'] .tone-slate .tile__body { background: var(--x-grey); }
+[data-theme='x360'] .tone-violet .tile__body { background: #2d7d32; }
+[data-theme='x360'] .tone-gold .tile__body { background: #5c9e31; }
+[data-theme='x360'] .tone-danger .tile__body { background: #6b6b6b; }
+[data-theme='x360'] .tone-glass .tile__body { background: #fbfbfb; color: #262626; backdrop-filter: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06); }
+[data-theme='x360'] .tone-ghost .tile__body { background: var(--x-tile); color: #3c3c3c; }
+[data-theme='x360'] .tone-glass.is-focused .tile__body, [data-theme='x360'] .tone-ghost.is-focused .tile__body { box-shadow: 0 0 0 0.3rem var(--x-lime), 0 0.6rem 1.4rem rgba(0, 0, 0, 0.18); }
+[data-theme='x360'] .tile__icon { top: 1rem; left: 1rem; width: 2.2rem; height: 2.2rem; }
+[data-theme='x360'] .tile__icon svg { stroke-width: 1.5; }
+[data-theme='x360'] .tile__count { font-weight: 300; font-size: 2.3rem; top: 0.8rem; right: 1rem; }
+[data-theme='x360'] .tile__label { left: 1rem; right: 1rem; bottom: 0.85rem; font-size: 1.15rem; font-weight: 400; text-shadow: none; letter-spacing: 0; }
+[data-theme='x360'] .tile--hero .tile__label { font-size: 2.4rem; font-weight: 300; }
+[data-theme='x360'] .tile--hero .tile__icon { color: #fff; }
+[data-theme='x360'] .tile--uninstalled .tile__img, [data-theme='x360'] .tile--uninstalled .art-fallback { filter: grayscale(1) brightness(0.8) contrast(0.9); }
+[data-theme='x360'] .art-fallback { background: linear-gradient(160deg, #5d5d5d, #3a3a3a); }
+[data-theme='x360'] .art-fallback::before { display: none; }
+[data-theme='x360'] .tile__progress-track i { box-shadow: none; }
+
+/* Games wall and chips. */
+[data-theme='x360'] .wall { gap: 0.55rem; -webkit-mask-image: none; mask-image: none; grid-template-rows: repeat(2, 19rem); grid-auto-columns: 12.66rem; }
+[data-theme='x360'] .chips { -webkit-mask-image: none; mask-image: none; }
+[data-theme='x360'] .chip { border-radius: 0; background: rgba(255, 255, 255, 0.7); color: #3c3c3c; box-shadow: none; backdrop-filter: none; font-weight: 400; }
+[data-theme='x360'] .chip.is-active { background: var(--x-green); color: #fff; box-shadow: none; }
+[data-theme='x360'] .chip.is-focused { background: #fff; color: #262626; transform: none; box-shadow: 0 0 0 0.24rem var(--x-lime); }
+[data-theme='x360'] .empty__title { color: #262626; }
+[data-theme='x360'] .store-note .empty__title { color: #262626; }
+
+/* Footer context and button prompts: dark text on the light backdrop, coloured face buttons. */
+[data-theme='x360'] .context__title { font-weight: 300; color: #262626; font-size: 2.1rem; }
+[data-theme='x360'] .context__meta { color: #5f5f5f; }
+[data-theme='x360'] .context__warn { color: #b35c00; }
+[data-theme='x360'] .context__fav { color: var(--x-green); }
+[data-theme='x360'] .hint { color: #3c3c3c; }
+[data-theme='x360'] .glyph { background: #fff; color: #3c3c3c; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
+body[data-theme='x360'][data-input='pad'] .glyph--accept { background: #5ba31a; color: #fff; }
+body[data-theme='x360'][data-input='pad'] .glyph--back { background: #d8261c; color: #fff; }
+body[data-theme='x360'][data-input='pad'] .glyph--x { background: #1a6bc9; color: #fff; }
+body[data-theme='x360'][data-input='pad'] .glyph--y { background: #f0b40f; color: #2b2000; }
+
+/* Settings cards: white panels with dark text. */
+[data-theme='x360'] .card { border-radius: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: none; box-shadow: none; padding: 0.4rem; }
+[data-theme='x360'] .row { border-radius: 0; color: #262626; }
+[data-theme='x360'] .row.is-focused, [data-theme='x360'] .key.is-focused {
+  background: var(--x-green); color: #fff; transform: none; text-shadow: none;
+  box-shadow: none;
+}
+[data-theme='x360'] .row.is-focused .row__sub { opacity: 0.85; }
+[data-theme='x360'] .row.is-focused .row__check.is-on { color: #fff; }
+[data-theme='x360'] .row--danger .row__label, [data-theme='x360'] .row--danger .row__icon { color: #c4262e; }
+[data-theme='x360'] .row--danger.is-focused .row__label, [data-theme='x360'] .row--danger.is-focused .row__icon { color: #fff; }
+[data-theme='x360'] .row__swatch { box-shadow: none; }
+[data-theme='x360'] .switch { background: #bdbdbd; box-shadow: none; border-radius: 0; }
+[data-theme='x360'] .switch i { border-radius: 0; box-shadow: none; }
+[data-theme='x360'] .switch.is-on { background: var(--x-green); }
+[data-theme='x360'] .row.is-focused .switch { background: rgba(0, 0, 0, 0.25); }
+[data-theme='x360'] .row.is-focused .switch.is-on { background: #fff; }
+[data-theme='x360'] .row.is-focused .switch.is-on i { background: var(--x-green); }
+[data-theme='x360'] .row__meter { background: rgba(0, 0, 0, 0.12); border-radius: 0; }
+[data-theme='x360'] .row__meter i { border-radius: 0; background: var(--x-green); }
+[data-theme='x360'] .row.is-focused .row__meter { background: rgba(255, 255, 255, 0.3); }
+[data-theme='x360'] .row.is-focused .row__meter i { background: #fff; }
+[data-theme='x360'] .battery__cell i { background: var(--x-green); }
+
+/* Pop-up menus: a light sheet over a white veil, green highlight. */
+[data-theme='x360'] .layer__scrim { background: rgba(232, 232, 232, 0.72); backdrop-filter: none; }
+[data-theme='x360'] .panel, [data-theme='x360'] .osk, [data-theme='x360'] .browser {
+  background: #f7f7f7; color: #262626; backdrop-filter: none; border-radius: 0;
+  box-shadow: 0 0 3rem rgba(0, 0, 0, 0.18);
+}
+[data-theme='x360'] .panel__edge { display: none; }
+[data-theme='x360'] .panel__title { font-weight: 300; color: #262626; }
+[data-theme='x360'] .panel__subtitle { color: #5f5f5f; }
+[data-theme='x360'] .panel__heading { color: #8a8a8a; letter-spacing: 0.04em; text-transform: lowercase; font-weight: 400; font-size: 0.95rem; }
+[data-theme='x360'] .panel__art { border-radius: 0; box-shadow: none; }
+[data-theme='x360'] .osk, [data-theme='x360'] .browser { box-shadow: 0 0 3rem rgba(0, 0, 0, 0.18), inset 0 0.3rem 0 var(--x-green); }
+[data-theme='x360'] .osk__title { color: #5f5f5f; }
+[data-theme='x360'] .osk__field { background: #fff; border-radius: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16); color: #262626; }
+[data-theme='x360'] .key { border-radius: 0; background: #e3e3e3; color: #262626; box-shadow: none; }
+[data-theme='x360'] .key--wide { background: #d4d4d4; }
+[data-theme='x360'] .key--done { background: #c9e3bf; }
+[data-theme='x360'] .key.is-focused .glyph { background: rgba(255, 255, 255, 0.25); color: #fff; }
+[data-theme='x360'] .browser__path { color: var(--x-green); }
+[data-theme='x360'] .browser__places, [data-theme='x360'] .browser__preview { border-color: rgba(0, 0, 0, 0.1); }
+[data-theme='x360'] .browser__empty, [data-theme='x360'] .browser__preview-empty { color: #8a8a8a; }
+
+/* The Guide keeps the console's dark blade, opened from the left. */
+[data-theme='x360'] .layer--left .layer__scrim { background: rgba(0, 0, 0, 0.35); }
+[data-theme='x360'] .layer--left .panel { background: #1d1d1d; color: #f2f2f2; box-shadow: 1rem 0 3rem rgba(0, 0, 0, 0.35); }
+[data-theme='x360'] .layer--left .panel__title { color: #fff; }
+[data-theme='x360'] .layer--left .panel__subtitle { color: #b4b4b4; }
+[data-theme='x360'] .layer--left .panel__heading { color: #8f8f8f; }
+[data-theme='x360'] .layer--left .row { color: #f2f2f2; }
+[data-theme='x360'] .layer--left .row--danger .row__label, [data-theme='x360'] .layer--left .row--danger .row__icon { color: #ff8c8c; }
+[data-theme='x360'] .layer--left .row--danger.is-focused .row__label, [data-theme='x360'] .layer--left .row--danger.is-focused .row__icon { color: #fff; }
+[data-theme='x360'] .layer--left .row__meter { background: rgba(255, 255, 255, 0.18); }
+[data-theme='x360'] .orb--guide { display: grid; box-shadow: none; animation: none; background: radial-gradient(circle at 35% 30%, #c8f0a8, var(--x-lime) 35%, var(--x-green) 85%); }
+/* The in-game menu window floats over a game: keep its veil dark. */
+body.is-overlay[data-theme='x360'] .layer__scrim { background: rgba(0, 0, 0, 0.4); }
+
+/* Launch card, toasts and start-up. */
+[data-theme='x360'] .layer--launch { background: rgba(236, 236, 236, 0.94); backdrop-filter: none; }
+[data-theme='x360'] .launch__cover { border-radius: 0; box-shadow: 0 0 0 0.3rem var(--x-lime), 0 1.4rem 3rem rgba(0, 0, 0, 0.25); }
+[data-theme='x360'] .launch__status { color: var(--x-green); letter-spacing: 0.04em; text-transform: lowercase; font-weight: 400; font-size: 1.2rem; }
+[data-theme='x360'] .launch__title { color: #262626; font-weight: 300; }
+[data-theme='x360'] .launch__sub { color: #5f5f5f; }
+[data-theme='x360'] .launch__bar { background: rgba(0, 0, 0, 0.1); border-radius: 0; }
+[data-theme='x360'] .launch__bar i { background: linear-gradient(90deg, transparent, var(--x-green), transparent); }
+[data-theme='x360'] .toast { border-radius: 0.2rem; background: #262626; color: #fff; backdrop-filter: none; height: 4.2rem; }
+[data-theme='x360'] .toast__orb { width: 4.2rem; height: 4.2rem; border-radius: 0; background: var(--x-green); color: #fff; box-shadow: none; }
+[data-theme='x360'] .toast--error .toast__orb { background: #c4262e; color: #fff; box-shadow: none; }
+[data-theme='x360'] .toast__title { color: #b4b4b4; letter-spacing: 0.04em; text-transform: lowercase; font-weight: 400; }
+[data-theme='x360'] #boot { background: #f2f2f2; }
+[data-theme='x360'] #boot::before { background: radial-gradient(40% 44% at 50% 46%, rgba(124, 194, 66, 0.25), transparent 72%); }
+[data-theme='x360'] .boot__track { stroke: rgba(0, 0, 0, 0.08); }
+[data-theme='x360'] .boot__ring { stroke: var(--x-green); filter: none; }
+[data-theme='x360'] .boot__core { background: radial-gradient(circle at 35% 30%, #c8f0a8, var(--x-lime) 35%, var(--x-green) 85%); box-shadow: none; }
+[data-theme='x360'] .boot__word { color: #3c3c3c; font-weight: 400; text-transform: lowercase; }
+[data-theme='x360'] #saver { background: rgba(10, 10, 10, 0.92); }
+[data-theme='x360'] #saverDate { color: var(--x-lime); }
+[data-theme='x360'] .price__now { background: rgba(0, 0, 0, 0.72); border-radius: 0; box-shadow: none; color: #fff; }
+[data-theme='x360'] .price__cut { border-radius: 0; background: var(--x-green); color: #fff; }
+[data-theme='x360'] .price__was { color: rgba(255, 255, 255, 0.85); }
+
+/* =================================================================== 360
+   Matches the Xbox 360 dashboard screenshots: a grey backdrop that is lighter
+   in the middle, white lowercase pivots, bright green tiles with a centred white
+   icon and a small label, image tiles with a dark name strip, the selected tile
+   growing a little, menus as a light boxed list with a green bar, button prompts
+   bottom-left, and a centred Guide flanked by side blades. */
+[data-theme='x360'] {
+  --bg: #9a9a9a;
+  --ink: #fff;
+  --ink-dim: rgba(255, 255, 255, 0.82);
+  --ink-faint: rgba(255, 255, 255, 0.6);
+  --x-tile-green: #50b51e;
+  --x-tile-green-hi: #6cc93a;
+  --x-bar-hi: #8fd14f;
+  --x-bar: #5aac25;
+  --x-bar-lo: #3f9318;
+  --x-box: #e4e4e4;
+  --gutter: 9rem;
+}
+body[data-theme='x360'] { background: var(--bg); }
+[data-theme='x360'] #bg {
+  background: radial-gradient(75% 70% at 50% 42%, #d6d6d6 0%, #b9b9b9 38%, #8c8c8c 72%, #5e5e5e 100%);
+}
+[data-theme='x360'] #saver { background: rgba(10, 10, 10, 0.92); }
+
+/* Pivots: white lowercase words, the current one solid, the rest translucent. */
+[data-theme='x360'] #top { height: 11.5rem; padding-bottom: 1rem; }
+[data-theme='x360'] #stage { top: 11.5rem; }
+[data-theme='x360'] #tabs { gap: 2.1rem; }
+[data-theme='x360'] .tab { font-size: 2.35rem; color: rgba(255, 255, 255, 0.62); text-shadow: 0 0.1rem 0.25rem rgba(0, 0, 0, 0.18); }
+[data-theme='x360'] .tab.is-active { color: #fff; text-shadow: 0 0.1rem 0.35rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .tab.is-focused { color: #fff; text-shadow: 0 0 0.9rem rgba(255, 255, 255, 0.9), 0 0.1rem 0.35rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .tab:hover { color: #fff; }
+[data-theme='x360'] #clock, [data-theme='x360'] #date { color: #fff; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .pad, [data-theme='x360'] .pad b { color: #fff; }
+[data-theme='x360'] .battery { color: #fff; }
+
+/* Rails: three rows of tiles under the pivots, no section titles. */
+[data-theme='x360'] .view { padding-top: 0.6rem; }
+[data-theme='x360'] .blocks { gap: 0.4rem; padding-top: 0.8rem; }
+[data-theme='x360'] .block__title { display: none; }
+[data-theme='x360'] .block__tiles { gap: 0.4rem; grid-template-rows: repeat(3, 13.2rem); }
+[data-theme='x360'] .block--hero .block__tiles, [data-theme='x360'] .block--covers .block__tiles { grid-template-rows: 40.4rem; }
+[data-theme='x360'] .blocks--cards .block__title { display: block; color: #fff; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .tile--hero { width: 66rem; }
+[data-theme='x360'] .tile--wide { width: 23.5rem; }
+[data-theme='x360'] .tile--square { width: 17.6rem; }
+[data-theme='x360'] .block--covers .tile--cover { width: 26.9rem; }
+
+/* Tiles: the selected one grows; no frame, no glow. */
+[data-theme='x360'] .tile__body { background: #3c3c3c; box-shadow: 0 0.15rem 0.5rem rgba(0, 0, 0, 0.18); transition: transform 0.16s var(--ease), box-shadow 0.16s ease, filter 0.16s ease; }
+[data-theme='x360'] .tile.is-focused { z-index: 6; }
+[data-theme='x360'] .tile.is-focused .tile__body,
+[data-theme='x360'] .tone-glass.is-focused .tile__body,
+[data-theme='x360'] .tone-ghost.is-focused .tile__body { transform: scale(1.07); box-shadow: 0 0.8rem 1.8rem rgba(0, 0, 0, 0.35); filter: brightness(1.08); }
+[data-theme='x360'] .tile--hero.is-focused .tile__body { transform: scale(1.025); }
+[data-theme='x360'] .tile--wide.is-focused .tile__body { transform: scale(1.05); }
+
+/* Image tiles: a dark strip with the name along the bottom, no logo art. */
+[data-theme='x360'] .tile__shade { background: none; }
+[data-theme='x360'] .tile__caption { left: 0; right: 0; bottom: 0; padding: 0.45rem 0.8rem 0.5rem; background: rgba(0, 0, 0, 0.62); }
+[data-theme='x360'] .tile__logo, [data-theme='x360'] .tile__eyebrow, [data-theme='x360'] .tile__meta, [data-theme='x360'] .tile__cta { display: none; }
+[data-theme='x360'] .tile__title, [data-theme='x360'] .tile__title[hidden] { display: block !important; font-size: 1rem; font-weight: 400; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme='x360'] .tile--hero .tile__caption { left: 0; right: 0; bottom: 0; padding: 0.55rem 1rem 0.6rem; }
+[data-theme='x360'] .tile--hero .tile__title { font-size: 1.15rem; font-weight: 400; margin: 0; letter-spacing: 0; }
+[data-theme='x360'] .tile--store .tile__caption { right: 0; padding-right: 13rem; }
+[data-theme='x360'] .tile__strip { display: block; position: absolute; left: 0; right: 0; bottom: 0; padding: 0.4rem 0.7rem 0.45rem; background: rgba(0, 0, 0, 0.68); font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transition: opacity 0.15s ease; }
+[data-theme='x360'] .tile.is-focused .tile__strip { opacity: 1; }
+[data-theme='x360'] .tile__progress { bottom: 0; }
+[data-theme='x360'] .price { bottom: 0.35rem; right: 0.6rem; font-size: 0.95rem; }
+[data-theme='x360'] .badge { border-radius: 0; }
+
+/* Green action tiles: icon centred in the upper half, small label bottom-left. */
+[data-theme='x360'] .tone-accent .tile__body, [data-theme='x360'] .tone-slate .tile__body, [data-theme='x360'] .tone-violet .tile__body,
+[data-theme='x360'] .tone-gold .tile__body, [data-theme='x360'] .tone-danger .tile__body, [data-theme='x360'] .tone-glass .tile__body,
+[data-theme='x360'] .tone-ghost .tile__body {
+  background: linear-gradient(180deg, var(--x-tile-green-hi), var(--x-tile-green) 38%, var(--x-tile-green));
+  color: #fff; box-shadow: 0 0.15rem 0.5rem rgba(0, 0, 0, 0.18);
+}
+[data-theme='x360'] .tone-ghost .tile__body { filter: saturate(0.35) brightness(0.92); }
+[data-theme='x360'] .tile__icon { top: 24%; left: 50%; width: 2.9rem; height: 2.9rem; transform: translateX(-50%); }
+[data-theme='x360'] .tile__icon svg { stroke-width: 1.9; }
+[data-theme='x360'] .tile__count { font-size: 1.1rem; font-weight: 400; top: 0.6rem; right: 0.8rem; opacity: 0.85; }
+[data-theme='x360'] .tile__label { left: 0.8rem; right: 0.8rem; bottom: 0.6rem; font-size: 1rem; font-weight: 400; }
+[data-theme='x360'] .tile__label small { font-size: 0.8rem; opacity: 0.85; }
+[data-theme='x360'] .tile--hero .tile__icon { top: 30%; width: 5rem; height: 5rem; left: 50%; }
+[data-theme='x360'] .tile--hero .tile__label { font-size: 1.8rem; left: 1.4rem; bottom: 1.2rem; }
+[data-theme='x360'] .tile__mosaic { opacity: 0.35; }
+
+/* Games wall: covers with the name strip when selected. */
+[data-theme='x360'] .wall { gap: 0.4rem; grid-template-rows: repeat(2, 19.6rem); grid-auto-columns: 13.06rem; padding-top: 1.2rem; }
+[data-theme='x360'] .chip { background: rgba(255, 255, 255, 0.2); color: #fff; }
+[data-theme='x360'] .chip.is-active { background: var(--x-tile-green); color: #fff; }
+[data-theme='x360'] .chip.is-focused { background: #fff; color: #262626; box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.25); transform: scale(1.06); }
+[data-theme='x360'] .empty, [data-theme='x360'] .empty__title, [data-theme='x360'] .store-note .empty__title { color: #fff; }
+
+/* No footer title: like the console, only button prompts, bottom-left. */
+[data-theme='x360'] #context { display: none; }
+[data-theme='x360'] #hints { left: var(--gutter); right: auto; bottom: 2.6rem; gap: 1.3rem; }
+[data-theme='x360'] .hint { color: #fff; font-size: 0.95rem; text-shadow: 0 0.08rem 0.25rem rgba(0, 0, 0, 0.35); }
+[data-theme='x360'] .glyph { background: rgba(255, 255, 255, 0.92); color: #333; box-shadow: none; }
+body[data-theme='x360'][data-input='pad'] .glyph { min-width: 1.6rem; height: 1.6rem; font-size: 0.8rem; box-shadow: inset 0 -0.12rem 0 rgba(0, 0, 0, 0.18), 0 0.05rem 0.2rem rgba(0, 0, 0, 0.3); }
+body[data-theme='x360'][data-input='pad'] .glyph--lb, body[data-theme='x360'][data-input='pad'] .glyph--rb,
+body[data-theme='x360'][data-input='pad'] .glyph--lt, body[data-theme='x360'][data-input='pad'] .glyph--rt { background: #3a3a3a; color: #fff; }
+
+/* Settings cards: light boxes like the console's lists. */
+[data-theme='x360'] .card { background: var(--x-box); padding: 0.3rem; box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.18); }
+[data-theme='x360'] .row { min-height: 3.4rem; padding: 0.45rem 0.9rem; color: #262626; }
+[data-theme='x360'] .row__icon { color: #3a3a3a; opacity: 1; width: 1.4rem; height: 1.4rem; }
+[data-theme='x360'] .row__label { font-size: 1.05rem; font-weight: 400; }
+[data-theme='x360'] .row__sub { color: #6a6a6a; opacity: 1; font-size: 0.85rem; }
+[data-theme='x360'] .row__hint { color: #555; opacity: 1; }
+[data-theme='x360'] .row.is-focused, [data-theme='x360'] .key.is-focused {
+  background: linear-gradient(180deg, var(--x-bar-hi) 0%, var(--x-bar) 50%, var(--x-bar-lo) 100%);
+  color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+[data-theme='x360'] .row.is-focused .row__icon, [data-theme='x360'] .row.is-focused .row__sub, [data-theme='x360'] .row.is-focused .row__hint { color: #fff; }
+[data-theme='x360'] .switch.is-on { background: var(--x-bar); }
+[data-theme='x360'] .row.is-focused .switch.is-on i { background: var(--x-bar); }
+
+/* Menus: a title in white over a blurred screen, then a boxed light list. */
+[data-theme='x360'] .layer__scrim { background: rgba(70, 70, 70, 0.5); backdrop-filter: blur(1.2rem) saturate(0.8); }
+[data-theme='x360'] .layer--panel:not(.layer--left) .panel {
+  top: 9.5rem; bottom: auto; left: var(--gutter); right: auto; width: 48rem; max-height: calc(100vh - 19rem);
+  background: transparent; box-shadow: none; color: #fff; animation: fade 0.22s ease both;
+}
+[data-theme='x360'] .layer--panel:not(.layer--left).is-closing .panel { animation: fadeOut 0.16s ease both; }
+[data-theme='x360'] .panel__head { padding: 0 0 1rem 0.2rem; align-items: flex-end; gap: 1rem; }
+[data-theme='x360'] .panel__head .panel__art { display: none; }
+[data-theme='x360'] .panel__title { color: #fff; font-size: 2.2rem; font-weight: 400; text-shadow: 0 0.1rem 0.35rem rgba(0, 0, 0, 0.35); -webkit-line-clamp: 2; }
+[data-theme='x360'] .panel__subtitle { color: rgba(255, 255, 255, 0.85); }
+[data-theme='x360'] .panel__list {
+  flex: 0 1 auto; min-height: 0; padding: 0.3rem; gap: 0; background: var(--x-box);
+  box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.3);
+}
+[data-theme='x360'] .panel .row { animation: none; }
+[data-theme='x360'] .panel__heading { color: #7a7a7a; padding: 0.7rem 0.9rem 0.25rem; font-size: 0.82rem; text-transform: lowercase; letter-spacing: 0.02em; }
+[data-theme='x360'] .panel .row--disabled .row__label { color: #555; }
+[data-theme='x360'] .row--danger .row__label, [data-theme='x360'] .row--danger .row__icon { color: #b3261e; }
+[data-theme='x360'] .row--danger.is-focused .row__label, [data-theme='x360'] .row--danger.is-focused .row__icon { color: #fff; }
+
+/* The Guide: a centred light list flanked by grey side blades, over a dark screen. */
+[data-theme='x360'] .layer--left .layer__scrim { background: rgba(8, 8, 8, 0.8); backdrop-filter: blur(0.6rem); }
+[data-theme='x360'] .layer--left .panel {
+  top: 9rem; bottom: auto; left: calc(50% - 23rem); right: auto; width: 46rem; max-height: calc(100vh - 17rem);
+  background: transparent; box-shadow: none; color: #262626; animation: fade 0.2s ease both; overflow: visible;
+}
+[data-theme='x360'] .layer--left.is-closing .panel { animation: fadeOut 0.14s ease both; }
+[data-theme='x360'] .layer--left .panel::before, [data-theme='x360'] .layer--left .panel::after {
+  position: absolute; top: 5.4rem; bottom: 0; width: 3.1rem;
+  background: linear-gradient(90deg, #9c9c9c, #bdbdbd); color: #3a3a3a;
+  font-size: 1.05rem; writing-mode: vertical-rl; display: flex; align-items: center; justify-content: flex-start; padding: 1rem 0;
+  box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.35);
+}
+[data-theme='x360'] .layer--left .panel::before { content: 'games'; left: -3.5rem; transform: rotate(180deg); }
+[data-theme='x360'] .layer--left .panel::after { content: 'settings'; right: -3.5rem; }
+[data-theme='x360'] .layer--left .panel__head { padding: 0 0 1.1rem 0.2rem; align-items: center; height: 5.4rem; }
+[data-theme='x360'] .layer--left .orb--guide { display: grid; width: 2.6rem; height: 2.6rem; }
+[data-theme='x360'] .layer--left .orb--guide i { width: 1rem; height: 1rem; }
+[data-theme='x360'] .layer--left .panel__title { color: #fff; font-size: 1.6rem; }
+[data-theme='x360'] .layer--left .panel__subtitle { color: #cfcfcf; font-size: 0.9rem; margin-top: 0.15rem; }
+[data-theme='x360'] .layer--left .panel__list { background: #d9d9d9; padding: 0.25rem; }
+[data-theme='x360'] .layer--left .row { color: #262626; min-height: 3rem; }
+[data-theme='x360'] .layer--left .row--danger .row__label, [data-theme='x360'] .layer--left .row--danger .row__icon { color: #b3261e; }
+[data-theme='x360'] .layer--left .row--danger.is-focused .row__label, [data-theme='x360'] .layer--left .row--danger.is-focused .row__icon { color: #fff; }
+[data-theme='x360'] .layer--left .panel__heading { color: #6f6f6f; }
+[data-theme='x360'] .layer--left .row__meter { background: rgba(0, 0, 0, 0.14); }
+[data-theme='x360'] .row__meter i { background: var(--x-bar); }
+body.is-overlay[data-theme='x360'] .layer--left .layer__scrim { background: rgba(0, 0, 0, 0.72); }
+
+/* Keyboard and file picker: light boxes, green bar. */
+[data-theme='x360'] .osk, [data-theme='x360'] .browser { background: var(--x-box); box-shadow: 0 0.8rem 2.6rem rgba(0, 0, 0, 0.35); }
+[data-theme='x360'] .key { background: #f7f7f7; box-shadow: inset 0 -0.1rem 0 rgba(0, 0, 0, 0.12); }
+[data-theme='x360'] .key--wide { background: #d0d0d0; }
+[data-theme='x360'] .key--done { background: #bfe0aa; }
+[data-theme='x360'] .key.is-focused { transform: scale(1.06); }
+
+/* Launch card and start-up over the grey backdrop. */
+[data-theme='x360'] .layer--launch { background: rgba(70, 70, 70, 0.6); backdrop-filter: blur(1.2rem); }
+[data-theme='x360'] .launch__cover { box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.4); }
+[data-theme='x360'] .launch__status { color: #fff; }
+[data-theme='x360'] .launch__title { color: #fff; text-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .launch__sub { color: rgba(255, 255, 255, 0.85); }
+[data-theme='x360'] .launch__bar { background: rgba(255, 255, 255, 0.25); }
+[data-theme='x360'] .launch__bar i { background: linear-gradient(90deg, transparent, #fff, transparent); }
+[data-theme='x360'] #boot { background: radial-gradient(75% 70% at 50% 42%, #f2f2f2 0%, #d3d3d3 50%, #9a9a9a 100%); }
+
+/* Home: the green tiles sit left of the big tile, three to a column, and rails
+   scroll only as far as needed instead of centring the selection. */
+[data-theme='x360'] .blocks, [data-theme='x360'] .wall { --reveal: nearest; }
+[data-theme='x360'] .view--home .block--quick { order: -1; }
+[data-theme='x360'] .view--home .block--quick .tile--square { width: 13.2rem; }
+
+/* Download card in the light and 360 themes. */
+[data-theme='metro360'] .dlcard__art, [data-theme='metro360'] .row__thumb,
+[data-theme='x360'] .dlcard__art, [data-theme='x360'] .row__thumb { border-radius: 0; background: rgba(0, 0, 0, 0.12); }
+[data-theme='metro360'] .dlcard__bar, [data-theme='x360'] .dlcard__bar { border-radius: 0; background: rgba(0, 0, 0, 0.14); }
+[data-theme='metro360'] .dlcard__bar i, [data-theme='x360'] .dlcard__bar i { border-radius: 0; }
+[data-theme='metro360'] .dlcard__status { color: var(--x-green); letter-spacing: 0.04em; text-transform: lowercase; font-weight: 500; font-size: 0.9rem; }
+[data-theme='metro360'] .dlcard__bar i { background: var(--x-green); }
+[data-theme='x360'] .dlcard__status { color: var(--x-bar-lo); letter-spacing: 0.04em; text-transform: lowercase; font-weight: 500; font-size: 0.9rem; }
+[data-theme='x360'] .dlcard__bar i { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); }
+[data-theme='x360'] .row.is-focused .dlcard__bar, [data-theme='metro360'] .row.is-focused .dlcard__bar { background: rgba(255, 255, 255, 0.3); }
+[data-theme='x360'] .row.is-focused .dlcard__bar i, [data-theme='metro360'] .row.is-focused .dlcard__bar i { background: #fff; }
+[data-theme='x360'] .row.is-focused .dlcard__status, [data-theme='metro360'] .row.is-focused .dlcard__status { color: #fff; }
+[data-theme='x360'] .row--card.is-focused, [data-theme='metro360'] .row--card.is-focused { color: #fff; }
+[data-theme='x360'] .layer--left .dlcard__bar { background: rgba(0, 0, 0, 0.16); }
+[data-theme='classic'] .row.is-focused .dlcard__bar i { background: #fff; }
+[data-theme='classic'] .row.is-focused .dlcard__status { color: #fff; }
+
+/* ======================================================== Guide, per theme */
+[data-theme='classic'] .guide__blade { background: linear-gradient(90deg, #3c4641, #56625c); color: #dfe6e2; }
+[data-theme='classic'] .guide__spine { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent)); color: #fff; }
+[data-theme='classic'] .layer--guide .panel__list { background: linear-gradient(180deg, #5d6963 0%, #353e3a 16%, #1b211e 100%); }
+[data-theme='midnight'] .guide__blade { background: #0b0b0c; }
+[data-theme='midnight'] .guide__spine { background: #141416; }
+[data-theme='midnight'] .layer--guide .panel__list { background: #060607; }
+[data-theme='metro360'] .guide__blade { background: #2b2b2b; color: #b8b8b8; }
+[data-theme='metro360'] .guide__spine { background: var(--x-green); color: #fff; }
+[data-theme='metro360'] .layer--guide .panel__list { background: #1d1d1d; }
+[data-theme='metro360'] .layer--guide .panel__title, [data-theme='metro360'] .guide__time { color: #262626; }
+[data-theme='metro360'] .layer--guide .layer__scrim { background: rgba(232, 232, 232, 0.8); }
+
+/* 360: the console's Guide. Dark screen, white title and clock, slate spines
+   either side, a pale spine for the open blade, big light rows split by
+   white rules, labels left and counts and icons right, solid green selection,
+   button prompts just under the box. */
+[data-theme='x360'] .layer--guide .layer__scrim { background: rgba(0, 0, 0, 0.74); backdrop-filter: none; }
+[data-theme='x360'] .layer--guide .panel { top: 12.5rem; left: calc(50% - 32.8rem); width: 65.6rem; color: #4a4a4a; }
+[data-theme='x360'] .layer--guide .panel::before, [data-theme='x360'] .layer--guide .panel::after { display: none; }
+[data-theme='x360'] .layer--guide .panel__head { padding: 0 12rem 0.9rem 4.2rem; min-height: 4.6rem; height: auto; align-items: flex-end; }
+[data-theme='x360'] .layer--guide .panel__title { color: #fff; font-size: 2.15rem; font-weight: 400; letter-spacing: 0.03em; text-transform: capitalize; text-shadow: none; }
+[data-theme='x360'] .layer--guide .panel__subtitle { display: none; }
+[data-theme='x360'] .layer--guide.is-confirming .panel__subtitle { display: block; color: #cfcfcf; }
+[data-theme='x360'] .guide__status { right: 8.6rem; color: #fff; }
+[data-theme='x360'] .guide__time { font-size: 2.15rem; font-weight: 400; letter-spacing: 0.04em; }
+[data-theme='x360'] .guide__pad { color: #fff; opacity: 1; }
+[data-theme='x360'] .guide__body { height: 29.6rem; box-shadow: none; }
+[data-theme='x360'] .guide__blade, [data-theme='x360'] .guide__spine { font-size: 1.95rem; letter-spacing: 0.03em; text-transform: capitalize; padding: 1.1rem 0; align-items: center; }
+[data-theme='x360'] .guide__blade { width: 4.1rem; background: linear-gradient(90deg, #56626b, #6b7780 85%, #5a666e); color: #d9dfe3; box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25); }
+[data-theme='x360'] .guide__blade:hover { background: linear-gradient(90deg, #64717a, #7a868e); }
+[data-theme='x360'] .guide__spine { width: 5.9rem; background: linear-gradient(90deg, #b9bec1, #e0e2e3 70%, #d1d4d6); color: #6c7276; }
+[data-theme='x360'] .layer--guide .panel__list { padding: 0; gap: 0; background: linear-gradient(180deg, #e3e5e6, #d3d6d8); box-shadow: none; }
+[data-theme='x360'] .layer--guide .row {
+  min-height: 3.95rem; padding: 0 1.4rem; gap: 1rem; border-radius: 0; color: #4a4a4a;
+  background: linear-gradient(180deg, #e2e4e5, #d2d5d7); border-bottom: 1px solid rgba(255, 255, 255, 0.85);
+}
+[data-theme='x360'] .layer--guide .row__label { font-size: 1.95rem; font-weight: 400; letter-spacing: 0.025em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme='x360'] .layer--guide .row__sub { display: none; }
+[data-theme='x360'] .layer--guide .row__icon { order: 3; width: 2.1rem; height: 2.1rem; color: #1c1c1c; }
+[data-theme='x360'] .layer--guide .row__icon svg { stroke-width: 2.1; }
+[data-theme='x360'] .layer--guide .row__hint { order: 2; font-size: 1.95rem; color: #4a4a4a; opacity: 1; }
+[data-theme='x360'] .layer--guide .row.is-focused { background: linear-gradient(180deg, #289a14, #148410); color: #fff; box-shadow: none; transform: none; }
+[data-theme='x360'] .layer--guide .row.is-focused .row__icon, [data-theme='x360'] .layer--guide .row.is-focused .row__hint { color: #fff; }
+[data-theme='x360'] .layer--guide .row--danger .row__label, [data-theme='x360'] .layer--guide .row--danger .row__icon { color: #4a4a4a; }
+[data-theme='x360'] .layer--guide .row--danger.is-focused .row__label, [data-theme='x360'] .layer--guide .row--danger.is-focused .row__icon { color: #fff; }
+[data-theme='x360'] .layer--guide .row--disabled { opacity: 1; color: #8a8a8a; }
+[data-theme='x360'] .layer--guide .row--disabled .row__label { font-size: 1.95rem; }
+/* The volume row keeps its meter under the label. */
+[data-theme='x360'] .layer--guide [data-key='row:volume'] .row__meter { margin-top: 0.3rem; height: 0.35rem; background: rgba(0, 0, 0, 0.14); }
+[data-theme='x360'] .layer--guide .row.is-focused .row__meter { background: rgba(255, 255, 255, 0.3); }
+[data-theme='x360'] .layer--guide .row.is-focused .row__meter i { background: #fff; }
+[data-theme='x360'] .layer--guide .row--card { padding: 0.7rem 1rem; }
+[data-theme='x360'] .layer--guide .dlcard__title { font-size: 1.5rem; }
+/* Prompts sit just under the box, larger, like the console's. */
+body[data-theme='x360']:has(.layer--guide:not(.is-closing)) #hints { left: calc(50% - 28.7rem); bottom: auto; top: calc(12.5rem + 4.6rem + 29.6rem + 1.1rem); gap: 1.6rem; }
+body[data-theme='x360']:has(.layer--guide:not(.is-closing)) .hint { font-size: 1.6rem; letter-spacing: 0.02em; }
+body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .glyph { min-width: 2rem; height: 2rem; font-size: 1rem; }
+[data-theme='x360'] .layer--guide .panel__list { flex: 1 1 auto; }
+/* Every theme: the Guide's frame is see-through; only the blades and the list are solid. */
+[data-theme] .layer--guide .panel { background: transparent; box-shadow: none; backdrop-filter: none; }

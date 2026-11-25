@@ -1,0 +1,19 @@
+{
+  "name": "halcyon",
+  "productName": "Halcyon",
+  "version": "1.0.0",
+  "description": "A console-style game launcher for Linux: Steam, emulators and custom games, fully controller-driven.",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "windowed": "electron . --windowed",
+    "test:ui": "node scripts/run-ui-test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.0.0"
+  },
+  "devDependencies": {
+    "electron": "^45.3.0"
+  }
+}

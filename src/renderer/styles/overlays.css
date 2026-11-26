@@ -358,3 +358,21 @@ body.is-booting .boot__mark { animation-name: fade2; }
 .player__bar b { background: rgba(255, 255, 255, 0.25); }
 .player__bar i { background: var(--accent); }
 body:has(.layer--player:not(.is-closing)) #hints { z-index: 80; }
+
+/* media front page: libraries, the feature, what to watch next */
+.media__front {
+  display: grid; gap: 1.1rem;
+  grid-template-columns: 15rem 22rem 22rem 21rem;
+  grid-template-rows: repeat(3, 10.4rem);
+  grid-template-areas: 'a1 hero hero d1' 'a2 hero hero d2' 'a3 b3 c3 d3';
+}
+.media__front > .tile { width: auto; height: auto; min-width: 0; }
+.media__hero .tile__caption { left: 2rem; right: 2rem; bottom: 1.6rem; }
+.media__hero .tile__title { font-size: 2.6rem; }
+.media__hero .tile__logo { max-height: 7rem; max-width: 52%; margin-bottom: 0.8rem; }
+.media__heroBar { position: relative; height: 0.3rem; width: 55%; margin-top: 0.8rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.media__heroBar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 1rem; }
+.media__rail .block__tiles { grid-template-rows: repeat(2, 13rem); }
+.media__rail .tile--wide { width: 23rem; }
+.media__latest .block__tiles { grid-template-rows: 28rem; }
+.media__latest .tile--cover { width: 18.7rem; }

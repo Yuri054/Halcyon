@@ -87,6 +87,21 @@ class Jellyfin {
 
   // ------------------------------------------------------------- browsing
 
+  /**
+   * Episodes Jellyfin could not identify keep their file name ("ulysses.31.05.the.eternal.punishment").
+   * Turn that into a title: drop the series' words and the numbers in front, and space it out.
+   */
+  static tidyName(name, series) {
+    if (!name || /\s/.test(name) || (name.match(/[._]/g) || []).length < 2) return name;
+    const words = name.replace(/\.(mkv|mp4|avi|m4v|webm)$/i, '').split(/[._]+/).filter(Boolean);
+    const seriesWords = new Set(String(series || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+    let i = 0;
+    while (i < words.length - 1 && (seriesWords.has(words[i].toLowerCase()) || /^(s\d+e\d+|\d+|e\d+|s\d+|\d+x\d+)$/i.test(words[i]))) i++;
+    const rest = words.slice(i).filter((w) => !/^(\d{3,4}p|x26[45]|h26[45]|hevc|web|webrip|bluray|dvdrip|aac|ac3)$/i.test(w));
+    if (!rest.length) return name;
+    return rest.map((w, n) => (n > 0 && /^(of|the|a|an|and|in|on|to|at|for)$/i.test(w) ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase())).join(' ');
+  }
+
   /** A compact item the page can show. */
   static item(i) {
     const ud = i.UserData || {};
@@ -94,7 +109,7 @@ class Jellyfin {
     return {
       id: i.Id,
       type: i.Type,                                 // Movie, Series, Season, Episode, MusicAlbum, Audio, CollectionFolder...
-      name: i.Name,
+      name: i.Type === 'Episode' ? Jellyfin.tidyName(i.Name, i.SeriesName) : i.Name,
       series: i.SeriesName || '',
       seriesId: i.SeriesId || '',
       seasonId: i.SeasonId || '',

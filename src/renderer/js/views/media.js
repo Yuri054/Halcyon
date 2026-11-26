@@ -10,7 +10,7 @@ import { openPanel, menu } from '../ui/dialog.js';
 import { keyboard } from '../ui/osk.js';
 import { toast } from '../ui/toast.js';
 import { artImg } from '../ui/art.js';
-import { mediaTile, img } from '../media/tile.js';
+import { mediaTile, mediaHero, img, episodeCode } from '../media/tile.js';
 import { openPlayer } from '../media/player.js';
 
 const TICKS = 10000000;
@@ -71,18 +71,44 @@ export function createMedia() {
         block('server', 'block--quick', [actionTile({ key: 'mx:server', label: 'Server', sub: status.serverName, iconName: 'gear', tone: 'glass', onSelect: serverMenu })]));
       return;
     }
-    const blocks = [];
-    if (home.resume.length) blocks.push(block('continue watching', 'block--wide', remember(home.resume).map((it) => mediaTile(it, 'wide', i++))));
-    if (home.nextUp.length) blocks.push(block('next up', 'block--wide', remember(home.nextUp).map((it) => mediaTile(it, 'wide', i++))));
+    // ---- the front page: libraries, a feature, and what to watch next, then the rails
+    const resume = remember(home.resume);
+    const nextUp = remember(home.nextUp).filter((n) => !resume.some((r) => r.id === n.id));
+    const libs = remember(home.libraries);
+    const feature = resume[0] || nextUp[0] || home.latest[0]?.items[0];
+    const used = new Set(feature ? [feature.id] : []);
+    const pick = (list, n) => list.filter((x) => !used.has(x.id)).slice(0, n).map((x) => { used.add(x.id); return x; });
+    const under = pick(resume, 2);
+    const side = pick(nextUp.length ? nextUp : resume, 3);
+    const at = (el, area) => { el.style.gridArea = area; return el; };
+    const libTile = (lib, area) => at(actionTile({ key: `mx:lib:${lib.id}`, label: lib.name, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) }), area);
+    const searchTile = (area) => at(actionTile({ key: 'mx:search', label: 'Search', iconName: 'search', tone: 'accent', index: i++, onSelect: search }), area);
+
+    const front = h('div', { class: 'media__front' },
+      libs[0] ? libTile(libs[0], 'a1') : searchTile('a1'),
+      libs[1] ? libTile(libs[1], 'a2') : (libs[0] ? searchTile('a2') : null),
+      libs[2] ? libTile(libs[2], 'a3') : (libs[1] ? searchTile('a3') : null),
+      feature && at(mediaHero(feature, resume[0] === feature ? 'continue watching' : nextUp[0] === feature ? 'next up' : 'new', i++), 'hero'),
+      under[0] && at(mediaTile(under[0], 'wide', i++), 'b3'),
+      under[1] && at(mediaTile(under[1], 'wide', i++), 'c3'),
+      side[0] && at(mediaTile(side[0], 'wide', i++), 'd1'),
+      side[1] && at(mediaTile(side[1], 'wide', i++), 'd2'),
+      side[2] && at(mediaTile(side[2], 'wide', i++), 'd3'));
+    const blocks = [h('div', { class: 'block block--front' }, h('h3', { class: 'block__title' }, side.length && nextUp.length ? 'watch next' : 'jellyfin'), front)];
+
+    const moreResume = resume.filter((x) => !used.has(x.id));
+    const moreNext = nextUp.filter((x) => !used.has(x.id));
+    if (moreResume.length) blocks.push(block('continue watching', 'block--wide media__rail', moreResume.map((it) => mediaTile(it, 'wide', i++))));
+    if (moreNext.length) blocks.push(block('next up', 'block--wide media__rail', moreNext.map((it) => mediaTile(it, 'wide', i++))));
     for (const l of home.latest) {
-      blocks.push(block(`new in ${l.library.name.toLowerCase()}`, 'block--covers media__latest', remember(l.items).slice(0, 10).map((it) => mediaTile(it, 'cover', i++))));
+      blocks.push(block(`new in ${l.library.name.toLowerCase()}`, 'block--covers media__latest', remember(l.items).slice(0, 12).map((it) => mediaTile(it, 'cover', i++))));
     }
     blocks.push(block(status.serverName || 'jellyfin', 'block--quick', [
-      ...remember(home.libraries).map((lib) => actionTile({ key: `mx:lib:${lib.id}`, label: lib.name, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) })),
-      actionTile({ key: 'mx:search', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
+      ...libs.slice(3).map((lib) => actionTile({ key: `mx:lib:${lib.id}`, label: lib.name, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) })),
+      libs.length >= 3 && actionTile({ key: 'mx:search2', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
       actionTile({ key: 'mx:server', label: 'Server', sub: status.userName, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
-    ]));
-    if (!home.resume.length && !home.nextUp.length && !home.latest.length && !home.libraries.length) {
+    ].filter(Boolean)));
+    if (!feature && !home.libraries.length) {
       blocks.unshift(block('media', 'block--hero', [actionTile({ key: 'mx:empty', size: 'hero', iconName: 'film', tone: 'glass', label: 'Nothing here yet', sub: 'Your Jellyfin user has no libraries Halcyon can show.' })]));
     }
     scroller.replaceChildren(...blocks);
@@ -166,8 +192,8 @@ export function createMedia() {
     const panel = panelIn || openPanel();
     const resumeAt = it.resumeTicks / TICKS;
     const pick = await panel.ask({
-      title: it.type === 'Episode' ? `${it.index ?? ''}. ${it.name}` : it.name,
-      subtitle: it.type === 'Episode' ? `${it.series} · Season ${it.season ?? '?'}  ·  ${facts(it)}` : facts(it),
+      title: it.type === 'Episode' && it.index != null ? `${it.index}. ${it.name}` : it.name,
+      subtitle: it.type === 'Episode' ? [it.series, it.season != null && `Season ${it.season}`, facts(it)].filter(Boolean).join('  ·  ') : facts(it),
       art: art(it),
       selected: resumeAt > 0 ? 'resume' : 'play',
       items: [
@@ -204,7 +230,7 @@ export function createMedia() {
         items: [
           seasons.length > 1 && { label: 'Seasons', value: '@seasons', iconName: 'layers', hint: season.name },
           { heading: season.name },
-          ...eps.map((e) => ({ label: `${e.index ?? ''}. ${e.name}`, value: e.id, iconName: e.played ? 'check' : 'play', sub: e.runtimeMin ? `${e.runtimeMin} min${e.progress > 0 && e.progress < 100 ? ` · ${e.progress}% watched` : ''}` : null, meter: e.progress > 0 && e.progress < 100 ? e.progress : null, verb: 'Play' })),
+          ...eps.map((e) => ({ label: e.index != null ? `${e.index}. ${e.name}` : e.name, value: e.id, iconName: e.played ? 'check' : 'play', sub: e.runtimeMin ? `${e.runtimeMin} min${e.progress > 0 && e.progress < 100 ? ` · ${e.progress}% watched` : ''}` : null, meter: e.progress > 0 && e.progress < 100 ? e.progress : null, verb: 'Play' })),
         ],
       });
       if (pick == null) break;
@@ -230,7 +256,7 @@ export function createMedia() {
       items: [
         { label: 'Play album', value: '@all', iconName: 'play' },
         { heading: 'Tracks' },
-        ...tracks.map((t) => ({ label: `${t.index ?? ''}. ${t.name}`, value: t.id, iconName: 'music', hint: t.runtimeMin ? `${t.runtimeMin} min` : null, verb: 'Play' })),
+        ...tracks.map((t) => ({ label: t.index != null ? `${t.index}. ${t.name}` : t.name, value: t.id, iconName: 'music', hint: t.runtimeMin ? `${t.runtimeMin} min` : null, verb: 'Play' })),
       ],
     });
     await panel.close();
@@ -242,9 +268,17 @@ export function createMedia() {
   // After watching, Jellyfin's resume points and "next up" change.
   function refreshSoon() { setTimeout(() => { home = null; status = null; if (state.section === 'media' && !library) render(); }, 600); }
 
-  el.addEventListener('click', (e) => {
+  el.addEventListener('click', async (e) => {
     const tile = e.target.closest('[data-media]');
-    if (tile) open(tile.dataset.media);
+    if (!tile) return;
+    // The feature tile resumes (or plays) at once; Y on it opens its details instead.
+    const it = items.get(tile.dataset.media);
+    if (tile.dataset.quickplay && it && ['Movie', 'Episode', 'Video'].includes(it.type)) {
+      await openPlayer({ queue: [it.id], start: 0, fromStart: !(it.progress > 0 && it.progress < 100) });
+      refreshSoon();
+      return;
+    }
+    open(tile.dataset.media);
   });
 
   return {
@@ -264,6 +298,7 @@ export function createMedia() {
       return false;
     },
     hints(target) {
+      if (target?.dataset.quickplay) return [{ a: 'accept', label: 'Resume' }, { a: 'y', label: 'Details' }, { a: 'start', label: 'Search' }];
       if (target?.dataset.media) return [{ a: 'accept', label: 'Open' }, { a: 'start', label: 'Search' }];
       return [{ a: 'accept', label: 'Select' }];
     },
@@ -271,7 +306,7 @@ export function createMedia() {
       const it = target?.dataset.media && items.get(target.dataset.media);
       if (it) {
         return { title: it.type === 'Episode' ? `${it.series}: ${it.name}` : it.name,
-          meta: [it.type === 'Episode' ? `Season ${it.season} · Episode ${it.index}` : it.type === 'Series' ? 'Series' : it.type === 'MusicAlbum' ? (it.albumArtist || 'Album') : 'Movie',
+          meta: [it.type === 'Episode' ? (episodeCode(it) || 'Episode') : it.type === 'Series' ? 'Series' : it.type === 'MusicAlbum' ? (it.albumArtist || 'Album') : 'Movie',
             it.year, it.runtimeMin && `${it.runtimeMin} min`, it.progress > 0 && it.progress < 100 && `${it.progress}% watched`, it.played && 'Watched'].filter(Boolean).map(String) };
       }
       const label = target?.querySelector('.tile__label');

@@ -8,7 +8,7 @@ import { sfx } from '../core/sfx.js';
 import { api } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { toast } from '../ui/toast.js';
-import { img } from './tile.js';
+import { img, episodeCode } from './tile.js';
 
 const TICKS = 10000000;
 let Hls = null;   // loaded the first time something needs HLS
@@ -87,7 +87,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       session = res.data;
       const it = session.item;
       title.textContent = it.type === 'Episode' ? it.series : it.name;
-      sub.textContent = it.type === 'Episode' ? `S${it.season ?? '?'} E${it.index ?? '?'} · ${it.name}` : [it.albumArtist, it.year].filter(Boolean).join(' · ');
+      sub.textContent = it.type === 'Episode' ? [episodeCode(it), it.name].filter(Boolean).join(' · ') : [it.albumArtist, it.year].filter(Boolean).join(' · ');
       el.classList.toggle('is-audio', Boolean(session.audio));
       poster.style.backgroundImage = `url("${img(session.audio ? it.images.primaryOf : it.images.backdropOf, session.audio ? 'Primary' : 'Backdrop', 1280)}")`;
       [...video.querySelectorAll('track')].forEach((t) => t.remove());

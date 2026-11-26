@@ -862,3 +862,19 @@ body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .g
 [data-theme='x360'] .tile--peek .tile__icon { top: 50%; left: auto; right: 0.9rem; transform: translateY(-50%); width: 2rem; height: 2rem; }
 [data-theme='x360'] .tile--peek.is-focused .tile__body { transform: scale(1.08); }
 [data-theme='x360'] .view--home .block--quick { order: 0; }
+
+/* 360: media laid out like the dashboard's tv & movies page. */
+[data-theme='x360'] .media__front { gap: 0.4rem; grid-template-columns: 17.6rem 25rem 25rem 23.5rem; grid-template-rows: repeat(3, 13.2rem); }
+[data-theme='x360'] .view--media .block__title { display: block; color: #fff; font-size: 1.05rem; height: 1.4rem; margin-bottom: 0.4rem; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .view--media .block--front .block__title { visibility: hidden; }
+[data-theme='x360'] .view--media .blocks { gap: 1.2rem; }
+[data-theme='x360'] .media__rail .block__tiles { grid-template-rows: repeat(2, 13.2rem); }
+[data-theme='x360'] .media__rail .tile--wide { width: 23.5rem; }
+[data-theme='x360'] .media__latest .block__tiles { grid-template-rows: 26.8rem; }
+[data-theme='x360'] .media__latest .tile--cover { width: 17.9rem; }
+[data-theme='x360'] .media__hero .tile__logo, [data-theme='x360'] .media__hero .tile__eyebrow, [data-theme='x360'] .media__hero .tile__meta, [data-theme='x360'] .media__hero .tile__cta, [data-theme='x360'] .media__heroBar { display: none; }
+[data-theme='x360'] .media__hero .tile__title { font-size: 1.15rem; }
+[data-theme='x360'] .media__progress { padding: 0 0 0 0; position: absolute; left: 0; right: 0; bottom: 2.2rem; }
+[data-theme='x360'] .media__progress .tile__progress-track { border-radius: 0; height: 0.25rem; background: rgba(0, 0, 0, 0.35); }
+[data-theme='x360'] .media__progress .tile__progress-track i { border-radius: 0; background: var(--x-tile-green-hi); box-shadow: none; }
+[data-theme='x360'] .view--media .tile--cover .tile__progress { bottom: 0; }

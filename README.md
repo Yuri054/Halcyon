@@ -126,8 +126,8 @@ as Home on controllers without one.
 
 While Halcyon runs it turns off Steam's own *Guide button focuses Steam* (through Steam's settings,
 so **Download controls** must be on) so Steam stays put when you press Home, and turns it back on
-when Halcyon quits. Inside a Steam game Steam's in-game overlay may still answer Home; Halcyon's
-Guide opens on top of it.
+when Halcyon quits. Steam's in-game overlay stays on (Steam Input needs it to pass the controller to
+Steam games); inside a Steam game Halcyon opens its Guide a moment after Steam's overlay, on top of it.
 
 ## Themes
 

@@ -23,9 +23,12 @@ function renderHints() {
     h('span', { class: 'hint__label' }, hint.label))));
 }
 
+const openedAt = performance.now();
+
 function onAction(action, repeat) {
-  // Home again puts the game back, like closing the console's Guide.
-  if (action === 'guide') { if (!repeat && guideOpen()) { sfx.back(); closeGuide(); } return; }
+  // Home again puts the game back, like closing the console's Guide. (The press that opened
+  // this window can still be held when it appears: that one does not count.)
+  if (action === 'guide') { if (!repeat && guideOpen() && performance.now() - openedAt > 900) { sfx.back(); closeGuide(); } return; }
   const layer = focus.top();
   if (!layer) return;
   const target = layer.current;

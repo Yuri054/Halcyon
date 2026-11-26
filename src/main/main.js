@@ -150,7 +150,7 @@ if (!app.requestSingleInstanceLock()) {
     // game it would keep the focus, and the game would stop taking input.
     menu.on('blur', () => {
       diary.log('guide-over-game: blur after', Date.now() - shownAt, 'ms');
-      setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused()) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 250);
+      setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused()) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 400);
     });
     menu.on('closed', () => { diary.log('guide-over-game: closed'); if (gameMenu === menu) gameMenu = null; });
     menu.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -160,7 +160,14 @@ if (!app.requestSingleInstanceLock()) {
     return { ok: true, opened: true };
   }
   const padWatch = new PadWatch({
-    onPress: () => { const r = summonGameMenu(); diary.log('home button (controller):', r); },
+    onPress: () => {
+      // In a Steam game, Steam's own overlay answers Home too and takes the screen a moment
+      // later; opening after it puts Halcyon's Guide on top instead of under it.
+      const steamGame = launcher.nowPlaying().some((p) => !p.quittable);
+      const delay = steamGame ? 700 : 0;
+      diary.log('home button (controller):', { steamGame, delay });
+      setTimeout(() => diary.log('summon:', summonGameMenu()), delay);
+    },
     onHold: () => {
       if (!launcher.nowPlaying().some((p) => p.quittable)) return;
       const result = launcher.quit();
@@ -190,10 +197,11 @@ if (!app.requestSingleInstanceLock()) {
       result = await steamClient.setGuideFocusesSteam(!want);
       if (result.ok) d.steamGuideFocusOff = want;
     }
-    // Steam's in-game overlay answers Home inside Steam games too, so it is off while Halcyon runs.
-    if (result.ok && want !== d.steamOverlayOff) {
-      result = await steamClient.setInGameOverlay(!want);
-      if (result.ok) d.steamOverlayOff = want;
+    // Steam's in-game overlay must stay on: Steam Input delivers the controller to Steam games
+    // through it. (An earlier version turned it off; turn it back on if so.)
+    if (d.steamOverlayOff) {
+      const back = await steamClient.setInGameOverlay(true);
+      if (back.ok) d.steamOverlayOff = false;
     }
     store.save();
     return result;
@@ -577,7 +585,7 @@ if (!app.requestSingleInstanceLock()) {
     hooks();
     setInterval(hooks, 20000).unref();   // Steam may start (or restart) after Halcyon
     // Steam may start after Halcyon: try again until it answers.
-    setInterval(() => { if (store.data.settings.homeButtonGuide !== false && !(store.data.steamGuideFocusOff && store.data.steamOverlayOff)) claimHomeButton().catch(() => {}); }, 30000).unref();
+    setInterval(() => { if ((store.data.settings.homeButtonGuide !== false && !store.data.steamGuideFocusOff) || store.data.steamOverlayOff) claimHomeButton().catch(() => {}); }, 30000).unref();
     setInterval(pollDownloads, Number(process.env.HALCYON_POLL_MS) || 4000).unref();
 
     let lastBatteries = '';

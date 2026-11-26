@@ -166,9 +166,12 @@ if (!app.requestSingleInstanceLock()) {
       // In a Steam game, Steam's own overlay answers Home too and takes the screen a moment
       // later; opening after it puts Halcyon's Guide on top instead of under it.
       const steamGame = launcher.nowPlaying().some((p) => !p.quittable);
-      const delay = steamGame ? 700 : 0;
+      // Steam acts on Home when it is released; tell it straight away to keep its overlay shut.
+      if (steamGame) steamClient.blockOverlayFor(2500).catch(() => {});
+      const delay = steamGame ? 350 : 0;
       diary.log('home button (controller):', { steamGame, delay });
       setTimeout(() => diary.log('summon:', summonGameMenu()), delay);
+      if (steamGame) setTimeout(() => steamClient.launchHookStatus().then((st) => diary.log('steam overlay watch:', st)).catch(() => {}), 2500);
     },
     onHold: () => {
       if (!launcher.nowPlaying().some((p) => p.quittable)) return;

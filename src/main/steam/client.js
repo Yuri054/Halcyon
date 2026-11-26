@@ -237,6 +237,22 @@ function installLaunchHooks({ skipShaders: skip }) {
   return run(`(() => {
     const h = window.__halcyon = window.__halcyon || {};
     h.skipShaders = ${skip ? 'true' : 'false'};
+    // Steam's in-game overlay also answers the Home button. Halcyon marks each Home press it
+    // handles; an overlay that opens within that moment is put away again at once. Opening it
+    // any other way (Shift+Tab) is left alone.
+    if (!h.overlay) {
+      h.overlay = SteamClient.Overlay.RegisterForOverlayActivated((a, b, active, d) => {
+        try {
+          h.lastOverlay = [a, b, active, d];
+          if (active && Date.now() < (h.blockOverlayUntil || 0)) {
+            h.blocked = (h.blocked || 0) + 1;
+            setTimeout(() => {
+              for (const id of [b, a]) { try { SteamClient.Overlay.SetOverlayState(String(id), 0); } catch (e) { h.error = String(e); } }
+            }, 30);
+          }
+        } catch (e) { h.error = String(e); }
+      });
+    }
     if (!h.userRequest) {
       h.userRequest = SteamClient.Apps.RegisterForGameActionUserRequest((actionId, gameId, action, request) => {
         try {
@@ -250,10 +266,15 @@ function installLaunchHooks({ skipShaders: skip }) {
   })()`);
 }
 
+/** Halcyon is handling a Home press: keep Steam's overlay from opening for the next ms. */
+function blockOverlayFor(ms) {
+  return run(`(() => { const h = window.__halcyon = window.__halcyon || {}; h.blockOverlayUntil = Date.now() + ${Math.max(0, Math.min(5000, Number(ms) || 0))}; })()`);
+}
+
 /** How many shader steps the in-Steam listener has skipped since Steam started (for checks). */
 async function launchHookStatus() {
   try {
-    const v = await evaluate('(() => { const h = window.__halcyon || {}; return { installed: Boolean(h.userRequest), skipShaders: Boolean(h.skipShaders), skipped: h.skipped || 0, error: h.error || null }; })()');
+    const v = await evaluate('(() => { const h = window.__halcyon || {}; return { installed: Boolean(h.userRequest), overlayWatch: Boolean(h.overlay), skipShaders: Boolean(h.skipShaders), skipped: h.skipped || 0, overlaysBlocked: h.blocked || 0, lastOverlay: h.lastOverlay || null, error: h.error || null }; })()');
     return { ok: true, ...v };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -326,4 +347,4 @@ function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, hideMainWindow, installLaunchHooks, launchHookStatus, boolSetting, PORT };
+module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, boolSetting, PORT };

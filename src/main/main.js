@@ -161,7 +161,9 @@ if (!app.requestSingleInstanceLock()) {
     spare = null;
   }
 
+  let guideClosedAt = 0;
   function closeGameMenu() {
+    if (gameMenu) guideClosedAt = Date.now();
     if (gameMenu && !gameMenu.isDestroyed()) gameMenu.destroy();
     gameMenu = null;
     setTimeout(() => prewarmGuide(), 600);
@@ -198,12 +200,15 @@ if (!app.requestSingleInstanceLock()) {
       diary.log('guide-over-game: blur after', Date.now() - shownAt, 'ms');
       setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused() && gameMenu === menu) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 400);
     });
-    menu.on('closed', () => { diary.log('guide-over-game: closed'); if (gameMenu === menu) gameMenu = null; });
+    menu.on('closed', () => { diary.log('guide-over-game: closed'); if (gameMenu === menu) { gameMenu = null; guideClosedAt = Date.now(); } });
     if (process.env.HALCYON_DEV_MENU_SCRIPT) require('./devscript').run(menu, process.env.HALCYON_DEV_MENU_SCRIPT);
     return { ok: true, opened: true, ready };
   }
   const padWatch = new PadWatch({
     onPress: () => {
+      // The Guide is up: this press is for closing it, which the Guide does itself. Do not
+      // open another one a moment later.
+      if (gameMenu || Date.now() - guideClosedAt < 900) { diary.log('home button (controller): guide is up, it closes itself'); return; }
       // In a Steam game, Steam's own overlay answers Home too and takes the screen a moment
       // later; opening after it puts Halcyon's Guide on top instead of under it.
       const steamGame = launcher.nowPlaying().some((p) => !p.quittable);
@@ -211,7 +216,7 @@ if (!app.requestSingleInstanceLock()) {
       if (steamGame) steamClient.blockOverlayFor(2500).catch(() => {});
       const delay = steamGame ? 350 : 0;
       diary.log('home button (controller):', { steamGame, delay });
-      setTimeout(() => diary.log('summon:', summonGameMenu()), delay);
+      setTimeout(() => { if (Date.now() - guideClosedAt < 900) return; diary.log('summon:', summonGameMenu()); }, delay);
       if (steamGame) setTimeout(() => steamClient.launchHookStatus().then((st) => diary.log('steam overlay watch:', st)).catch(() => {}), 2500);
     },
     onHold: () => {

@@ -3,6 +3,7 @@
 // "My Games": a title, then Show / Sort / Search buttons instead of the chip row.
 import { h, icon, flash } from '../core/dom.js';
 import * as focus from '../core/focus.js';
+import { sfx } from '../core/sfx.js';
 import {
   api, state, SORTS, visibleGames, filterGames, filterLabel, sortGames, search,
   game as findGame, gameContext, fmt, padSupport, isPlaying,
@@ -28,7 +29,7 @@ export function createGames() {
     const tiles = [...grid.children];
     const tile = e.target.closest('.tile');
     const i = tiles.indexOf(tile);
-    pos.textContent = i >= 0 ? `${i + 1} / ${tiles.length}` : '';
+    pos.textContent = view() === 'classic' ? `${csel + 1} / ${shown.length}` : i >= 0 ? `${i + 1} / ${tiles.length}` : '';
     if (view() === 'shelf') showDetail(tile?.dataset.game);
   });
   function showDetail(id) {
@@ -41,7 +42,65 @@ export function createGames() {
 
   // How the games are shown: two rows of covers, a shelf of big covers with details, wide
   // tiles, or a list. Remembered; Select (or the View button) switches.
-  const VIEWS = [['covers', 'Covers', 'grid'], ['shelf', 'Shelf', 'image'], ['tiles', 'Tiles', 'layers'], ['list', 'List', 'file']];
+  const VIEWS = [['covers', 'Covers', 'grid'], ['shelf', 'Shelf', 'image'], ['classic', 'Classic', 'layers'], ['list', 'List', 'file']];
+
+  // ---- Classic: the 360's game library. The selected cover big on the left, the next ones
+  // receding to the right; the categories stacked above (up / down to change); "1 of 8 | name |
+  // platform game" underneath. Only a window of covers around the selection is on the page.
+  const CW = 17;     // cover width, rem (height 1.5 x)
+  const CGAP = 0.9;
+  let csel = 0;
+  const cTiles = new Map();   // index -> element
+  function classicRender(keepKey) {
+    cTiles.clear();
+    const at = keepKey ? shown.findIndex((g) => `g:${g.id}` === keepKey) : -1;
+    csel = at >= 0 ? at : Math.min(csel, Math.max(0, shown.length - 1));
+    const list = filters();
+    const i = list.indexOf(state.filter);
+    const cats = h('div', { class: 'nxe__cats' },
+      ...list.slice(Math.max(0, i - 3), i).map((f) => h('div', { class: 'nxe__cat' }, filterLabel(f))),
+      h('div', { class: 'nxe__cat is-on' }, state.query ? `“${state.query}”` : filterLabel(state.filter)));
+    grid.replaceChildren(h('div', { class: 'nxe' }, cats, h('div', { class: 'nxe__row' }), h('div', { class: 'nxe__info' })));
+    classicLayout(false);
+  }
+  function classicLayout(doFocus = true) {
+    const row = grid.querySelector('.nxe__row');
+    if (!row || !shown.length) return;
+    const from = Math.max(0, csel - 1);
+    const to = Math.min(shown.length - 1, csel + 10);
+    for (const [n, t] of cTiles) if (n < from || n > to) { t.remove(); cTiles.delete(n); }
+    let x = 0;
+    for (let n = from; n <= to; n++) {
+      let t = cTiles.get(n);
+      if (!t) {
+        t = gameTile(shown[n], 'cover', 0);
+        t.removeAttribute('data-focus');
+        t.classList.add('nxe__cover');
+        t.dataset.idx = String(n);
+        t.style.transform = `translateX(${n < csel ? -CW * 1.3 : 120}rem) scale(0.4)`;
+        cTiles.set(n, t);
+        row.append(t);
+      }
+      const k = n - csel;
+      if (k === 0) t.setAttribute('data-focus', 'true'); else t.removeAttribute('data-focus');
+      if (k < 0) { t.style.transform = `translateX(${-CW * 1.3}rem) scale(1)`; t.style.opacity = '0'; t.style.zIndex = '1'; continue; }
+      const sc = k === 0 ? 1 : Math.max(0.34, 0.76 * Math.pow(0.88, k - 1));
+      t.style.transform = `translateX(${x}rem) scale(${sc})`;
+      t.style.opacity = k > 8 ? '0' : '1';
+      t.style.zIndex = String(30 - k);
+      x += CW * sc + CGAP * (k === 0 ? 1.4 : 1);
+    }
+    const g = shown[csel];
+    grid.querySelector('.nxe__info').textContent = `${csel + 1} of ${shown.length}   |   ${g.name}   |   ${g.platform || 'PC'} game${g.installed ? '' : ' · not installed'}`;
+    if (doFocus) focus.focus(cTiles.get(csel), { layer: focus.base(), scroll: false });
+  }
+  function classicMove(step) {
+    const next = Math.max(0, Math.min(shown.length - 1, csel + step));
+    if (next === csel) return false;
+    csel = next;
+    classicLayout();
+    return true;
+  }
   const view = () => (VIEWS.some(([v]) => v === state.lib.settings.gamesView) ? state.lib.settings.gamesView : 'covers');
   function listRow(g, i) {
     return h('div', { class: `tile glist__row${g.installed ? '' : ' tile--uninstalled'}`, 'data-focus': true, 'data-key': `g:${g.id}`, 'data-game': g.id, style: { '--i': Math.min(i, 22) } },
@@ -53,7 +112,7 @@ export function createGames() {
   function tileFor(g, i) {
     const v = view();
     if (v === 'list') return listRow(g, i);
-    return gameTile(g, v === 'tiles' ? 'wide' : 'cover', i);
+    return gameTile(g, 'cover', i);
   }
   async function pickView(step = null) {
     let next;
@@ -121,7 +180,7 @@ export function createGames() {
     const v = view();
     const keepScroll = v === 'list' ? grid.scrollTop : grid.scrollLeft;
     grid.className = `wall wall--${v}`;
-    grid.dataset.scroller = v === 'list' ? 'y' : 'x';
+    if (v === 'classic') grid.removeAttribute('data-scroller'); else grid.dataset.scroller = v === 'list' ? 'y' : 'x';
     detail.hidden = v !== 'shelf';
 
     chips.replaceChildren(...filters().map((f) => chip(`f:${f}`, filterLabel(f), {
@@ -149,9 +208,10 @@ export function createGames() {
           : state.filter === 'favorites' ? 'Press X on any game to mark it as a favorite.'
             : 'Games appear here automatically once they are installed or added.')));
     } else {
-      grid.replaceChildren(...shown.map((g, i) => tileFor(g, i)));
+      if (v === 'classic') classicRender(focus.base().current?.dataset.key || null);
+      else grid.replaceChildren(...shown.map((g, i) => tileFor(g, i)));
     }
-    if (v === 'list') grid.scrollTop = resetScroll ? 0 : keepScroll; else grid.scrollLeft = resetScroll ? 0 : keepScroll;
+    if (v === 'list') grid.scrollTop = resetScroll ? 0 : keepScroll; else if (v !== 'classic') grid.scrollLeft = resetScroll ? 0 : keepScroll;
   }
 
   function setFilter(f) {
@@ -233,6 +293,8 @@ export function createGames() {
 
   el.addEventListener('click', (e) => {
     const tile = e.target.closest('[data-game]');
+    // Classic: a cover further along is brought forward first.
+    if (tile && view() === 'classic' && tile.dataset.idx && Number(tile.dataset.idx) !== csel) { csel = Number(tile.dataset.idx); classicLayout(); return; }
     if (tile) app.launch(tile.dataset.game);
   });
 
@@ -247,6 +309,12 @@ export function createGames() {
       if (action === 'start') { doSearch(); return true; }
       if (action === 'select') { pickView(1); return true; }
       const inGrid = target && grid.contains(target);
+      // Classic: left / right along the covers, up / down through the categories, LT / RT jump.
+      if (view() === 'classic' && inGrid) {
+        if (action === 'left' || action === 'right') { if (!classicMove(action === 'left' ? -1 : 1)) sfx.edge(); else sfx.move(); return true; }
+        if (action === 'lt' || action === 'rt') { if (classicMove(action === 'lt' ? -5 : 5)) sfx.move(); else sfx.edge(); return true; }
+        if (action === 'down' || (action === 'up' && filters().indexOf(state.filter) > 0)) { csel = 0; cycleFilter(action === 'up' ? -1 : 1); sfx.move(); return true; }
+      }
       if (action === 'lt' || action === 'rt') {
         if (inGrid) focus.page(view() === 'list' ? (action === 'lt' ? 'up' : 'down') : (action === 'lt' ? 'left' : 'right'), view() === 'list' ? 6 : 5);
         else cycleFilter(action === 'lt' ? -1 : 1);
@@ -267,7 +335,7 @@ export function createGames() {
       if (target?.dataset.game) {
         const g = findGame(target.dataset.game);
         return [{ a: 'accept', label: isPlaying(g?.id) ? 'Resume' : g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' },
-          { a: 'lt', b: 'rt', label: 'Page' }, { a: 'start', label: 'Search' }];
+          ...(view() === 'classic' ? [{ a: 'up', b: 'down', label: 'Category' }, { a: 'lt', b: 'rt', label: 'Jump' }] : [{ a: 'lt', b: 'rt', label: 'Page' }]), { a: 'start', label: 'Search' }];
       }
       return [{ a: 'accept', label: 'Select' }, { a: 'lt', b: 'rt', label: 'Show' }, { a: 'start', label: 'Search' }];
     },

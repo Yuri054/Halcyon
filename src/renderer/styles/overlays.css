@@ -512,3 +512,23 @@ body.player-quiet #hints { opacity: 0; }
 .view--games .toolbar { flex: none; }
 body[data-theme] .view--games .wall.wall--list { gap: 0; -webkit-mask-image: none; mask-image: none; margin-bottom: 0; padding-top: 0; padding-bottom: 0; flex: 0 1 auto; min-height: 0; margin-top: 1.2rem; }
 body[data-theme] .view--games .wall.wall--list.wall--list { padding-top: 0; padding-bottom: 0; margin-bottom: 0; gap: 0; }
+
+/* Classic: the 360's game library (see classicLayout in views/games.js). */
+.wall.wall--classic { display: block; overflow: visible; padding: 0.6rem var(--gutter) 0; -webkit-mask-image: none; mask-image: none; }
+.nxe { position: relative; display: flex; flex-direction: column; height: 100%; }
+.nxe__cats { display: flex; flex-direction: column; justify-content: flex-end; min-height: 6.6rem; margin-bottom: 1rem; }
+.nxe__cat { font-size: 1.15rem; line-height: 1.35; color: var(--ink); opacity: 0.55; }
+.nxe__cat.is-on { font-size: 2.1rem; line-height: 1.2; opacity: 1; }
+.nxe__cat.is-on::before { content: '•'; margin-right: 0.35rem; }
+.nxe__row { position: relative; height: 25.5rem; flex: none; }
+.nxe__cover { position: absolute; left: 0; bottom: 0; width: 17rem; height: 25.5rem; transform-origin: bottom left; transition: transform 0.28s var(--ease), opacity 0.2s ease; }
+.nxe__cover .tile__body { width: 100%; height: 100%; }
+.nxe__cover.is-focused .tile__body { transform: none; animation: none; }
+/* A soft reflection under each cover. */
+.nxe__cover::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 22%; background: inherit; -webkit-box-reflect: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent); opacity: 0.5; pointer-events: none; }
+.nxe__info { margin-top: 1.4rem; font-size: 1.15rem; color: var(--ink); opacity: 0.85; white-space: pre; }
+[data-theme='x360'] .nxe__cat, [data-theme='x360'] .nxe__info { color: #fff; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .nxe__cover .tile__strip { display: none; }
+body[data-theme='x360'] .view--games .wall.wall--classic { padding-top: 0.6rem; padding-bottom: 0; margin-bottom: 0; gap: 0; }
+body[data-theme='x360'].x360-glow .nxe__cover.is-focused .tile__body { transform: none; box-shadow: 0 0 0 0.24rem #9bc848, 0 0 1.4rem 0.25rem rgba(140, 198, 63, 0.5), 0 1rem 2rem rgba(0, 0, 0, 0.4); }

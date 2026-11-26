@@ -254,7 +254,7 @@ installed, not installed, favorites, recently played; then *Where it's from*, *C
 Show choices from the buttons. It always opens on all games.
 
 **View** (or Select) switches how games are shown: *Covers* (two rows), *Shelf* (one row of big
-covers with the selected game's details under it), *Tiles* (wide art in three rows) or *List*
+covers with the selected game's details under it), *Classic* (the 360's game library: the selected cover big, the rest receding to the right, the categories stacked above with up/down to change them, and "1 of 8 | name | platform game" underneath) or *List*
 (a list with cover, platform, last played and hours). The choice is remembered.
 
 ## Launch scene

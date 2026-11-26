@@ -1,6 +1,6 @@
 // Settings: display, library, Steam and system options as Metro-style cards.
 import { h, icon } from '../core/dom.js';
-import { api, state, ACCENTS, THEMES, fmt, noPadGames } from '../core/state.js';
+import { api, state, ACCENTS, THEMES, fmt, noPadGames, X360_OPTIONS, x360Option } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { browse } from '../ui/browser.js';
 import { menu } from '../ui/dialog.js';
@@ -55,6 +55,20 @@ export function createSettings() {
     }
   }
 
+  /** The 360 theme's options, each a switch. */
+  async function pickThemeOptions() {
+    let selected = null;
+    for (;;) {
+      const pick = await menu({
+        title: 'Theme options', subtitle: 'Xbox 360 theme', selected,
+        items: X360_OPTIONS.map(([key, label, sub]) => ({ label, value: key, sub, checked: x360Option(key), verb: x360Option(key) ? 'Turn off' : 'Turn on' })),
+      });
+      if (pick == null) return;
+      selected = pick;
+      await set({ x360: { ...(state.lib.settings.x360 || {}), [pick]: !x360Option(pick) } });
+    }
+  }
+
   async function pickMonitor() {
     const list = await api.system.displays().catch(() => []);
     const cur = state.lib.settings.monitor || '';
@@ -92,6 +106,7 @@ export function createSettings() {
         row({ key: 'monitorAudio', label: 'Sound follows the monitor', iconName: 'sound', value: Array.isArray(s.monitorAudio) ? (s.monitorAudio.length ? s.monitorAudio.map((x) => x.split(' - ')[1] || x).join(', ') : 'Off') : 'TVs', onSelect: pickSound, tip: 'Switches the sound to a TV’s HDMI while Halcyon is on it' }),
         row({ key: 'theme', label: 'Theme', iconName: 'layers', value: theme[1],
           onSelect: () => set({ theme: THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length][0] }), tip: `${theme[2]}. Select to switch; the accent color applies to every theme.` }),
+        s.theme === 'x360' && row({ key: 'themeOptions', label: 'Theme options', iconName: 'gear', value: `${X360_OPTIONS.filter(([k]) => x360Option(k)).length} of ${X360_OPTIONS.length} on`, onSelect: pickThemeOptions, tip: 'The 360 theme’s own touches, each one on or off' }),
         row({ key: 'accent', label: 'Accent color', iconName: 'palette', value: s.accent[0].toUpperCase() + s.accent.slice(1), swatch: s.accent,
           onSelect: () => set({ accent: ACCENTS[(ACCENTS.indexOf(s.accent) + 1) % ACCENTS.length] }), tip: 'Cycles through the available accent colors' }),
         row({ key: 'sounds', label: 'Interface sounds', iconName: 'sound', toggle: s.sounds, onSelect: () => set({ sounds: !s.sounds }) }),

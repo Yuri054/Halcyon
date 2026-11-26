@@ -18,7 +18,14 @@ export function createGames() {
   const tools = h('div', { class: 'tools', 'data-focus-group': true });
   const grid = h('div', { class: 'wall', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
   const title = h('div', { class: 'games__title' }, h('span', null, 'my games'), h('small', null, ''));
-  const el = h('section', { class: 'view view--games' }, h('div', { class: 'toolbar' }, title, chips, tools), grid);
+  // Where you are in the list ("12 / 236"), for the 360 theme's position option.
+  const pos = h('div', { class: 'games__pos' });
+  grid.addEventListener('nav-focus', (e) => {
+    const tiles = [...grid.children];
+    const i = tiles.indexOf(e.target.closest('.tile'));
+    pos.textContent = i >= 0 ? `${i + 1} / ${tiles.length}` : '';
+  });
+  const el = h('section', { class: 'view view--games' }, h('div', { class: 'toolbar' }, title, chips, pos, tools), grid);
   let shown = [];
 
   // The filters, grouped: the everyday ones first (also the chip row and LT/RT), then where a

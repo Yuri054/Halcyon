@@ -171,6 +171,21 @@ function manifests(extraRoots = []) {
   return [...out.values()];
 }
 
+/** The Steam account signed in most recently: { steamid, name, avatar (a local file or null) }. */
+function profile(extraRoots = []) {
+  for (const install of findInstalls(extraRoots)) {
+    try {
+      const users = vdf.get(vdf.parse(fs.readFileSync(path.join(install.root, 'config/loginusers.vdf'), 'utf8')), 'users') || {};
+      const entries = Object.entries(users);
+      const [steamid, u] = entries.find(([, x]) => String(x.MostRecent) === '1') || entries[0] || [];
+      if (!steamid) continue;
+      const avatar = path.join(install.root, 'config/avatarcache', `${steamid}.png`);
+      return { steamid, name: u.PersonaName || u.AccountName || '', avatar: fs.existsSync(avatar) ? avatar : null };
+    } catch { /* no login file here */ }
+  }
+  return null;
+}
+
 /** SteamID64 of each account that has signed in to this Steam install. */
 function accountIds(extraRoots = []) {
   const ids = new Set();
@@ -266,4 +281,4 @@ function clientCommand(kind, root, url) {
   return null;
 }
 
-module.exports = { scan, clientCommand, findInstalls, manifests, accountIds, uninstalledGames, downloadState };
+module.exports = { scan, clientCommand, findInstalls, manifests, accountIds, uninstalledGames, downloadState, profile };

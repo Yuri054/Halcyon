@@ -12,6 +12,18 @@ export const state = {
 /** Is this game running right now (so A resumes it rather than starting it again)? */
 export const isPlaying = (id) => state.playing.some((p) => p.id === id);
 
+/** The 360 theme's own options (Settings › display › Theme options); all on unless turned off. */
+export const X360_OPTIONS = [
+  ['glow', 'Lime focus glow', 'The selected tile gets a bright 360-green border and glow and lifts forward'],
+  ['names', 'Names on every cover', 'A dark name bar along the bottom of each cover, not only the selected one'],
+  ['flat', 'Flat Metro buttons', 'Show, Search and Sort as flat, sharp-cornered tiles instead of white pills'],
+  ['roomy', 'Roomier covers', 'A little more space between covers'],
+  ['scrollCue', 'Position and edge fade', 'A "12 / 236" count by the list and a soft fade at its right edge'],
+  ['wash', 'Game art wash', 'A faint, blurred wash of the selected game’s art behind the top of the screen'],
+  ['profile', 'Profile by the clock', 'Your Steam picture and name, with your game count and hours played'],
+];
+export const x360Option = (key) => (state.lib.settings.x360 || {})[key] !== false;
+
 export const SORTS = [
   ['recent', 'Recently played'],
   ['name', 'A – Z'],

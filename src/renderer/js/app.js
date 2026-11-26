@@ -4,7 +4,7 @@ import { h, icon, flash } from './core/dom.js';
 import * as focus from './core/focus.js';
 import * as input from './core/input.js';
 import { sfx, setEnabled as setSounds, setPack } from './core/sfx.js';
-import { api, state, game as findGame, isPlaying, fmt } from './core/state.js';
+import { api, state, game as findGame, isPlaying, fmt, X360_OPTIONS, x360Option } from './core/state.js';
 import { menu } from './ui/dialog.js';
 import { app, wait } from './core/bus.js';
 import { setBackdrop, artImg, fallbackArt } from './ui/art.js';
@@ -130,7 +130,28 @@ function applySettings() {
   applySoundPack();
   document.body.dataset.accent = s.accent || 'emerald';
   document.body.dataset.theme = s.theme || 'halcyon';
+  // The 360 theme's options are classes on <body> (x360-glow, x360-names, ...).
+  for (const [key] of X360_OPTIONS) document.body.classList.toggle(`x360-${key}`, x360Option(key));
   setSounds(s.sounds !== false);
+  renderProfile();
+}
+
+/** The 360's profile corner: Steam picture, name, and a "score" of games and hours. */
+function renderProfile() {
+  let el = document.getElementById('profile');
+  const p = state.lib.steamProfile;
+  if (!el) {
+    el = h('div', { id: 'profile', class: 'profile' });
+    document.querySelector('#top .status')?.prepend(el);
+  }
+  if (!p) { el.hidden = true; return; }
+  el.hidden = false;
+  const games = state.lib.games.filter((g) => g.installed && !g.shadowedBy).length;
+  const hours = Math.round(state.lib.games.reduce((n, g) => n + (g.playtimeMin || 0), 0) / 60);
+  el.replaceChildren(
+    h('div', { class: 'profile__pic' }, p.avatar ? h('img', { src: p.avatar, alt: '' }) : icon('user')),
+    h('div', { class: 'profile__text' }, h('div', { class: 'profile__name' }, p.name || 'Player'),
+      h('div', { class: 'profile__score' }, h('b', null, 'G'), ` ${hours.toLocaleString()} h · ${games} games`)));
 }
 
 // ---------------------------------------------------------------- sections

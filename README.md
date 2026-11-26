@@ -135,6 +135,15 @@ the original game's title), as for games added by hand.
 the Game category that Halcyon doesn't already have) to add in one step, opens Quiver Launcher,
 or takes any program by hand.
 
+## 360 theme options
+
+Settings › display › *Theme options* (right under Theme, in the 360 theme) turns each of the
+theme's touches on or off: a lime focus glow (green frame, glow and lift on the selected tile),
+names on every cover, flat Metro buttons for Show / Search / Sort, roomier covers, a position
+count with a fade at the list's right edge, a faint wash of the selected game's art behind the
+top of the screen, and a profile corner by the clock (Steam picture and name, with hours played
+and games installed in place of a Gamerscore).
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

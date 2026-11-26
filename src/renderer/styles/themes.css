@@ -959,3 +959,53 @@ body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .g
 [data-theme='x360'] .layer--downloads .row.is-focused .dlcard__pct, [data-theme='x360'] .layer--downloads .row.is-focused .dlcard__title { color: #fff; }
 [data-theme='x360'] .layer--downloads .row__meter { height: 0.4rem; background: rgba(0, 0, 0, 0.14); }
 [data-theme='x360'] .layer--downloads .row__meter i { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); }
+
+/* ===================================================== 360 theme options
+   Each is a class on <body> (Settings › display › Theme options). */
+
+/* Lime focus glow: a bright 360-green frame and glow, a scale pop and a soft shadow. */
+body[data-theme='x360'].x360-glow .tile.is-focused .tile__body,
+body[data-theme='x360'].x360-glow .tone-glass.is-focused .tile__body,
+body[data-theme='x360'].x360-glow .tone-ghost.is-focused .tile__body {
+  animation: none; filter: none; transform: scale(1.07);
+  box-shadow: 0 0 0 0.24rem #9bc848, 0 0 1.4rem 0.25rem rgba(140, 198, 63, 0.55), 0 1.1rem 2.2rem rgba(0, 0, 0, 0.4);
+}
+body[data-theme='x360'].x360-glow .tile--hero.is-focused .tile__body { transform: scale(1.025); }
+body[data-theme='x360'].x360-glow .tile--wide.is-focused .tile__body { transform: scale(1.05); }
+body[data-theme='x360'] .tile.is-focused .tile__body { animation: none; }
+
+/* Names on every cover: the dark name bar always shows, inside the art. */
+body[data-theme='x360'].x360-names .wall .tile__strip { opacity: 1; }
+
+/* Flat Metro buttons: sharp, translucent; the selected one lime. */
+body[data-theme='x360'].x360-flat .view--games .tools .chip {
+  border-radius: 0; background: rgba(40, 40, 40, 0.42); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  text-shadow: 0 0.08rem 0.2rem rgba(0, 0, 0, 0.3); backdrop-filter: blur(0.4rem);
+}
+body[data-theme='x360'].x360-flat .view--games .tools .chip .icon { color: #fff; }
+body[data-theme='x360'].x360-flat .view--games .tools .chip.is-active { background: rgba(40, 40, 40, 0.55); box-shadow: inset 0 -0.22rem 0 #9bc848, inset 0 0 0 1px rgba(255, 255, 255, 0.4); }
+body[data-theme='x360'].x360-flat .view--games .tools .chip.is-focused { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); box-shadow: 0 0 1rem rgba(140, 198, 63, 0.5); transform: scale(1.05); }
+
+/* Roomier covers. */
+body[data-theme='x360'].x360-roomy .wall { gap: 1.1rem; }
+
+/* Position and edge fade. */
+.games__pos { display: none; }
+body[data-theme='x360'].x360-scrollCue .games__pos { display: block; align-self: flex-end; margin-bottom: 0.7rem; font-size: 1.05rem; color: #fff; opacity: 0.85; font-variant-numeric: tabular-nums; text-shadow: 0 0.08rem 0.25rem rgba(0, 0, 0, 0.3); }
+body[data-theme='x360'].x360-scrollCue .wall { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 7rem), transparent 100%); mask-image: linear-gradient(90deg, #000 calc(100% - 7rem), transparent 100%); }
+
+/* Game art wash: the selected game's art, blurred and faint, fading out down the screen. */
+body[data-theme='x360'].x360-wash .bg__img { display: block; filter: blur(2.6rem) saturate(0.85); transform: scale(1.1);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.6) 30%, transparent 62%); mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.6) 30%, transparent 62%); }
+body[data-theme='x360'].x360-wash .bg__img.is-on { opacity: 0.16; }
+
+/* Profile by the clock: picture, name, and a gamerscore-style line. */
+.profile { display: none; }
+body[data-theme='x360'].x360-profile .profile:not([hidden]) { display: flex; align-items: center; gap: 0.8rem; margin-right: 1.4rem; color: #fff; text-shadow: 0 0.08rem 0.25rem rgba(0, 0, 0, 0.3); }
+.profile__pic { width: 3.4rem; height: 3.4rem; flex: none; overflow: hidden; background: rgba(255, 255, 255, 0.25); box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.3), 0 0 0 0.12rem rgba(255, 255, 255, 0.8); display: grid; place-items: center; }
+.profile__pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.profile__name { font-size: 1.15rem; line-height: 1.1; }
+.profile__score { font-size: 0.9rem; opacity: 0.9; font-variant-numeric: tabular-nums; }
+.profile__score b { display: inline-grid; place-items: center; width: 1.05rem; height: 1.05rem; border-radius: 50%; background: #fff; color: #555; font-size: 0.7rem; font-weight: 700; text-shadow: none; }
+/* Room for the glow and the lift, so the list's edge doesn't cut them off. */
+body[data-theme='x360'].x360-glow .view--games .wall { padding-top: 1.4rem; padding-bottom: 1.6rem; margin-bottom: -1.2rem; }

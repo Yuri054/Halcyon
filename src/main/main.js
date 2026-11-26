@@ -530,6 +530,8 @@ if (!app.requestSingleInstanceLock()) {
     store = new JsonStore(path.join(app.getPath('userData'), 'config.json'), DEFAULTS);
     // Earlier versions saved "not fullscreen" whenever the window merely dropped out of
     // fullscreen; put the setting back on once.
+    // Shader processing is skipped automatically unless you turn that off (it used to ask).
+    if (!store.data.shaderSkipDefaulted) { store.data.settings.steamSkipShaders = true; store.data.shaderSkipDefaulted = true; store.save(); }
     if (!store.data.fullscreenRepaired) { store.data.settings.fullscreen = true; store.data.fullscreenRepaired = true; store.save(); }
     library = new Library(store);
     launcher = new Launcher(library, (event) => {

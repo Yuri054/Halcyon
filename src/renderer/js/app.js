@@ -249,6 +249,7 @@ const STEAM_TASKS = {
   ShowInterstitials: 'Starting', SiteLicenseSeatCheckout: 'Starting', DelayLaunch: 'Starting', Completed: 'Starting',
   ShowEula: 'Accept the agreement in Steam', ShowCDKey: 'Steam is showing a key', ShowLaunchOption: 'Choose a launch option in Steam',
   RunningInstallScript: 'Running first-time setup', VerifyingInstalledFiles: 'Checking files',
+  ShadersSkipped: 'Skipped shader processing',
 };
 
 function setSteamTask(event) {
@@ -257,6 +258,7 @@ function setSteamTask(event) {
   launchUi.shaderAction = shaders ? event.actionId : 0;
   launchUi.task = event && event.task ? event.task : null;
   launchUi.el.classList.toggle('is-shaders', Boolean(shaders));
+  if (event && !event.task && launchUi.task === null && launchUi.status.textContent.startsWith('Processing')) launchUi.status.textContent = 'Starting in Steam';
   if (event && event.task) {
     launchUi.status.textContent = `${STEAM_TASKS[event.task] || 'Starting in Steam'}${shaders && event.percent != null ? `  ${event.percent}%` : ''}`;
   }

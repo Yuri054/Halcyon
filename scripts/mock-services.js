@@ -164,7 +164,14 @@ function fakeSteam(seed) {
   state.shaders = { nGameActionID: 77, gameid: '900050', strActionName: 'LaunchApp', strTaskName: 'ProcessingShaderCache', strTaskDetails: '', numDone: 43, numTotal: 100 };
   const Apps = {
     GetActiveGameActions: async () => (state.shaders ? [state.shaders] : []),
-    ContinueGameAction(id, what) { state.calls.push(['continue', id, what]); if (state.shaders && id === state.shaders.nGameActionID && what === 'SkipShaders') state.shaders = null; },
+    ContinueGameAction(id, what) {
+      state.calls.push(['continue', id, what]);
+      if (state.shaders && id === state.shaders.nGameActionID && what === 'SkipShaders') {
+        const was = state.shaders;
+        state.shaders = null;
+        setTimeout(() => { state.shaders = { ...was, nGameActionID: was.nGameActionID + 1 }; }, 4000);   // ready for the next launch
+      }
+    },
   };
   return { state, context: vm.createContext({ SteamClient: { Downloads, Apps }, setTimeout, Promise, JSON }) };
 }

@@ -277,8 +277,15 @@
   await press(B.B); await sleep(500);
 
   // ---- Steam's shader processing, shown on Halcyon's launch card (stand-in Steam)
-  (await import('./js/core/bus.js')).app.launch('steam:900050');
+  // Default: skipped without asking.
   const card = () => document.querySelector('.layer--launch:not(.is-closing) .launch__status')?.textContent || '';
+  (await import('./js/core/bus.js')).app.launch('steam:900050');
+  check('shader processing is skipped automatically', await waitUntil(() => /Skipped shader processing/.test(card()), 6000), card());
+  await waitUntil(() => [...document.querySelectorAll('#hints .hint__label')].some((n) => n.textContent === 'Return to dashboard'), 5000);
+  await press(B.B); await sleep(4500);
+  // With the setting off: the card shows the progress and A skips.
+  await window.halcyon.settings.set({ steamSkipShaders: false }); await sleep(300);
+  (await import('./js/core/bus.js')).app.launch('steam:900050');
   check('launch card shows Steam processing shaders', await waitUntil(() => /Processing Vulkan shaders\s+43%/.test(card()), 6000) && document.querySelector('.layer--launch .launch__bar.is-determinate i')?.style.width === '43%', card());
   check('A to skip is offered', [...document.querySelectorAll('#hints .hint__label')].some((n) => n.textContent === 'Skip shader processing'));
   await press(B.A);

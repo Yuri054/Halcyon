@@ -88,7 +88,7 @@ export function createSettings() {
           onSelect: toggleDownloads, tip: 'Uses Steam’s debugging port (the Decky Loader method). While on, any program on this computer can control Steam.' }),
         installs.length > 0 && row({ key: 'steam:queue', label: 'Downloads', iconName: 'download', onSelect: () => app.downloads() }),
         installs.length > 0 && row({ key: 'steam:shaders', label: 'Skip shader processing', iconName: 'spark', toggle: Boolean(s.steamSkipShaders), onSelect: () => set({ steamSkipShaders: !s.steamSkipShaders }),
-          sub: s.steamSkipShaders ? 'Always skipped' : 'Press A on the launch screen to skip',
+          sub: s.steamSkipShaders ? 'Skipped automatically' : 'Press A on the launch screen to skip',
           tip: 'Steam’s “Processing Vulkan shaders” before a game. Skipping starts the game sooner; it may stutter a little at first. Needs download controls.' }),
         installs.length > 0 && row({ key: 'steam:bigpicture', label: 'Big Picture for store and installs', iconName: 'pad', toggle: Boolean(s.steamBigPicture), onSelect: () => set({ steamBigPicture: !s.steamBigPicture }),
           tip: 'Switches Steam to Big Picture when you buy or install a game, so Steam’s own screens work with the controller. Games themselves start without it.' }),

@@ -91,8 +91,11 @@ controls report an error and the manager falls back to showing progress only.
 
 Steam games start from the desktop Steam client while Halcyon stays fullscreen behind them. With
 download controls on, Halcyon follows Steam's launch steps and shows them on its launch card
-(syncing cloud saves, starting, ...). When Steam stops to **process Vulkan shaders**, the card shows
-the progress and **A skips it**; *Skip shader processing* (Settings › steam) skips it every time.
+(syncing cloud saves, starting, ...). When Steam stops to **process Vulkan shaders**, Halcyon skips it
+automatically (Settings › steam › *Skip shader processing*; with that off, the card shows the
+progress and **A skips it**). With download controls on, games are started through Steam's own
+`RunGame`, which does not bring Steam's window up, and Steam's window is put back in the tray if it
+appears during the launch.
 *Big Picture for store and installs* switches Steam to Big Picture only when you buy or install a
 game, so Steam's own screens work with the controller; games themselves never open it.
 

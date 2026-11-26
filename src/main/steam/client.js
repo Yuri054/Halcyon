@@ -216,6 +216,26 @@ async function gameActions() {
   }
 }
 
+/**
+ * Start a game the way Steam's own library does (SteamClient.Apps.RunGame). Unlike a
+ * steam://rungameid link, this does not bring Steam's window up first.
+ */
+function runGame(appid) {
+  const id = String(appid);
+  if (!/^\d+$/.test(id)) return Promise.resolve({ ok: false, error: 'Unknown game.' });
+  return run(`SteamClient.Apps.RunGame(${JSON.stringify(id)}, "", -1, 100)`);
+}
+
+/** Put Steam's main window away (as closing it to the tray does), if it is up. */
+async function hideMainWindow() {
+  try {
+    await evaluate('(() => { SteamClient.Window.HideWindow(); return true; })()', 3000, 'Steam');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 /** Press Steam's "Skip" on the shader-processing step of a launch (what its own button does). */
 function skipShaders(actionId) {
   const id = Number(actionId);
@@ -272,4 +292,4 @@ function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, boolSetting, PORT };
+module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, hideMainWindow, boolSetting, PORT };

@@ -112,6 +112,14 @@ class Launcher {
       return { ok: false, error: 'Unknown game type.' };
     }
 
+    // With Steam's controls on, Steam games are started through Steam itself, which keeps
+    // Steam's window out of the way (a steam:// link brings it up first).
+    if (launch.type === 'steam' && !process.env.HALCYON_DRY_RUN && steamClient.enabled(this.library.raw.steam.installs || [])) {
+      const direct = await steamClient.runGame(launch.appid);
+      if (direct.ok) return this.afterSteamStart(game, id, launch);
+      // Steam not answering: fall back to the link below.
+    }
+
     // HALCYON_DRY_RUN=1 resolves real launches without starting anything (for UI testing).
     if (process.env.HALCYON_DRY_RUN && launch.type !== 'custom') {
       console.log('[dry-run] would launch:', JSON.stringify(argv));
@@ -144,9 +152,20 @@ class Launcher {
       this.started(game, { pid: result.pid, argv: opts.shell ? ['/bin/sh', '-c', argv] : argv });
       result.tracked = true;
     } else if (result.ok) {
+      return this.afterSteamStart(game, id, launch, result);
+    }
+    if (result.ok) this.library.markPlayed(id);
+    return result;
+  }
+
+  /** A Steam game has been asked to start: follow it until it runs and until it ends. */
+  afterSteamStart(game, id, launch, result = { ok: true }) {
+    {
       // Steam keeps its own playtime, so nothing is banked here.
       const stopFollowing = this.followSteamLaunch(game, launch.appid);
       result.followsSteam = true;
+      // Steam can still put its window up while it prepares a game; keep it in the tray.
+      for (const ms of [1200, 3500, 7000]) setTimeout(() => { steamClient.hideMainWindow().catch(() => {}); }, ms).unref();
       system.watchSteamApp(launch.appid, {
         onStart: () => {
           stopFollowing();
@@ -162,7 +181,7 @@ class Launcher {
         },
       });
     }
-    if (result.ok) this.library.markPlayed(id);
+    this.library.markPlayed(id);
     return result;
   }
 
@@ -193,7 +212,8 @@ class Launcher {
       }
       if (shaders && !skipped && this.library.config.settings.steamSkipShaders) {
         skipped = true;
-        await steamClient.skipShaders(a.id);
+        const res = await steamClient.skipShaders(a.id);
+        if (res.ok) { last = 'skipped'; this.notify({ type: 'steamTask', id: game.id, task: 'ShadersSkipped', percent: null, actionId: 0 }); }
       }
       if (Date.now() - began > 20 * 60 * 1000) stopped = true;
     };

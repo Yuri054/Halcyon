@@ -44,25 +44,22 @@ export async function openGameAchievements(appid, panelIn = null) {
   }
   const unlocked = r.list.filter((a) => a.achieved).sort((a, b) => b.unlockTime - a.unlockTime);
   const locked = r.list.filter((a) => !a.achieved).sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0));
+  // Each achievement's share of the game's 1,000 G (so the game's score is the sum of its unlocks).
+  const points = Math.round(1000 / r.list.length);
   const row = (a) => ({
-    label: a.achieved || !a.hidden ? a.name : 'Hidden achievement',
-    sub: a.achieved || !a.hidden ? a.description || null : 'Keep playing to find out',
+    label: a.achieved || !a.hidden ? a.name : 'Secret achievement',
+    sub: [a.achieved ? `Unlocked ${day(a.unlockTime)}` : a.percent != null ? `${a.percent}% of players have it` : null,
+      a.achieved || !a.hidden ? a.description : 'Keep playing to unlock this secret achievement'].filter(Boolean).join('  ·  '),
     art: [a.achieved ? a.icon : a.iconGray || a.icon].filter(Boolean).map((u) => u.replace(/^https?:\/\/steamcdn-a\.akamaihd\.net\//, 'https://cdn.akamai.steamstatic.com/')),
-    iconName: 'star', value: `a:${a.id}`, cls: a.achieved ? 'row--ach is-earned' : 'row--ach',
-    hint: a.achieved ? day(a.unlockTime) : a.percent != null ? `${a.percent}%` : '',
+    iconName: 'star', value: `a:${a.id}`, cls: `row--ach row--achpts${a.achieved ? ' is-earned' : ' is-locked'}`,
+    hint: String(points),
   });
-  const pct = Math.round((unlocked.length / r.list.length) * 100);
+  const score = gameScore({ unlocked: unlocked.length, total: r.list.length });
   for (;;) {
     const pick = await panel.ask({
       title: nameOf(appid),
-      subtitle: `${unlocked.length} of ${r.list.length} unlocked · ${pct}%${r.stale ? ' · offline, from the last check' : ''}`,
-      items: [
-        { label: `${unlocked.length} / ${r.list.length}`, value: 'noop', disabled: true, iconName: 'star', meter: pct, sub: 'Achievements' },
-        unlocked.length > 0 && { heading: 'Unlocked' },
-        ...unlocked.map(row),
-        locked.length > 0 && { heading: 'Locked · the most common first' },
-        ...locked.map(row),
-      ].filter(Boolean),
+      subtitle: `${unlocked.length} of ${r.list.length} Achievements  ·  ${score.toLocaleString()} G${r.stale ? '  ·  offline, from the last check' : ''}`,
+      items: [...unlocked.map(row), ...locked.map(row)],
     });
     if (pick == null) break;
   }
@@ -95,13 +92,11 @@ export async function openAchievements() {
     let flip = false;
     const pick = await panel.ask({
       title: 'Achievements',
-      subtitle: installedOnly() ? 'Installed games' : 'All games',
+      subtitle: `${score.toLocaleString()} G  ·  ${unlocked.toLocaleString()} of ${possible.toLocaleString()} Achievements  ·  ${installedOnly() ? 'installed games' : 'all games'}`,
       selected,
       onAction: (action) => { if (action !== 'x') return false; flip = true; panel.cancel(); return true; },
       hints: [{ a: 'x', label: installedOnly() ? 'Show all games' : 'Installed games only' }],
       items: [
-        { label: installedOnly() ? 'Installed Steam games' : 'Steam games', value: 'noop', disabled: true, iconName: 'pad', cls: 'row--achsum',
-          sub: `${unlocked.toLocaleString()} of ${possible.toLocaleString()} Achievements`, hint: score.toLocaleString() },
         ...ids.map((id) => {
           const g = findGame(`steam:${id}`);
           const s = sums[id];

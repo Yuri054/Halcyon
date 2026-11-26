@@ -14,6 +14,7 @@ const steamStore = require('./steam/store');
 const steamClient = require('./steam/client');
 const { PadWatch } = require('./padwatch');
 const sounds = require('./sounds');
+const diary = require('./log');
 const { IMAGE_EXT, expandHome, isDir } = require('./util');
 
 const windowed = process.argv.includes('--windowed');
@@ -141,8 +142,17 @@ if (!app.requestSingleInstanceLock()) {
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
     });
     const menu = gameMenu;
-    menu.once('ready-to-show', () => { if (!menu.isDestroyed()) { menu.show(); menu.focus(); } });
-    menu.on('closed', () => { if (gameMenu === menu) gameMenu = null; });
+    diary.log('guide-over-game: open');
+    let shownAt = 0;
+    menu.once('ready-to-show', () => { if (!menu.isDestroyed()) { menu.show(); menu.focus(); shownAt = Date.now(); diary.log('guide-over-game: shown, focused =', menu.isFocused()); } });
+    menu.on('focus', () => diary.log('guide-over-game: focus'));
+    // If the game takes the screen back, close the Guide straight away: left open behind a
+    // game it would keep the focus, and the game would stop taking input.
+    menu.on('blur', () => {
+      diary.log('guide-over-game: blur after', Date.now() - shownAt, 'ms');
+      setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused()) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 250);
+    });
+    menu.on('closed', () => { diary.log('guide-over-game: closed'); if (gameMenu === menu) gameMenu = null; });
     menu.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     menu.webContents.on('will-navigate', (e) => e.preventDefault());
     menu.loadFile(path.join(__dirname, '../renderer/gamemenu.html'));
@@ -150,7 +160,7 @@ if (!app.requestSingleInstanceLock()) {
     return { ok: true, opened: true };
   }
   const padWatch = new PadWatch({
-    onPress: () => summonGameMenu(),
+    onPress: () => { const r = summonGameMenu(); diary.log('home button (controller):', r); },
     onHold: () => {
       if (!launcher.nowPlaying().some((p) => p.quittable)) return;
       const result = launcher.quit();
@@ -222,7 +232,9 @@ if (!app.requestSingleInstanceLock()) {
     handle('library:rescan', async () => { await rescan(); refreshOwned({ force: true }).catch(() => {}); return { ok: true }; });
 
     handle('game:launch', async (id) => {
+      diary.log('launch:', id);
       const result = await launcher.launch(id);
+      diary.log('launch result:', result);
       if (result.ok) {
         pushLibrary();
       }
@@ -456,6 +468,7 @@ if (!app.requestSingleInstanceLock()) {
       },
     });
     win = w;
+    for (const ev of ['focus', 'blur', 'show', 'hide', 'minimize', 'restore', 'enter-full-screen', 'leave-full-screen']) w.on(ev, () => diary.log(`dashboard window: ${ev}`));
     // Every handler checks it still belongs to the current window: a window that has been
     // replaced (see bringToFront) must not touch settings or state on its way out.
     const current = () => win === w;
@@ -466,6 +479,9 @@ if (!app.requestSingleInstanceLock()) {
     // drop out of fullscreen on its own (a game going fullscreen over it, the desktop
     // rearranging); it goes back in as soon as Halcyon is in front again.
     w.on('focus', () => { if (current() && !windowed && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); });
+    // Pushed out of fullscreen by something else (not F11 or Settings, which change the setting
+    // first): go straight back, so the desktop never shows around the dashboard.
+    w.on('leave-full-screen', () => { if (current() && !windowed && store.data.settings.fullscreen) setTimeout(() => { if (!w.isDestroyed() && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); }, 150); });
     w.on('closed', () => { if (current()) { win = null; closeGameMenu(); } });
     w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     w.webContents.on('will-navigate', (e) => e.preventDefault());
@@ -528,6 +544,7 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
 
+    diary.init(app.getPath('userData'));
     store = new JsonStore(path.join(app.getPath('userData'), 'config.json'), DEFAULTS);
     // Earlier versions saved "not fullscreen" whenever the window merely dropped out of
     // fullscreen; put the setting back on once.
@@ -536,6 +553,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!store.data.fullscreenRepaired) { store.data.settings.fullscreen = true; store.data.fullscreenRepaired = true; store.save(); }
     library = new Library(store);
     launcher = new Launcher(library, (event) => {
+      diary.log('launch event:', event);
       send('launch:event', event);
       syncPadWatch();
       if (event.type === 'exited' && !launcher.nowPlaying().some((p) => p.quittable)) closeGameMenu();

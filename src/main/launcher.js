@@ -7,6 +7,7 @@ const steam = require('./steam/steam');
 const emulators = require('./emulators/emulators');
 const system = require('./system');
 const steamClient = require('./steam/client');
+const diary = require('./log');
 const { expandHome, isDir, HOME } = require('./util');
 
 const EARLY_EXIT_MS = 4000;
@@ -165,7 +166,7 @@ class Launcher {
       const stopFollowing = this.followSteamLaunch(game, launch.appid);
       result.followsSteam = true;
       // Steam can still put its window up while it prepares a game; keep it in the tray.
-      for (const ms of [1200, 3500, 7000]) setTimeout(() => { steamClient.hideMainWindow().catch(() => {}); }, ms).unref();
+      for (const ms of [1200, 3500, 7000]) setTimeout(() => { steamClient.hideMainWindow().then((r) => diary.log(`steam window hide @${ms}ms:`, r)).catch(() => {}); }, ms).unref();
       system.watchSteamApp(launch.appid, {
         onStart: () => {
           stopFollowing();

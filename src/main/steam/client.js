@@ -240,15 +240,18 @@ function installLaunchHooks({ skipShaders: skip }) {
     // Steam's in-game overlay also answers the Home button. Halcyon marks each Home press it
     // handles; an overlay that opens within that moment is put away again at once. Opening it
     // any other way (Shift+Tab) is left alone.
+    if (h.overlay && h.overlayVersion !== 2) { try { h.overlay.unregister(); } catch (e) { /* old listener */ } h.overlay = null; }
     if (!h.overlay) {
+      h.overlayVersion = 2;
       h.overlay = SteamClient.Overlay.RegisterForOverlayActivated((a, b, active, d) => {
         try {
           h.lastOverlay = [a, b, active, d];
           if (active && Date.now() < (h.blockOverlayUntil || 0)) {
             h.blocked = (h.blocked || 0) + 1;
-            setTimeout(() => {
-              for (const id of [b, a]) { try { SteamClient.Overlay.SetOverlayState(String(id), 0); } catch (e) { h.error = String(e); } }
-            }, 30);
+            // Straight away, and once more a frame later in case Steam was still opening it.
+            const hide = () => { for (const id of [b, a]) { try { SteamClient.Overlay.SetOverlayState(String(id), 0); } catch (e) { h.error = String(e); } } };
+            hide();
+            setTimeout(hide, 16);
           }
         } catch (e) { h.error = String(e); }
       });

@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('halcyon', {
     action: call('steam:action'),
     leaveBigPicture: call('steam:leaveBigPicture'),
     openBigPicture: call('steam:openBigPicture'),
+    uninstall: call('steam:uninstall'),
     skipShaders: call('steam:skipShaders'),
     hookStatus: call('steam:hookStatus'),
     setKey: call('steam:setKey'),
@@ -98,6 +99,7 @@ contextBridge.exposeInMainWorld('halcyon', {
     setKey: call('scraper:setKey'),
     run: call('scraper:run'),
   },
+  storage: { info: call('storage:info') },
   system: {
     status: call('system:status'),
     setVolume: call('system:setVolume'),

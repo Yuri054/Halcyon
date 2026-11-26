@@ -312,6 +312,22 @@ class Launcher {
   }
 
   /** Any steam:// page for an app: 'store', 'uninstall', 'install'. */
+  /**
+   * Uninstall a Steam game once Halcyon has asked "are you sure": straight through Steam when
+   * Halcyon can talk to it (no Steam dialog), otherwise Steam's own uninstall prompt.
+   */
+  async uninstallSteamGame(appid) {
+    if (!/^\d+$/.test(String(appid))) return { ok: false, error: 'Unknown game.' };
+    if (process.env.HALCYON_DRY_RUN) { console.log('[dry-run] would uninstall', appid); return { ok: true, dryRun: true, direct: true }; }
+    if (steamClient.enabled(this.library.raw.steam.installs || [])) {
+      const r = await steamClient.uninstallApp(appid);
+      diary.log('uninstall', appid, 'through Steam:', r.ok ? 'started' : r.error);
+      if (r.ok) return { ok: true, direct: true };
+    }
+    const r = await this.steamAction('uninstall', appid);
+    return { ...r, direct: false };
+  }
+
   async steamAction(action, appid) {
     if (action === 'storefront' || action === 'downloads') appid = '';
     else if (!/^\d+$/.test(String(appid)) || !['store', 'uninstall', 'install'].includes(action)) return { ok: false, error: 'Unknown Steam request.' };

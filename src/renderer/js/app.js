@@ -13,6 +13,7 @@ import { createStore } from './views/store.js';
 import { createMedia } from './views/media.js';
 import { nowPlaying, onNowPlaying, stopBackground } from './media/player.js';
 import { openDownloads } from './ui/downloads.js';
+import { openStorage } from './ui/storage.js';
 import { createIntro } from './ui/intro.js';
 import { openGuide, closeGuide, isOpen as guideOpen } from './ui/guide.js';
 import { createHome } from './views/home.js';
@@ -458,7 +459,7 @@ function baseBack(target) {
 // -------------------------------------------------------------------- boot
 
 async function boot() {
-  Object.assign(app, { go, launch, resume: resumeGame, refreshChrome, guide, search: searchGames, downloads: openDownloads });
+  Object.assign(app, { go, launch, resume: resumeGame, refreshChrome, guide, search: searchGames, downloads: openDownloads, storage: openStorage });
   state.lib = await api.library.get();
   applySettings();
 

@@ -10,6 +10,7 @@ import { api, state } from './core/state.js';
 import { app } from './core/bus.js';
 import { openGuide, closeGuide, isOpen as guideOpen } from './ui/guide.js';
 import { openDownloads } from './ui/downloads.js';
+import { openStorage } from './ui/storage.js';
 
 const $ = (id) => document.getElementById(id);
 let staysOpen = false;   // something other than the Guide is using this window
@@ -67,6 +68,7 @@ async function run() {
     launch: (id) => api.dashboard.show({ launch: id }),
     search: () => api.dashboard.show({ search: true }),
     downloads: async (opts) => { staysOpen = true; await openDownloads(opts); api.game.resume(); },
+    storage: async () => { staysOpen = true; await openStorage(); api.game.resume(); },
     refreshChrome: renderHints,
   });
 

@@ -493,6 +493,46 @@ if (!app.requestSingleInstanceLock()) {
     handle('steam:open', () => launcher.openSteam());
     handle('steam:action', (action, appid) => launcher.steamAction(action, appid));
     handle('steam:leaveBigPicture', () => launcher.leaveBigPicture());
+    handle('steam:uninstall', async (appid) => {
+      const r = await launcher.uninstallSteamGame(appid);
+      // Steam removes the files and the manifest; pick that up when it's done.
+      if (r.ok) for (const ms of [4000, 12000, 30000]) setTimeout(() => rescan().catch(() => {}), ms);
+      return r;
+    });
+    // The storage manager: each drive with its free space, and the games on it, largest first.
+    handle('storage:info', () => {
+      const fs = require('fs');
+      const mounts = (() => {
+        try {
+          return fs.readFileSync('/proc/self/mounts', 'utf8').split('\n').map((l) => l.split(' ')).filter((p) => p[1] && p[0].startsWith('/'))
+            .map((p) => p[1].replace(/\\040/g, ' ')).sort((a, b) => b.length - a.length);
+        } catch { return ['/']; }
+      })();
+      const mountOf = (p) => mounts.find((m) => p === m || p.startsWith(m.endsWith('/') ? m : `${m}/`)) || '/';
+      const drives = new Map();
+      const driveFor = (dir) => {
+        const mount = mountOf(dir);
+        if (!drives.has(mount)) {
+          let total = 0; let free = 0;
+          try { const st = fs.statfsSync(mount); total = st.blocks * st.bsize; free = st.bavail * st.bsize; } catch { /* unreadable */ }
+          drives.set(mount, { mount, total, free, folders: new Set(), games: [] });
+        }
+        return drives.get(mount);
+      };
+      const snap = library.snapshot();
+      for (const inst of library.raw.steam.installs || []) {
+        for (const lib of inst.libraries || []) driveFor(lib).folders.add(lib);
+      }
+      for (const g of snap.games) {
+        if (!g.installed || !g.detail || !g.detail.startsWith('/')) continue;
+        const folder = g.source === 'steam' ? g.detail.split('/steamapps/common')[0] : path.dirname(g.detail);
+        const d = driveFor(folder);
+        d.folders.add(folder);
+        d.games.push({ id: g.id, name: g.name, source: g.source, platform: g.platform, size: g.sizeBytes || 0, folder, lastPlayed: g.lastPlayed || 0 });
+      }
+      return [...drives.values()].map((d) => ({ ...d, folders: [...d.folders], games: d.games.sort((a, b) => b.size - a.size) }))
+        .sort((a, b) => b.games.reduce((n, g) => n + g.size, 0) - a.games.reduce((n, g) => n + g.size, 0));
+    });
     // Settings and the Guide: open Steam Big Picture on request (it closes again from the Guide).
     handle('steam:openBigPicture', async () => {
       const done = await launcher.bigPicture(null, { force: true });

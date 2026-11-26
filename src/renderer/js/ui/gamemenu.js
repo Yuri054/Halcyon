@@ -16,6 +16,25 @@ function controllerLabel(g) {
   return { full: 'Full', partial: 'Partial', none: 'None', unknown: g.source === 'steam' ? 'Not checked' : 'Assumed' }[g.controller] || 'Assumed';
 }
 
+/**
+ * Uninstall a Steam game: Halcyon asks "are you sure", then Steam removes it without its own
+ * dialog (when Halcyon can talk to Steam; otherwise Steam's dialog still asks). True if started.
+ */
+export async function uninstallGame(g) {
+  if (!g || g.source !== 'steam') return false;
+  if (isPlaying(g.id)) { toast(`Quit ${g.name} first.`, { type: 'error', title: 'Can’t uninstall a running game' }); return false; }
+  const sure = await confirm({
+    title: `Uninstall ${g.name}?`,
+    subtitle: [g.sizeBytes ? `Frees ${fmt.size(g.sizeBytes)}.` : null, 'Saves kept in Steam Cloud stay; local saves inside the game folder are removed.'].filter(Boolean).join(' '),
+    yes: 'Uninstall', no: 'Keep it', danger: true, iconName: 'trash',
+  });
+  if (!sure) return false;
+  const r = await api.steam.uninstall(g.id.slice(6));
+  if (!r || r.ok === false) { toast(r?.error || 'Steam could not be asked.', { type: 'error', title: 'Couldn’t uninstall' }); return false; }
+  toast(r.direct ? `Steam is removing ${g.name}` : 'Steam will ask once more: confirm there (turn on Download controls to skip this)', { title: 'Uninstalling', iconName: 'trash', ms: 5000 });
+  return true;
+}
+
 async function report(promise, okMessage) {
   const result = await promise;
   if (result && result.ok === false) toast(result.error || 'Something went wrong', { type: 'error' });
@@ -52,7 +71,7 @@ export async function gameMenu(id) {
         g.source === 'steam' && { heading: 'Steam' },
         g.source === 'steam' && g.download && { label: 'Manage download', value: 'download', iconName: 'download', sub: downloadLabel(g.download) },
         g.source === 'steam' && { label: 'View in the Steam store', value: 'steamStore', iconName: 'cloud' },
-        g.source === 'steam' && g.installed && { label: 'Uninstall', value: 'uninstall', iconName: 'trash', danger: true, sub: 'Steam asks before removing anything' },
+        g.source === 'steam' && g.installed && { label: 'Uninstall', value: 'uninstall', iconName: 'trash', danger: true, sub: g.sizeBytes ? `Frees ${fmt.size(g.sizeBytes)}` : null },
         { heading: g.source === 'custom' ? 'Command' : 'Location' },
         { label: g.detail || 'Unknown', value: 'noop', disabled: true },
       ],
@@ -71,7 +90,7 @@ export async function gameMenu(id) {
     }
     if (choice === 'download') { await panel.close(); return app.downloads({ focusApp: g.id.slice(6) }); }
     if (choice === 'steamStore') await report(api.steam.action('store', g.id.slice(6)), 'Opening the store page in Steam');
-    if (choice === 'uninstall') await report(api.steam.action('uninstall', g.id.slice(6)), 'Confirm the uninstall in Steam');
+    if (choice === 'uninstall' && (await uninstallGame(g))) { await panel.close(); return; }
     if (choice === 'fav') await api.game.patch(id, { favorite: !g.favorite });
     if (choice === 'hide') {
       await api.game.patch(id, { hidden: !g.hidden });

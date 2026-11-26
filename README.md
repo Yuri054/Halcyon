@@ -154,6 +154,15 @@ Stop when Download controls are on; if Steam can't be asked, or the game is stil
 seconds later, Halcyon closes the game's processes (found by the `SteamAppId` Steam gives them),
 politely first.
 
+*Uninstall* (a Steam game's options, or the storage manager) asks once, in Halcyon, then has
+Steam remove the game without its own dialog: Halcyon calls what Steam's dialog calls after you
+confirm (`SteamClient.Installs.OpenUninstallWizard`, already confirmed). This needs Download
+controls on; without them Steam's own dialog still asks.
+
+*Storage* (Settings › system, or the Guide) shows each drive with games on it: free space, how
+full it is and what the games take, then that drive's games largest first, with Play and
+Uninstall.
+
 *Steam Big Picture* opens from the Guide and from Settings › steam (*Open Big Picture*); the Guide
 closes it again. *Game start animation* (Settings › display) turns the Halcyon intro that plays
 while a game starts on or off.

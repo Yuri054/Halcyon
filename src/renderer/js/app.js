@@ -232,12 +232,17 @@ async function installGame(g) {
       return;
     }
     if (r.steamAsks) toast(r.steamAsks === 'eula' ? 'This game has a licence agreement: accept it in Steam to start the download.' : 'Steam needs something from you to install this game: answer in Steam.', { title: `Installing ${g.name}`, iconName: 'download', ms: 8000 });
-    else toast(r.required ? `Downloading ${size(r.required)}. Progress shows on the game’s tile and in Downloads.` : 'Downloading. Progress shows on the game’s tile and in Downloads.', { title: `Installing ${g.name}`, iconName: 'download', ms: 6000 });
+    else toast(r.required ? `Downloading ${size(r.required)}` : 'Downloading', { title: `Installing ${g.name}`, iconName: 'download', ms: 4000 });
+    // Straight to the download viewer, on this game (Steam takes a moment to queue it).
+    setTimeout(() => openDownloads({ focusApp: appid }), r.steamAsks ? 6000 : 1200);
     return;
   }
   const result = await api.game.launch(g.id);
   if (!result.ok) toast(result.error || 'Steam could not be asked to install this game.', { type: 'error', title: `Couldn’t install ${g.name}` });
-  else toast('Confirm the install in Steam. Progress will show on the game’s tile.', { title: `Installing ${g.name}`, iconName: 'download', ms: 6000 });
+  else {
+    toast('Confirm the install in Steam, then the download shows here.', { title: `Installing ${g.name}`, iconName: 'download', ms: 6000 });
+    if (appid) setTimeout(() => openDownloads({ focusApp: appid }), 8000);
+  }
 }
 
 /** Back to a game that is still running: Halcyon steps aside and the game has the screen. */

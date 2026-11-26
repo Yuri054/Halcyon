@@ -1,6 +1,6 @@
 // Home: the dashboard. Featured game, recents, favorites and quick tiles.
 import { h } from '../core/dom.js';
-import { state, visibleGames, sortGames, game as findGame, gameContext, fmt } from '../core/state.js';
+import { state, visibleGames, sortGames, game as findGame, gameContext, fmt, isPlaying } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { gameTile, actionTile } from '../ui/tile.js';
 import { gameMenu, editCustomGame } from '../ui/gamemenu.js';
@@ -33,13 +33,16 @@ export function createHome() {
     };
     const used = new Set();
     const take = (list) => { const g = list.find((x) => !used.has(x.id)); if (g) used.add(g.id); return g; };
-    const play = take(recent);
+    // A game still running takes the top-left tile: "Resume <game>" puts it back on screen.
+    const running = [...state.playing].reverse().map((p) => findGame(p.id)).find(Boolean);
+    if (running) used.add(running.id);
+    const play = running || take(recent);
     const feature = take(recent);
     const under = [take(recent), take(recent)];
     const side = [take(favorites) || take(recent), take(favorites) || take(recent), take(recent)];
 
     const grid = h('div', { class: 'metro' },
-      pic(play, 'a1', play ? `Play ${play.name}` : null)
+      pic(play, 'a1', play ? `${running ? 'Resume' : 'Play'} ${play.name}` : null)
         || at(actionTile({ key: 'm:browse', label: 'Find a game', iconName: 'grid', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'all', enter: true }) }), 'a1'),
       at(actionTile({ key: 'm:pins', label: 'Favorites', iconName: 'star', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'favorites', enter: true }) }), 'a2'),
       at(actionTile({ key: 'm:recent', label: 'Recent', iconName: 'clock', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'recent', enter: true }) }), 'a3'),
@@ -72,8 +75,9 @@ export function createHome() {
     // The dashboard is for what can be played right now; uninstalled games live under Games.
     const games = all.filter((g) => g.installed);
     const recent = sortGames(games, 'recent');
-    const featured = recent[0];
-    const next = recent.slice(1, 7);
+    const running = [...state.playing].reverse().map((p) => findGame(p.id)).find(Boolean);
+    const featured = running || recent[0];
+    const next = recent.filter((g) => g !== featured).slice(0, 6);
     const favorites = games.filter((g) => g.favorite && g !== featured).slice(0, 6);
     const emulated = games.filter((g) => g.source === 'emulator').length;
     const steam = games.filter((g) => g.source === 'steam').length;
@@ -81,7 +85,7 @@ export function createHome() {
     const blocks = [];
 
     if (featured) {
-      blocks.push(block(featured.lastPlayed ? 'jump back in' : 'start playing', 'block--hero', [gameTile(featured, 'hero', i++)]));
+      blocks.push(block(running ? 'playing now' : featured.lastPlayed ? 'jump back in' : 'start playing', 'block--hero', [gameTile(featured, 'hero', i++)]));
     } else {
       blocks.push(block('welcome', 'block--hero', [actionTile({
         key: 'empty', size: 'hero', iconName: 'pad', label: 'No games found yet',
@@ -127,7 +131,7 @@ export function createHome() {
     hints(target) {
       if (target?.dataset.game) {
         const g = findGame(target.dataset.game);
-        return [{ a: 'accept', label: g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' }];
+        return [{ a: 'accept', label: isPlaying(g?.id) ? 'Resume' : g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' }];
       }
       return [{ a: 'accept', label: 'Open' }];
     },

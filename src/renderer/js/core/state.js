@@ -7,7 +7,10 @@ export const state = {
   filter: 'all',
   query: '',
   pads: [],
+  playing: [],   // games running now: [{ id, name, quittable }]
 };
+/** Is this game running right now (so A resumes it rather than starting it again)? */
+export const isPlaying = (id) => state.playing.some((p) => p.id === id);
 
 export const SORTS = [
   ['recent', 'Recently played'],

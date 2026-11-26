@@ -4,7 +4,7 @@ import { h, icon, flash } from './core/dom.js';
 import * as focus from './core/focus.js';
 import * as input from './core/input.js';
 import { sfx, setEnabled as setSounds, setPack } from './core/sfx.js';
-import { api, state, game as findGame } from './core/state.js';
+import { api, state, game as findGame, isPlaying } from './core/state.js';
 import { app, wait } from './core/bus.js';
 import { setBackdrop, artImg, fallbackArt } from './ui/art.js';
 import { toast } from './ui/toast.js';
@@ -204,9 +204,34 @@ async function installGame(g) {
   else toast('Confirm the install in Steam. Progress will show on the game’s tile.', { title: `Installing ${g.name}`, iconName: 'download', ms: 6000 });
 }
 
+/** Back to a game that is still running: Halcyon steps aside and the game has the screen. */
+async function resumeGame(id) {
+  const p = state.playing.find((x) => x.id === id) || state.playing[state.playing.length - 1];
+  if (!p) return;
+  sfx.select();
+  toast(`Back to ${p.name}`, { iconName: 'play', ms: 1500 });
+  await api.game.resume();
+}
+
+/** What is running now; the home screen offers to resume it. */
+async function refreshPlaying() {
+  const st = await api.system.status().catch(() => null);
+  const list = (st?.nowPlaying || []).map(({ id, name, quittable }) => ({ id, name, quittable }));
+  const changed = JSON.stringify(list) !== JSON.stringify(state.playing);
+  state.playing = list;
+  if (changed && state.section === 'home' && views.home) {
+    const key = focus.base().current?.dataset.key;
+    views.home.render();
+    const again = focus.byKey(views.home.el, key);
+    if (again) focus.focus(again, { layer: focus.base(), scroll: false });
+    if (focus.top() === focus.base()) refreshChrome();
+  }
+}
+
 async function launch(id) {
   const g = findGame(id);
   if (!g || launchUi) return;
+  if (isPlaying(id)) { resumeGame(id); return; }
   if (!g.installed) { installGame(g); return; }
   stopBackground();   // music playing in the background stops when a game starts
 
@@ -433,7 +458,7 @@ function baseBack(target) {
 // -------------------------------------------------------------------- boot
 
 async function boot() {
-  Object.assign(app, { go, launch, refreshChrome, guide, search: searchGames, downloads: openDownloads });
+  Object.assign(app, { go, launch, resume: resumeGame, refreshChrome, guide, search: searchGames, downloads: openDownloads });
   state.lib = await api.library.get();
   applySettings();
 
@@ -503,7 +528,9 @@ async function boot() {
     if (focus.top() === baseLayer) refreshChrome(); else renderContext();
   });
 
+  refreshPlaying();
   api.on('launch:event', (event) => {
+    if (['started', 'exited', 'detached', 'failed'].includes(event.type)) setTimeout(refreshPlaying, 300);
     if (event.type === 'failed') {
       closeLaunchUi();
       toast(event.error, { type: 'error', title: 'Launch failed' });
@@ -528,6 +555,7 @@ async function boot() {
 
   // When a game takes focus and later gives it back, drop the "now playing" card.
   api.on('window:focus', (focused) => {
+    if (focused) refreshPlaying();
     // Ambient animation rests while a game has the screen.
     document.body.classList.toggle('is-away', !focused);
     if (focused) lastActivity = performance.now();

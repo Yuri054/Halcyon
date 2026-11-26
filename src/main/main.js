@@ -658,7 +658,7 @@ if (!app.requestSingleInstanceLock()) {
     w.on('focus', () => { if (current() && !windowed && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); });
     // Pushed out of fullscreen by something else (not F11 or Settings, which change the setting
     // first): go straight back, so the desktop never shows around the dashboard.
-    w.on('leave-full-screen', () => { if (current() && !moving && !windowed && store.data.settings.fullscreen) setTimeout(() => { if (!w.isDestroyed() && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); }, 150); });
+    w.on('leave-full-screen', () => { if (current() && !moving && !windowed && store.data.settings.fullscreen) setTimeout(() => { if (!w.isDestroyed() && !w.isMinimized() && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); }, 150); });
     w.on('closed', () => { if (current()) { win = null; closeGameMenu(); dropSpare(); } });
     w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     w.webContents.on('will-navigate', (e) => e.preventDefault());

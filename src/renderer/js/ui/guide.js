@@ -113,7 +113,8 @@ export async function openGuide({ select = null } = {}) {
       const busy = dl ? dl.queue.length + dl.scheduled.length + dl.waiting.length + (dl.active ? 1 : 0) : 0;
       return [
         ...playing.flatMap((p) => {
-          if (!p.quittable) return [{ label: p.name, disabled: true, key: `np:${p.id}`, sub: 'Playing through Steam' }];
+          // Steam's games can't be closed from here, but they can be gone back to.
+          if (!p.quittable) return [{ label: `Resume ${p.name}`, value: `resume:${p.id}`, key: `resume:${p.id}`, iconName: 'play', verb: 'Resume', sub: 'Playing through Steam' }];
           return [
             { label: `Resume ${p.name}`, value: `resume:${p.id}`, key: `resume:${p.id}`, iconName: 'play', verb: 'Resume' },
             { label: 'Quit game', value: `quit:${p.id}`, key: `quit:${p.id}`, iconName: 'exit', danger: true, verb: 'Quit' },

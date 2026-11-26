@@ -5,7 +5,7 @@ import { h, icon, flash } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import {
   api, state, SORTS, visibleGames, filterGames, filterLabel, sortGames, search,
-  game as findGame, gameContext, fmt, padSupport,
+  game as findGame, gameContext, fmt, padSupport, isPlaying,
 } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { gameTile } from '../ui/tile.js';
@@ -179,7 +179,7 @@ export function createGames() {
     hints(target) {
       if (target?.dataset.game) {
         const g = findGame(target.dataset.game);
-        return [{ a: 'accept', label: g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' },
+        return [{ a: 'accept', label: isPlaying(g?.id) ? 'Resume' : g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' },
           { a: 'lt', b: 'rt', label: 'Page' }, { a: 'start', label: 'Search' }];
       }
       return [{ a: 'accept', label: 'Select' }, { a: 'lt', b: 'rt', label: 'Show' }, { a: 'start', label: 'Search' }];

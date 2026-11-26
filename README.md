@@ -136,6 +136,13 @@ TVs and receivers only (outputs that report more than plain stereo); tick or unt
 the setting. The monitor on each output is read from the graphics card (`amixer`'s ELD data), as
 PipeWire's own labels for these outputs can name the wrong screen.
 
+## Going back to a game
+
+Leave a game for the dashboard (Guide › *Halcyon Home*) and it keeps running. While it does, the
+home screen's top-left tile becomes *Resume <game>*, its tile anywhere says *Resume* instead of
+*Play*, and the Guide lists *Resume <game>* (Steam games too). Any of these puts Halcyon aside and
+the game back on screen instead of starting it again.
+
 ## Sections
 
 The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,

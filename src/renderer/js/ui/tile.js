@@ -40,9 +40,9 @@ export function patchProgress(id, download) {
 export function gameTile(game, variant = 'cover', index = 0) {
   const portrait = variant === 'cover';
   const urls = portrait ? game.art.cover : (game.art.hero.length ? game.art.hero : game.art.cover);
-  const body = h('div', { class: 'tile__body' },
-    fallbackArt(game),
-    artImg(urls, 'tile__img', { lazy: variant !== 'hero' }));
+  const img = artImg(urls, 'tile__img', { lazy: variant !== 'hero' });
+  if (img && !portrait) applyCrop(img, game.bgCrop);
+  const body = h('div', { class: 'tile__body' }, fallbackArt(game), img);
 
   if (!portrait) {
     const logo = artImg(game.art.logo, 'tile__logo', { lazy: false });
@@ -70,6 +70,16 @@ export function gameTile(game, variant = 'cover', index = 0) {
     'data-game': game.id,
     style: { '--i': Math.min(index, 22) },
   }, body);
+}
+
+/** Place a background in a wide box as the person chose: crop { x, y } is the point kept in view (%), z the zoom. */
+export function applyCrop(img, crop) {
+  if (!img) return;
+  if (!crop) { img.style.objectPosition = ''; img.style.transform = ''; img.style.transformOrigin = ''; return; }
+  const z = Math.max(1, crop.z || 1);
+  img.style.objectPosition = `${crop.x}% ${crop.y}%`;
+  img.style.transformOrigin = `${crop.x}% ${crop.y}%`;
+  img.style.transform = z > 1 ? `scale(${z})` : '';
 }
 
 /** Flat coloured tile with an icon — navigation and actions. */

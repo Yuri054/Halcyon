@@ -214,6 +214,12 @@ score adds both. A ROM in your library whose title matches a RetroAchievements g
 for the list's installed-only view. Unlocks refresh every few hours and after you close an
 emulated game.
 
+## Adjusting a background
+
+*Adjust background* in a game's options (Y) moves and zooms its background to fit the home
+screen's tiles: the d-pad or stick picks the part that stays in view, LT/RT zoom, and the feature,
+wide and narrow tile shapes update as you go. A saves, Y returns to automatic, B cancels.
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

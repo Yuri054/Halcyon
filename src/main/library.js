@@ -143,6 +143,7 @@ class Library {
         installed: g.installed !== false,
         download: g.download || null,
         hasCustomArt: Boolean(o.cover || o.background),
+        bgCrop: o.bgCrop || null,   // how the background sits in wide tiles: { x, y (focus, %), z (zoom) }
         hasScrapedArt: Boolean(sc.cover || sc.background),
         controller,
         controllerOverride: o.controller || null,

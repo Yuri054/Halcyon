@@ -9,6 +9,7 @@ import { toast } from './toast.js';
 import { artImg, fallbackArt } from './art.js';
 import { openGameAchievements, openRetroAchievements, achievementLine, retroFor } from './achievements.js';
 import { chooseArtwork } from './artpicker.js';
+import { cropBackground } from './cropper.js';
 
 const cover = (g) => h('div', { class: 'panel__art' }, fallbackArt(g), artImg(g.art.cover, 'panel__art-img', { lazy: false }));
 
@@ -65,6 +66,7 @@ export async function gameMenu(id) {
         { heading: 'Customize' },
         { label: 'Set cover art', value: 'cover', iconName: 'image' },
         { label: 'Set background', value: 'background', iconName: 'screen' },
+        (g.art.hero.length > 0 || g.art.cover.length > 0) && { label: 'Adjust background', value: 'crop', iconName: 'image', verb: 'Adjust', hint: g.bgCrop ? 'Custom' : '', sub: 'Move and zoom it to fit the home screen’s tiles' },
         { label: 'Choose artwork', value: 'pickArt', iconName: 'image', verb: 'Browse', sub: state.lib.scraper.hasKey ? 'Pick a cover and background from SteamGridDB' : 'Needs a SteamGridDB key, under Settings' },
         { label: 'Find artwork automatically', value: 'scrape', iconName: 'download', sub: state.lib.scraper.hasKey ? 'SteamGridDB’s top pick' : 'Needs a SteamGridDB key, under Settings' },
         g.hasCustomArt && { label: 'Reset artwork', value: 'resetArt', iconName: 'refresh' },
@@ -109,6 +111,7 @@ export async function gameMenu(id) {
       const file = await browse({ mode: 'image', title: choice === 'cover' ? 'Choose cover art' : 'Choose a background', start: '~/Pictures' });
       if (file) await api.game.patch(id, { [choice]: file });
     }
+    if (choice === 'crop') await cropBackground(id);
     if (choice === 'pickArt') {
       if (!state.lib.scraper.hasKey) toast('Add your SteamGridDB API key under Settings › artwork first.', { type: 'error', title: 'No API key' });
       else await chooseArtwork(id, 'cover');
@@ -129,7 +132,7 @@ export async function gameMenu(id) {
         break;
       }
     }
-    if (choice === 'resetArt') await api.game.patch(id, { cover: null, background: null });
+    if (choice === 'resetArt') await api.game.patch(id, { cover: null, background: null, bgCrop: null });
     if (choice === 'rename') {
       const name = await keyboard({ title: 'Rename game', value: g.name, placeholder: g.originalName });
       if (name != null) await api.game.patch(id, { name: name.trim() === g.originalName ? null : name.trim() });

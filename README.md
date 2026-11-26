@@ -179,6 +179,17 @@ or backgrounds with LT/RT), and the one you pick becomes the game's picture (ove
 before). Y picks a different SteamGridDB game when the match is wrong. *Find artwork
 automatically* still takes SteamGridDB's top pick in one step.
 
+## RetroAchievements
+
+Settings › library › *RetroAchievements* signs in with your RetroAchievements username and the
+Web API key from retroachievements.org › Settings (it stays on this computer). Every game you've
+played there joins the Achievements list next to your Steam games, with its console and real
+RetroAchievements points (Steam games count 1,000 G each, shared among their achievements); the
+score adds both. A ROM in your library whose title matches a RetroAchievements game (region tags,
+"The" and punctuation aside) gets a *RetroAchievements* row in its options and counts as installed
+for the list's installed-only view. Unlocks refresh every few hours and after you close an
+emulated game.
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

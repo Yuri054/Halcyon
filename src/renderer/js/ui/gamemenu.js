@@ -7,7 +7,7 @@ import { keyboard } from './osk.js';
 import { browse } from './browser.js';
 import { toast } from './toast.js';
 import { artImg, fallbackArt } from './art.js';
-import { openGameAchievements, achievementLine } from './achievements.js';
+import { openGameAchievements, openRetroAchievements, achievementLine, retroFor } from './achievements.js';
 import { chooseArtwork } from './artpicker.js';
 
 const cover = (g) => h('div', { class: 'panel__art' }, fallbackArt(g), artImg(g.art.cover, 'panel__art-img', { lazy: false }));
@@ -59,6 +59,8 @@ export async function gameMenu(id) {
         isPlaying(g.id) && { label: 'Quit game', value: 'quitgame', iconName: 'exit', danger: true, sub: 'Anything the game has not saved will be lost' },
         { label: isPlaying(g.id) ? 'Resume' : g.installed ? 'Play' : 'Install', value: 'play', iconName: g.installed ? 'play' : 'download', sub: g.status || (g.download ? downloadLabel(g.download) : !g.installed ? 'Steam will ask where to put it' : null) },
         g.source === 'steam' && { label: 'Achievements', value: 'achievements', iconName: 'star', hint: achievementLine(g.id.slice(6)) || '', verb: 'Open' },
+        retroFor(g) && { label: 'RetroAchievements', value: 'retroach', iconName: 'star', verb: 'Open',
+          hint: (() => { const r = (state.lib.retroGames || {})[retroFor(g)]; return r ? `${r.unlocked} / ${r.total}` : ''; })() },
         { label: g.favorite ? 'Remove from favorites' : 'Add to favorites', value: 'fav', iconName: g.favorite ? 'starFill' : 'star' },
         { heading: 'Customize' },
         { label: 'Set cover art', value: 'cover', iconName: 'image' },
@@ -85,6 +87,7 @@ export async function gameMenu(id) {
 
     if (choice === 'play') { await panel.close(); return app.launch(id); }
     if (choice === 'achievements') await openGameAchievements(g.id.slice(6), panel);
+    if (choice === 'retroach') await openRetroAchievements(retroFor(g), panel);
     if (choice === 'quitgame') {
       if (!(await confirm({ title: `Quit ${g.name}?`, subtitle: 'Anything the game has not saved will be lost.', yes: 'Quit game', no: 'Keep it running', danger: true, iconName: 'exit' }))) continue;
       await panel.close();

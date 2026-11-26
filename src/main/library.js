@@ -168,6 +168,8 @@ class Library {
       scraper: { hasKey: Boolean(cfg.secrets.sgdbKey) },
       steamProfile: (() => { try { const p = steam.profile(cfg.steam.extraRoots); return p ? { name: p.name, avatar: p.avatar ? mediaUrl(p.avatar) : null } : null; } catch { return null; } })(),
       achievements: cfg.achievements || {},
+      retroGames: cfg.retroGames || {},
+      retro: cfg.retro ? { user: cfg.retro.user, at: cfg.retro.at || 0 } : null,
       steamAccount: { hasKey: Boolean(cfg.secrets.steamKey), owned: ((cfg.steamOwned && cfg.steamOwned.games) || []).length, at: (cfg.steamOwned && cfg.steamOwned.at) || 0 },
       ui: cfg.ui,
     };

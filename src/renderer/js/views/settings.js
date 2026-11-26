@@ -125,6 +125,32 @@ export function createSettings() {
     }
   }
 
+  /** RetroAchievements: sign in (username and Web API key), refresh or sign out. */
+  async function retroMenu() {
+    const ra = state.lib.retro;
+    const pick = await menu({
+      title: 'RetroAchievements',
+      subtitle: ra ? `Signed in as ${ra.user}` : 'Your username and the Web API key from retroachievements.org › Settings',
+      items: ra ? [
+        { label: 'Refresh now', value: 'sync', iconName: 'refresh', sub: 'Fetch your latest unlocks' },
+        { label: 'Sign out', value: 'out', iconName: 'exit', danger: true },
+      ] : [
+        { label: 'Sign in', value: 'in', iconName: 'login', sub: 'Username, then Web API key' },
+      ],
+    });
+    if (pick === 'in') {
+      const user = await keyboard({ title: 'RetroAchievements username', placeholder: 'Username' });
+      if (!user || !user.trim()) return;
+      const key = await keyboard({ title: 'RetroAchievements Web API key', placeholder: 'From retroachievements.org › Settings › Keys', secret: true });
+      if (!key || !key.trim()) return;
+      const r = await api.retro.signIn(user, key);
+      if (!r.ok) { toast(r.error, { type: 'error', title: 'RetroAchievements' }); return; }
+      toast(`Signed in as ${r.user}. Your games are on their way.`, { title: 'RetroAchievements', iconName: 'star' });
+    }
+    if (pick === 'sync') { const r = await api.retro.sync(); if (r && r.ok === false && r.error) toast(r.error, { type: 'error', title: 'RetroAchievements' }); else toast(`${r?.games ?? 0} games with achievements`, { title: 'RetroAchievements', iconName: 'refresh' }); }
+    if (pick === 'out') { await api.retro.signOut(); toast('Signed out', { title: 'RetroAchievements' }); }
+  }
+
   async function pickMonitor() {
     const list = await api.system.displays().catch(() => []);
     const cur = state.lib.settings.monitor || '';
@@ -178,6 +204,9 @@ export function createSettings() {
           tip: 'Uses Steam’s store listing. Change a single game from its options menu; hidden ones are under Collections › No controller.' }),
         row({ key: 'showHidden', label: 'Show hidden games', iconName: 'eyeOff', toggle: s.showHidden, onSelect: () => set({ showHidden: !s.showHidden }) }),
         row({ key: 'systems', label: 'Emulators and ROM folders', iconName: 'chip', onSelect: () => app.go('systems', { enter: true }) }),
+        row({ key: 'retro', label: 'RetroAchievements', iconName: 'star', value: state.lib.retro ? state.lib.retro.user : 'Not signed in', onSelect: retroMenu,
+          sub: state.lib.retro ? `${Object.keys(state.lib.retroGames || {}).length} games with achievements` : null,
+          tip: 'Achievements from retroachievements.org for emulated games. Sign in with your username and the Web API key from your RetroAchievements settings page; the key stays on this computer.' }),
       ]),
       card('artwork', [
         row({ key: 'remoteArt', label: 'Use Steam’s artwork server', iconName: 'image', toggle: s.remoteArt, onSelect: () => set({ remoteArt: !s.remoteArt }), tip: 'Fetches Steam covers from Steam’s CDN when they are not cached locally' }),

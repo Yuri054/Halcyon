@@ -929,3 +929,33 @@ body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .g
 [data-theme='x360'] .view--games .tools .chip.is-active { background: #fff; box-shadow: inset 0 -0.2rem 0 var(--x-tile-green); }
 [data-theme='x360'] .view--games .tools .chip.is-focused { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); color: #fff; }
 [data-theme='x360'] .view--games .tools .chip.is-focused .icon { color: #fff; }
+
+/* Downloads: the details beside the list are the 360's (other themes keep just the list). */
+.dlview { display: none; }
+[data-theme='x360'] .layer--downloads .dlview {
+  display: flex; flex-direction: column; gap: 1.4rem; position: absolute; z-index: 2;
+  top: 14.5rem; left: calc(var(--gutter) + 48rem + 3rem); right: var(--gutter); max-width: 52rem;
+  color: #fff; animation: fade 0.25s ease both;
+}
+[data-theme='x360'] .layer--downloads.is-closing .dlview { animation: fadeOut 0.16s ease both; }
+[data-theme='x360'] .dlview__art { position: relative; width: 100%; aspect-ratio: 460 / 215; overflow: hidden; background: rgba(255, 255, 255, 0.12); display: grid; place-items: center; box-shadow: 0 0.8rem 2.4rem rgba(0, 0, 0, 0.35); }
+[data-theme='x360'] .dlview__icon { width: 4rem; height: 4rem; opacity: 0.6; }
+[data-theme='x360'] .dlview__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s ease; }
+[data-theme='x360'] .dlview__img.is-loaded { opacity: 1; }
+[data-theme='x360'] .dlview__text { display: flex; flex-direction: column; gap: 0.5rem; }
+[data-theme='x360'] .dlview__status { font-size: 1.3rem; color: #a8e07c; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .dlview.is-paused .dlview__status { color: #e6e6e6; }
+[data-theme='x360'] .dlview__name { font-size: 2.3rem; font-weight: 300; line-height: 1.15; text-shadow: 0 0.1rem 0.35rem rgba(0, 0, 0, 0.35); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+[data-theme='x360'] .dlview__pct { font-size: 4.4rem; font-weight: 200; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .dlview__pct:empty { display: none; }
+[data-theme='x360'] .dlview__bar { position: relative; height: 0.85rem; background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); overflow: hidden; }
+[data-theme='x360'] .dlview__bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); transition: width 0.9s linear; }
+[data-theme='x360'] .dlview.is-paused .dlview__bar i { background: #bdbdbd; }
+[data-theme='x360'] .dlview__line { font-size: 1.15rem; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; min-height: 1.4em; }
+/* The list: the panel's light box, a slim card for the game downloading now. */
+[data-theme='x360'] .layer--downloads .panel__title { text-transform: none; }
+[data-theme='x360'] .layer--downloads .dlcard--compact .dlcard__art { width: 7.2rem; }
+[data-theme='x360'] .layer--downloads .dlcard__pct { color: #3c3c3c; font-weight: 400; }
+[data-theme='x360'] .layer--downloads .row.is-focused .dlcard__pct, [data-theme='x360'] .layer--downloads .row.is-focused .dlcard__title { color: #fff; }
+[data-theme='x360'] .layer--downloads .row__meter { height: 0.4rem; background: rgba(0, 0, 0, 0.14); }
+[data-theme='x360'] .layer--downloads .row__meter i { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); }

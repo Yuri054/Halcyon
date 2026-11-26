@@ -192,6 +192,8 @@ function connect(timeout = 4000) {
             await sync();
             return { outputs: [...t.outputs].map((id) => outputs.get(id)?.name).filter(Boolean), fullscreen: t.fullscreen };
           },
+          /** Keep the connection's view current (new windows, their states). */
+          refresh: () => sync(),
           /** Move a window to an output's showing workspace, fullscreen it there, and wait until it is. */
           async moveTo(t, outputId, { fullscreen = true, wait = 2500 } = {}) {
             const h = await handleOf(t);
@@ -257,4 +259,41 @@ async function windowOutputs(title, appId = null) {
   } catch { return []; } finally { if (c) c.close(); }
 }
 
-module.exports = { available, connect, moveWindow, windowOutputs };
+/**
+ * While a game starts, bring every new window to the screen Halcyon is on: COSMIC opens new
+ * windows on the screen the pointer is on, which isn't Halcyon's after Halcyon has moved.
+ * Fullscreen windows stay fullscreen there. Returns { stop }; it also stops by itself after ms.
+ */
+async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = () => {} } = {}) {
+  if (!available() || !port) return { stop() {} };
+  let c;
+  try { c = await connect(); } catch { return { stop() {} }; }
+  const out = c.outputs().find((o) => o.name === port);
+  if (!out) { c.close(); return { stop() {} }; }
+  const known = new Set(c.toplevels().map((t) => t.id));
+  let stopped = false;
+  const stop = () => { if (!stopped) { stopped = true; c.close(); } };
+  const end = Date.now() + ms;
+  (async () => {
+    while (!stopped && Date.now() < end) {
+      await sleep(400);
+      if (stopped) break;
+      try {
+        await c.refresh();
+        for (const t of c.toplevels()) {
+          if (known.has(t.id) || !t.title) continue;
+          if (skipTitles.includes(t.title)) { known.add(t.id); continue; }
+          known.add(t.id);
+          const now = await c.where(t);
+          if (now.outputs.length === 1 && now.outputs[0] === port) continue;
+          const moved = await c.moveTo(t, out.id, { fullscreen: now.fullscreen, wait: 1500 });
+          onMove({ title: t.title, from: now.outputs, to: port, ok: moved });
+        }
+      } catch { stop(); }
+    }
+    stop();
+  })();
+  return { stop };
+}
+
+module.exports = { available, connect, moveWindow, windowOutputs, followNewWindows };

@@ -357,6 +357,25 @@ if (!app.requestSingleInstanceLock()) {
     store.flush();
   }
 
+  // ---- a starting game opens on Halcyon's screen. COSMIC puts new windows on the screen the
+  // pointer is on, which isn't Halcyon's after Halcyon has been moved (until you click there),
+  // so for a while after a launch every new window is brought over to Halcyon's screen.
+  let following = null;
+  function stopFollowing() { if (following) { following.stop(); following = null; } }
+  async function followGameToHalcyon(id) {
+    stopFollowing();
+    if (!cosmicWindows.available() || process.env.HALCYON_DRY_RUN) return;
+    const d = await dashboardDisplay().catch(() => null);
+    const port = d && portOf(d.label);
+    if (!port) return;
+    following = await cosmicWindows.followNewWindows(port, {
+      ms: 90000,
+      skipTitles: [DASHBOARD_TITLE, 'Halcyon game menu', 'Halcyon Guide'],
+      onMove: (m) => diary.log(`game window "${m.title}" moved from ${m.from.join(', ') || '?'} to ${m.to}${m.ok ? '' : ' (not confirmed)'}`),
+    });
+    diary.log(`launch ${id}: new windows follow Halcyon to ${port}`);
+  }
+
   // ---- the Guide (in its own window over a game) asks the dashboard to take over
   let pendingNav = null;
   async function showDashboard(nav) {
@@ -384,7 +403,9 @@ if (!app.requestSingleInstanceLock()) {
 
     handle('game:launch', async (id) => {
       diary.log('launch:', id);
+      await followGameToHalcyon(id);
       const result = await launcher.launch(id);
+      if (!result.ok) stopFollowing();
       diary.log('launch result:', result);
       if (result.ok) {
         pushLibrary();
@@ -847,6 +868,7 @@ if (!app.requestSingleInstanceLock()) {
     jellyfin = new Jellyfin(store);
     launcher = new Launcher(library, (event) => {
       diary.log('launch event:', event);
+      if (event.type === 'exited' || event.type === 'failed') stopFollowing();
       send('launch:event', event);
       syncPadWatch();
       if (event.type === 'exited' && !launcher.nowPlaying().some((p) => p.quittable)) closeGameMenu();

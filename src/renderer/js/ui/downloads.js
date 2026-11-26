@@ -240,10 +240,76 @@ const shape = (m) => JSON.stringify([m.connected, m.enabled, m.paused, m.active 
   m.finished.map((i) => i.appid), m.waiting.map((g) => g.id), m.error]);
 
 /** focusApp: appid to start on, when opened from a game. */
+/**
+ * The details beside the list (360 theme): the selected download's art, where it's at, a big
+ * percentage and bar, and its size / speed / time left. show(info) with { appid, name, state,
+ * percent, line } or null.
+ */
+function detailPane() {
+  const art = h('div', { class: 'dlview__art' });
+  const status = h('div', { class: 'dlview__status' });
+  const name = h('div', { class: 'dlview__name' });
+  const pct = h('div', { class: 'dlview__pct' });
+  const fill = h('i');
+  const bar = h('div', { class: 'dlview__bar' }, fill);
+  const line = h('div', { class: 'dlview__line' });
+  const el = h('div', { class: 'dlview' }, art, h('div', { class: 'dlview__text' }, status, name, pct, bar, line));
+  let shownArt = null;
+  function show(info) {
+    el.classList.toggle('is-empty', !info);
+    if (!info) {
+      shownArt = null;
+      art.replaceChildren(icon('download', 'dlview__icon'));
+      status.textContent = 'all caught up';
+      name.textContent = 'Nothing is downloading';
+      pct.textContent = ''; fill.style.width = '0%'; line.textContent = '';
+      return;
+    }
+    if (info.appid !== shownArt) {
+      shownArt = info.appid;
+      art.replaceChildren(icon('download', 'dlview__icon'), artImg(artFor(info.appid), 'dlview__img', { lazy: false }) || '');
+    }
+    el.classList.toggle('is-paused', /paus/i.test(info.state || ''));
+    status.textContent = (info.state || '').toLowerCase();
+    name.textContent = info.name;
+    pct.textContent = info.percent != null ? `${info.percent}%` : '';
+    bar.hidden = info.percent == null;
+    fill.style.width = `${info.percent || 0}%`;
+    line.textContent = info.line || '';
+  }
+  return { el, show };
+}
+
+/** What the details show for a list entry (its value), from the model. */
+function detailFor(m, value) {
+  const appid = value && /^(item|sched|queue|clear):(\d+)$/.exec(value)?.[2];
+  if (!appid || (m.active && m.active.appid === appid)) return m.active;
+  const g = findGame(`steam:${appid}`);
+  const d = g?.download;
+  if (value.startsWith('clear:')) return { appid, name: nameOf(appid), state: 'Finished', percent: 100, line: g?.sizeBytes ? bytes(g.sizeBytes) : '' };
+  if (value.startsWith('sched:')) return { appid, name: nameOf(appid), state: 'Update scheduled', percent: null, line: scheduledText(m.scheduled.find((i) => i.appid === appid)?.when) };
+  if (value.startsWith('queue:')) return { appid, name: nameOf(appid), state: 'Update ready', percent: null, line: 'Select to download it now' };
+  const n = m.queue.findIndex((i) => i.appid === appid);
+  const item = m.queue[n];
+  return {
+    appid, name: nameOf(appid), state: item?.paused ? 'Paused' : `Up next · #${n + 1}`,
+    percent: d && d.percent > 0 ? d.percent : null, line: d?.total ? `${bytes(d.done)} of ${bytes(d.total)}` : '',
+  };
+}
+
 export async function openDownloads({ focusApp = null } = {}) {
   const panel = openPanel();
   panel.el.classList.add('layer--downloads');
-  const card = downloadCard();
+  const x360 = document.body.dataset.theme === 'x360';
+  const card = downloadCard({ compact: x360 });
+  const detail = detailPane();
+  panel.el.append(detail.el);
+  let focusedValue = null;
+  panel.el.addEventListener('nav-focus', (e) => {
+    const row = e.target.closest?.('.row') || e.target;
+    focusedValue = row.itemValue ?? null;
+    detail.show(detailFor(model, focusedValue));
+  });
   let selected = focusApp ? `item:${focusApp}` : 'active';
   let firstPass = Boolean(focusApp);
   let model = await snapshot();
@@ -303,6 +369,7 @@ export async function openDownloads({ focusApp = null } = {}) {
       model = next;
       if (shape(next) !== built) { rebuilt = true; panel.cancel(); return; }
       card.update(next.active, next.paused);
+      detail.show(detailFor(next, focusedValue));
       panel.el.querySelector('.panel__subtitle')?.replaceChildren(next.paused ? 'Downloads are paused' : next.active ? `${next.active.state} ${next.active.name}` : 'Nothing is downloading');
       for (const [n, i] of next.queue.entries()) {
         const row = panel.el.querySelector(`[data-key="row:item:${i.appid}"]`);
@@ -315,7 +382,23 @@ export async function openDownloads({ focusApp = null } = {}) {
       }
     }, TICK_MS);
 
-    const pick = await panel.ask({ title: 'downloads', subtitle, items, selected });
+    detail.show(detailFor(m, focusedValue ?? selected));
+    // X pauses or resumes the selected download; Y opens what can be done with it.
+    const onAction = (action) => {
+      if (!m.connected || (action !== 'x' && action !== 'y')) return false;
+      const v = focusedValue || (m.active ? `item:${m.active.appid}` : null);
+      const appid = v && /^item:(\d+)$/.exec(v)?.[1];
+      if (!appid) return false;
+      if (action === 'y') { quick = v; panel.cancel(); return true; }
+      const isActive = m.active && m.active.appid === appid;
+      const paused = isActive ? m.paused : m.queue.find((i) => i.appid === appid)?.paused;
+      act(isActive && !paused ? 'pause' : 'resume', appid).then(() => toast(isActive && !paused ? 'Paused' : 'Downloading', { title: nameOf(appid), iconName: 'download', ms: 1500 }));
+      return true;
+    };
+    let quick = null;
+    const pick0 = await panel.ask({ title: 'active downloads', subtitle, items, selected, onAction,
+      hints: m.connected ? [{ a: 'x', label: 'Pause / resume' }, { a: 'y', label: 'Options' }] : [] });
+    const pick = quick || pick0;
     clearInterval(timer);
     onNamed = null;
     if (rebuilt) { selected = panel.el.querySelector('.row.is-focused')?.itemValue ?? selected; continue; }

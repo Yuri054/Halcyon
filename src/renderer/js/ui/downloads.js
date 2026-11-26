@@ -331,6 +331,7 @@ export async function openDownloads({ focusApp = null } = {}) {
         ...m.scheduled.map((i) => ({ label: nameOf(i.appid), value: `sched:${i.appid}`, key: `sched:${i.appid}`, art: artFor(i.appid), cls: 'row--download', verb: 'Options', sub: scheduledText(i.when) })),
         ...m.waiting.map((g) => ({ label: g.name, value: `queue:${g.id.slice(6)}`, key: `queue:${g.id.slice(6)}`, art: artFor(g.id.slice(6)), cls: 'row--download', verb: 'Update', sub: 'Update ready to download' })),
         m.finished.length > 0 && { heading: 'Finished' },
+        m.finished.length > 1 && { label: 'Clear all finished', value: 'clearAll', key: 'clearAll', iconName: 'check', sub: `${m.finished.length} downloads` },
         ...m.finished.map((i) => ({ label: nameOf(i.appid), value: `clear:${i.appid}`, key: `clear:${i.appid}`, art: artFor(i.appid), cls: 'row--download row--finished', verb: 'Clear', sub: 'Done  ·  select to clear' })),
         { heading: ' ' },
         { label: 'Open Steam’s downloads page', value: 'steam', key: 'steam', iconName: 'cloud' },
@@ -411,6 +412,13 @@ export async function openDownloads({ focusApp = null } = {}) {
     else if (pick.startsWith('queue:')) { if (await act('update', pick.slice(6))) toast('Added to the queue', { title: nameOf(pick.slice(6)), iconName: 'refresh' }); }
     else if (pick.startsWith('sched:')) await scheduledMenu(panel, pick.slice(6));
     else if (pick.startsWith('clear:')) await act('remove', pick.slice(6));
+    else if (pick === 'clearAll') {
+      // Steam clears finished items one at a time; do them all.
+      let done = 0;
+      for (const i of m.finished) if (await act('remove', i.appid)) done++;
+      if (done) toast(`Cleared ${done} finished download${done === 1 ? '' : 's'}`, { iconName: 'check', ms: 2000 });
+      selected = 'active';
+    }
     else if (pick.startsWith('item:')) {
       const appid = pick.slice(5);
       const isActive = Boolean(m.active && m.active.appid === appid);

@@ -231,6 +231,58 @@ function uninstallApp(appid) {
   return run(`SteamClient.Installs.OpenUninstallWizard([${id}], "0", true)`);
 }
 
+/** Steam's library folders: [{ index, path, free, capacity, isDefault, mounted }]. */
+async function installFolders() {
+  try {
+    const list = await evaluate(`SteamClient.InstallFolder.GetInstallFolders().then((f) => f.map((x) => ({
+      index: x.nFolderIndex, path: x.strFolderPath, label: x.strUserLabel || '', drive: x.strDriveName || '',
+      free: Number(x.nFreeSpace) || 0, capacity: Number(x.nCapacity) || 0, isDefault: Boolean(x.bIsDefaultFolder), mounted: x.bIsMounted !== false,
+    })))`, 8000);
+    return { ok: true, folders: list || [] };
+  } catch (err) { return { ok: false, error: err.message }; }
+}
+
+/**
+ * Install a game into a library folder the way Steam's install dialog does, without the dialog:
+ * open Steam's install wizard, and when it asks where (ShowConfig), pick the folder, check it
+ * fits and continue. Anything that needs the person (a licence agreement, a CD key, a password)
+ * is left to Steam's own dialog. With cancel: true it stops at the question (for checking).
+ */
+async function installApp(appid, folderIndex = null, { cancel = false } = {}) {
+  const id = Number(appid);
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Unknown game.' };
+  const folder = Number.isInteger(folderIndex) ? folderIndex : null;
+  const script = `(async () => {
+    const appid = ${id}, folder = ${folder === null ? 'null' : folder}, cancelOnly = ${cancel ? 'true' : 'false'};
+    const I = SteamClient.Installs;
+    return await new Promise((resolve) => {
+      let handle = null, done = false;
+      const finish = (v) => { if (done) return; done = true; clearTimeout(timer); setTimeout(() => { try { handle && handle.unregister(); } catch (e) {} }, 0); resolve(v); };
+      const timer = setTimeout(() => finish({ ok: false, error: 'Steam did not start the install.' }), 20000);
+      handle = I.RegisterForShowInstallWizard(async (s) => {
+        try {
+          const st = s.eInstallState;
+          if (st === 7) {                                   // ShowConfig: where to install
+            let now = s;
+            if (folder !== null && s.bCanChangeInstallFolder && s.iInstallFolder !== folder) now = (await I.SetInstallFolder(folder)) || s;
+            const info = { required: Number(now.nDiskSpaceRequired) || 0, available: Number(now.nDiskSpaceAvailable) || 0, folder: now.iInstallFolder };
+            if (cancelOnly) { await I.CancelInstall(); finish({ ok: true, cancelled: true, ...info }); return; }
+            if (info.required && info.available && info.required >= info.available) { await I.CancelInstall(); finish({ ok: false, full: true, ...info, error: 'Not enough space in that folder.' }); return; }
+            await I.ContinueInstall();
+            finish({ ok: true, started: true, ...info });
+          } else if (st === 8) {                            // licence agreements: Steam's dialog asks
+            finish({ ok: true, steamAsks: 'eula' });
+          } else if (st === 4 || st === 6 || st === 11 || st === 13) {   // CD key, password, media, sign-up
+            finish({ ok: true, steamAsks: 'other' });
+          }
+        } catch (e) { finish({ ok: false, error: String(e && e.message || e) }); }
+      });
+      I.OpenInstallWizard([appid], "0");
+    });
+  })()`;
+  try { return await evaluate(script, 25000); } catch (err) { return { ok: false, error: err.message }; }
+}
+
 /** Ask Steam to close a running game (as its own library's Stop button does). */
 function terminateApp(appid) {
   const id = String(appid);
@@ -368,4 +420,4 @@ function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { evaluate, enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, terminateApp, uninstallApp, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, boolSetting, PORT };
+module.exports = { evaluate, enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, terminateApp, uninstallApp, installApp, installFolders, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, boolSetting, PORT };

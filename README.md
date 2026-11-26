@@ -159,6 +159,13 @@ Steam remove the game without its own dialog: Halcyon calls what Steam's dialog 
 confirm (`SteamClient.Installs.OpenUninstallWizard`, already confirmed). This needs Download
 controls on; without them Steam's own dialog still asks.
 
+*Install* (A on a game you own but haven't installed) asks in Halcyon which Steam library to put
+it in, with each one's free space, then has Steam start the download without its dialog or Big
+Picture: Halcyon opens Steam's install wizard, picks that folder and continues, as Steam's dialog
+would. If the game doesn't fit, it cancels and says how much it needs. A licence agreement, CD key
+or password is left to Steam's own dialog. Needs Download controls on; otherwise Steam is asked the
+old way.
+
 *Storage* (Settings › system, or the Guide) shows each drive with games on it: free space, how
 full it is and what the games take, then that drive's games largest first, with Play and
 Uninstall.

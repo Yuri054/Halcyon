@@ -493,6 +493,18 @@ if (!app.requestSingleInstanceLock()) {
     handle('steam:open', () => launcher.openSteam());
     handle('steam:action', (action, appid) => launcher.steamAction(action, appid));
     handle('steam:leaveBigPicture', () => launcher.leaveBigPicture());
+    // Installing from Halcyon: Steam's library folders, then the install itself (no Steam dialog).
+    handle('steam:installFolders', async () => {
+      if (!steamClient.enabled(steam.findInstalls(cfg().steam.extraRoots))) return { ok: false, error: 'Download controls are off.' };
+      return steamClient.installFolders();
+    });
+    handle('steam:install', async (appid, folderIndex) => {
+      if (process.env.HALCYON_DRY_RUN && !process.env.HALCYON_REAL_STEAM) { console.log('[dry-run] would install', appid, 'to folder', folderIndex); return { ok: true, started: true, dryRun: true }; }
+      const r = await steamClient.installApp(appid, folderIndex, { cancel: Boolean(process.env.HALCYON_INSTALL_CHECK_ONLY) });
+      diary.log('install', appid, 'folder', folderIndex, '->', JSON.stringify(r));
+      if (r.ok && r.started) setTimeout(() => rescan().catch(() => {}), 5000);
+      return r;
+    });
     handle('steam:uninstall', async (appid) => {
       const r = await launcher.uninstallSteamGame(appid);
       // Steam removes the files and the manifest; pick that up when it's done.

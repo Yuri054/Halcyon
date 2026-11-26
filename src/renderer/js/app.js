@@ -4,7 +4,8 @@ import { h, icon, flash } from './core/dom.js';
 import * as focus from './core/focus.js';
 import * as input from './core/input.js';
 import { sfx, setEnabled as setSounds, setPack } from './core/sfx.js';
-import { api, state, game as findGame, isPlaying } from './core/state.js';
+import { api, state, game as findGame, isPlaying, fmt } from './core/state.js';
+import { menu } from './ui/dialog.js';
 import { app, wait } from './core/bus.js';
 import { setBackdrop, artImg, fallbackArt } from './ui/art.js';
 import { toast } from './ui/toast.js';
@@ -198,8 +199,42 @@ function closeLaunchUi() {
 }
 
 /** Not installed yet: hand the request to Steam, which asks where to put the game. */
+/**
+ * Not installed yet: Halcyon asks where to put it (Steam's library folders, with their free
+ * space) and has Steam start the download, without Steam's own install dialog. Without
+ * Download controls, Steam is asked the old way and shows its dialog.
+ */
 async function installGame(g) {
   sfx.open();
+  const appid = g.id.startsWith('steam:') ? g.id.slice(6) : null;
+  const res = appid ? await api.steam.installFolders().catch(() => null) : null;
+  const folders = res?.ok ? res.folders.filter((f) => f.mounted && f.capacity > 0) : [];
+  if (folders.length) {
+    const size = (n) => (n >= 1024 ** 4 ? `${(n / 1024 ** 4).toFixed(1)} TB` : fmt.size(n) || '0 MB');
+    const roomiest = [...folders].sort((a, b) => b.free - a.free)[0];
+    const pick = await menu({
+      title: `Install ${g.name}`,
+      subtitle: 'Where should it go?',
+      selected: String((folders.find((f) => f.isDefault && f.free > 0) || roomiest).index),
+      items: folders.map((f) => ({
+        label: f.label || f.path.replace(/^\/home\/[^/]+/, '~').replace(/\/\.var\/app\/com\.valvesoftware\.Steam\/\.local\/share\/Steam$/, ' (Steam’s own folder)'),
+        value: String(f.index), iconName: 'folder', disabled: f.free <= 0,
+        sub: `${size(f.free)} free of ${size(f.capacity)}`, hint: f.isDefault ? 'Default' : '',
+        meter: f.capacity ? Math.round(((f.capacity - f.free) / f.capacity) * 100) : null,
+      })),
+    });
+    if (pick == null) return;
+    toast('Asking Steam…', { title: `Installing ${g.name}`, iconName: 'download', ms: 2500 });
+    const r = await api.steam.install(appid, Number(pick));
+    if (!r || !r.ok) {
+      toast(r?.full ? `It needs ${size(r.required)}, and that folder has ${size(r.available)}. Pick another one or free some space (Settings › system › Storage).` : r?.error || 'Steam could not start the install.',
+        { type: 'error', title: `Couldn’t install ${g.name}` });
+      return;
+    }
+    if (r.steamAsks) toast(r.steamAsks === 'eula' ? 'This game has a licence agreement: accept it in Steam to start the download.' : 'Steam needs something from you to install this game: answer in Steam.', { title: `Installing ${g.name}`, iconName: 'download', ms: 8000 });
+    else toast(r.required ? `Downloading ${size(r.required)}. Progress shows on the game’s tile and in Downloads.` : 'Downloading. Progress shows on the game’s tile and in Downloads.', { title: `Installing ${g.name}`, iconName: 'download', ms: 6000 });
+    return;
+  }
   const result = await api.game.launch(g.id);
   if (!result.ok) toast(result.error || 'Steam could not be asked to install this game.', { type: 'error', title: `Couldn’t install ${g.name}` });
   else toast('Confirm the install in Steam. Progress will show on the game’s tile.', { title: `Installing ${g.name}`, iconName: 'download', ms: 6000 });

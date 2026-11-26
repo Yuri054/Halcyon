@@ -118,6 +118,7 @@ class Jellyfin {
       year: i.ProductionYear || null,
       overview: i.Overview || '',
       runtimeMin: i.RunTimeTicks ? Math.round(i.RunTimeTicks / TICKS / 60) : null,
+      runtimeSec: i.RunTimeTicks ? Math.round(i.RunTimeTicks / TICKS) : null,
       rating: i.OfficialRating || '',
       community: i.CommunityRating || null,
       genres: (i.Genres || []).slice(0, 3),
@@ -133,6 +134,9 @@ class Jellyfin {
       progress,
       resumeTicks: ud.PlaybackPositionTicks || 0,
       unplayed: ud.UnplayedItemCount || 0,
+      childCount: i.ChildCount ?? null,
+      album: i.Album || '',
+      albumId: i.AlbumId || '',
       images: {
         primary: Boolean(i.ImageTags && i.ImageTags.Primary),
         backdrop: Boolean(i.BackdropImageTags && i.BackdropImageTags.length) || Boolean(i.ParentBackdropItemId),
@@ -231,8 +235,38 @@ class Jellyfin {
     return (r?.Items || []).map(Jellyfin.item);
   }
 
+  /** The artists in a music library (album artists, as Jellyfin's own apps list them). */
+  async artists(parentId) {
+    const r = await this.request(`/Artists/AlbumArtists?ParentId=${encodeURIComponent(parentId)}&UserId=${this.uid}&SortBy=SortName&SortOrder=Ascending&Limit=1000&${Jellyfin.fields}`);
+    return { items: (r?.Items || []).map(Jellyfin.item), total: r?.TotalRecordCount || (r?.Items || []).length };
+  }
+
+  /** Every playlist the user can see (Jellyfin keeps them outside the libraries). */
+  async playlists(kind = 'Audio') {
+    const r = await this.request(`/Users/${this.uid}/Items?IncludeItemTypes=Playlist&Recursive=true&SortBy=SortName&SortOrder=Ascending&Fields=ChildCount,Overview&EnableImageTypes=Primary&ImageTypeLimit=1${kind ? `&MediaTypes=${kind}` : ''}`);
+    const items = (r?.Items || []).map(Jellyfin.item);
+    return { items, total: items.length };
+  }
+
+  /** An artist's albums, newest first. */
+  async artistAlbums(artistId) {
+    const r = await this.request(`/Users/${this.uid}/Items?AlbumArtistIds=${encodeURIComponent(artistId)}&IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=ProductionYear,SortName&SortOrder=Descending&${Jellyfin.fields}`);
+    return (r?.Items || []).map(Jellyfin.item);
+  }
+
+  /** An artist's songs, shuffled by the server (for "shuffle artist"). */
+  async artistTracks(artistId) {
+    const r = await this.request(`/Users/${this.uid}/Items?ArtistIds=${encodeURIComponent(artistId)}&IncludeItemTypes=Audio&Recursive=true&SortBy=Random&Limit=300&${Jellyfin.fields}`);
+    return (r?.Items || []).map(Jellyfin.item);
+  }
+
+  async playlistTracks(playlistId) {
+    const r = await this.request(`/Playlists/${encodeURIComponent(playlistId)}/Items?UserId=${this.uid}&${Jellyfin.fields}`);
+    return (r?.Items || []).map(Jellyfin.item);
+  }
+
   async search(term) {
-    const r = await this.request(`/Users/${this.uid}/Items?SearchTerm=${encodeURIComponent(term)}&Recursive=true&IncludeItemTypes=Movie,Series,Episode,MusicAlbum&Limit=40&${Jellyfin.fields}`);
+    const r = await this.request(`/Users/${this.uid}/Items?SearchTerm=${encodeURIComponent(term)}&Recursive=true&IncludeItemTypes=Movie,Series,Episode,MusicAlbum,MusicArtist,Playlist,Audio&Limit=60&${Jellyfin.fields}`);
     return (r?.Items || []).map(Jellyfin.item);
   }
 
@@ -260,17 +294,29 @@ class Jellyfin {
   }
 
   /**
-   * How to play an item: { url (jf:// path), hls, playSessionId, mediaSourceId, method, startTicks, subtitles }.
-   * fromStart ignores the saved position.
+   * How to play an item: { url (jf:// path), hls, playSessionId, mediaSourceId, method, startTicks,
+   * subtitles, audioTracks, audioIndex }.
+   * fromStart ignores the saved position; startTicks starts somewhere else (switching tracks);
+   * audioIndex picks an audio track. A track other than the file's default is played through
+   * Jellyfin (a remux or transcode with that track), as the browser can't switch tracks itself.
    */
-  async playback(id, { fromStart = false } = {}) {
+  async playback(id, { fromStart = false, startTicks: at = null, audioIndex = null } = {}) {
     const item = await this.details(id);
-    const startTicks = fromStart ? 0 : item.resumeTicks || 0;
-    const info = await this.request(`/Items/${encodeURIComponent(id)}/PlaybackInfo?UserId=${this.uid}&StartTimeTicks=${startTicks}&IsPlayback=true&AutoOpenLiveStream=true&MaxStreamingBitrate=120000000`, {
-      method: 'POST', body: { DeviceProfile: Jellyfin.profile() },
+    const startTicks = at != null ? Math.max(0, Math.round(at)) : fromStart ? 0 : item.resumeTicks || 0;
+    const ask = async (extra) => this.request(`/Items/${encodeURIComponent(id)}/PlaybackInfo?UserId=${this.uid}&StartTimeTicks=${startTicks}&IsPlayback=true&AutoOpenLiveStream=true&MaxStreamingBitrate=120000000${audioIndex != null ? `&AudioStreamIndex=${audioIndex}` : ''}`, {
+      method: 'POST', body: { DeviceProfile: Jellyfin.profile(), ...(audioIndex != null ? { AudioStreamIndex: audioIndex } : {}), ...extra },
     });
-    const src = info?.MediaSources?.[0];
+    let info = await ask({});
+    let src = info?.MediaSources?.[0];
     if (!src) throw new Error(info?.ErrorCode ? `Jellyfin cannot play this (${info.ErrorCode}).` : 'Jellyfin has nothing playable for this.');
+    const streams = src.MediaStreams || [];
+    const audioStreams = streams.filter((s) => s.Type === 'Audio');
+    const defaultAudio = src.DefaultAudioStreamIndex ?? audioStreams.find((s) => s.IsDefault)?.Index ?? audioStreams[0]?.Index ?? null;
+    // Another track than the default: have Jellyfin serve it (the file as it is would play the default).
+    if (audioIndex != null && audioIndex !== defaultAudio && src.SupportsDirectPlay && audioStreams.length > 1) {
+      info = await ask({ EnableDirectPlay: false, EnableDirectStream: false, AllowVideoStreamCopy: true, AllowAudioStreamCopy: true });
+      src = info?.MediaSources?.[0] || src;
+    }
     const audio = item.type === 'Audio';
     let path;
     let method;
@@ -283,14 +329,19 @@ class Jellyfin {
     } else {
       throw new Error('Jellyfin cannot stream this to Halcyon.');
     }
-    const subtitles = (src.MediaStreams || []).filter((s) => s.Type === 'Subtitle' && (s.IsExternal || s.SupportsExternalStream || s.DeliveryMethod === 'External'))
+    const subtitles = streams.filter((s) => s.Type === 'Subtitle' && (s.IsExternal || s.SupportsExternalStream || s.DeliveryMethod === 'External'))
       .map((s) => ({ index: s.Index, label: s.DisplayTitle || s.Language || `Subtitle ${s.Index}`, lang: s.Language || '', isDefault: Boolean(s.IsDefault),
         path: `/Videos/${id}/${encodeURIComponent(src.Id)}/Subtitles/${s.Index}/0/Stream.vtt` }));
+    const audioTracks = audioStreams.map((s) => ({
+      index: s.Index, lang: s.Language || '', isDefault: s.Index === defaultAudio,
+      label: s.DisplayTitle || [s.Language, s.Codec && s.Codec.toUpperCase(), s.Channels && `${s.Channels} ch`].filter(Boolean).join(' · ') || `Track ${s.Index}`,
+    }));
     return {
       ok: true, item, method, startTicks, audio,
       url: `jf://stream${path.startsWith('/') ? '' : '/'}${path}`,
       hls: method === 'Transcode' && /\.m3u8/i.test(path),
       playSessionId: info.PlaySessionId || '', mediaSourceId: src.Id, subtitles,
+      audioTracks, audioIndex: audioIndex ?? defaultAudio,
     };
   }
 
@@ -301,7 +352,14 @@ class Jellyfin {
       PositionTicks: Math.max(0, Math.round((p.position || 0) * TICKS)), IsPaused: Boolean(p.paused), CanSeek: true,
     };
     const path = event === 'start' ? '/Sessions/Playing' : event === 'stop' ? '/Sessions/Playing/Stopped' : '/Sessions/Playing/Progress';
-    try { await this.request(path, { method: 'POST', body }); return { ok: true }; } catch (err) { return { ok: false, error: err.message }; }
+    try {
+      await this.request(path, { method: 'POST', body });
+      // A transcode keeps running on the server until it is told to stop.
+      if (event === 'stop' && p.method === 'Transcode' && p.playSessionId) {
+        await this.request(`/Videos/ActiveEncodings?deviceId=${encodeURIComponent(this.cfg.deviceId)}&playSessionId=${encodeURIComponent(p.playSessionId)}`, { method: 'DELETE' }).catch(() => {});
+      }
+      return { ok: true };
+    } catch (err) { return { ok: false, error: err.message }; }
   }
 
   /** For the jf:// protocol: the real URL of a path on the server, signed with the token. */

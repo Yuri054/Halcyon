@@ -46,7 +46,17 @@ function reveal(el, behavior) {
   const s = sc.getBoundingClientRect();
   // A theme can ask for "nearest" scrolling (--reveal: nearest): move only as far as needed
   // to keep the item in view, instead of centring it.
-  if (getComputedStyle(sc).getPropertyValue('--reveal').trim() === 'nearest') {
+  const mode = getComputedStyle(sc).getPropertyValue('--reveal').trim();
+  // "page": a rail split into pages ([data-page]) slides a whole page into place, like the
+  // 360's dashboard; anything outside a page scrolls back to the start.
+  if (mode === 'page' && sc.dataset.scroller === 'x') {
+    const pages = [...sc.querySelectorAll(':scope > [data-page]')];
+    const page = el.closest('[data-page]');
+    const left = page && pages.length ? page.offsetLeft - pages[0].offsetLeft : 0;
+    sc.scrollTo({ left, behavior });
+    return;
+  }
+  if (mode === 'nearest') {
     const margin = parseFloat(getComputedStyle(document.documentElement).fontSize) * 6;
     if (sc.dataset.scroller === 'x') {
       const left = r.left - s.left - margin;

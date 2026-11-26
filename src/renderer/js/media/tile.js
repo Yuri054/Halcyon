@@ -13,7 +13,7 @@ export function episodeCode(it) {
 
 function fallback(item) {
   return h('div', { class: 'art-fallback', style: { '--hue': hashHue(item.name) } },
-    h('span', { class: 'art-fallback__mark' }, item.type === 'MusicAlbum' ? 'Album' : item.type === 'Series' ? 'Series' : item.type),
+    h('span', { class: 'art-fallback__mark' }, ({ MusicAlbum: 'Album', MusicArtist: 'Artist', Playlist: 'Playlist', Audio: 'Song' })[item.type] || item.type),
     h('span', { class: 'art-fallback__title' }, item.series ? `${item.series}: ${item.name}` : item.name));
 }
 
@@ -45,7 +45,7 @@ export function mediaHero(item, eyebrow, index = 0) {
 /** variant: 'cover' (poster) or 'wide' (thumb). */
 export function mediaTile(item, variant = 'cover', index = 0) {
   const portrait = variant === 'cover';
-  const square = item.type === 'MusicAlbum' || item.type === 'Audio';
+  const square = ['MusicAlbum', 'Audio', 'MusicArtist', 'Playlist'].includes(item.type);
   const urls = portrait
     ? [img(item.images.primaryOf, 'Primary', 400)]
     : [img(item.images.thumbOf, 'Thumb', 640), img(item.images.backdropOf, 'Backdrop', 640), img(item.id, 'Primary', 640)];

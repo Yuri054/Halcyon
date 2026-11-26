@@ -378,6 +378,30 @@ body:has(.layer--player:not(.is-closing)) #hints { z-index: 80; }
 .media__latest .tile--cover { width: 18.7rem; }
 /* While the picture plays, the prompts go with the bar. */
 body.player-quiet #hints { opacity: 0; }
+
+/* Music: the cover and the song in the middle of the screen, over the blurred cover. */
+.player__now { position: absolute; left: var(--gutter); right: var(--gutter); top: 14vh; bottom: 16rem; display: none; align-items: center; gap: 4rem; }
+.layer--player.is-audio .player__now { display: flex; animation: fade 0.4s ease both; }
+.layer--player.is-audio .player__video { display: none; }
+.layer--player.is-audio .player__titles { visibility: hidden; }
+.player__cover { flex: none; width: min(34rem, 46vh); aspect-ratio: 1; border-radius: 0.5rem; overflow: hidden; background: rgba(255, 255, 255, 0.08); box-shadow: 0 2rem 5rem rgba(0, 0, 0, 0.55); display: grid; place-items: center; color: rgba(255, 255, 255, 0.5); }
+.player__cover > .icon { width: 6rem; height: 6rem; }
+.player__cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.player__info { min-width: 0; color: #fff; }
+.player__eyebrow { font-size: 1rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; }
+.player__song { font-size: 3.6rem; font-weight: 300; line-height: 1.1; letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.player__artist { margin-top: 0.9rem; font-size: 1.7rem; color: rgba(255, 255, 255, 0.9); }
+.player__album { margin-top: 0.4rem; font-size: 1.2rem; color: rgba(255, 255, 255, 0.6); }
+.player__next { margin-top: 2.4rem; font-size: 1.05rem; color: rgba(255, 255, 255, 0.6); }
+.player__next:empty { display: none; }
+[data-theme='x360'] .player__cover, [data-theme='metro360'] .player__cover { border-radius: 0; }
+[data-theme='x360'] .player__eyebrow { color: #8fd85a; text-transform: lowercase; letter-spacing: 0.02em; font-size: 1.3rem; }
+
+/* Music in a library: what the wall shows (albums, artists, playlists), then genres. */
+.chip--mode { font-weight: 500; }
+.chips__rule { flex: none; width: 1px; align-self: stretch; margin: 0.3rem 0.6rem; background: currentColor; opacity: 0.25; }
+[data-theme='x360'] .wall.wall--square { grid-template-rows: repeat(2, 15.8rem); grid-auto-columns: 15.8rem; }
+[data-theme='x360'] .wall.wall--square .tile__strip { opacity: 1; }
 #hints { transition: opacity 0.4s ease; }
 .player__volume { position: absolute; top: 3rem; right: var(--gutter); display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1.2rem; border-radius: 0.5rem; background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 1.1rem; font-variant-numeric: tabular-nums; opacity: 0; transform: translateY(-0.6rem); transition: opacity 0.25s ease, transform 0.25s var(--ease); }
 .player__volume.is-on { opacity: 1; transform: none; }

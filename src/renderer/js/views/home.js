@@ -61,8 +61,8 @@ export function createHome() {
 
     scroller.replaceChildren(
       h('div', { class: 'block block--peek' }, search),
-      h('div', { class: 'block block--metro' }, grid),
-      h('div', { class: 'block block--metro' }, quick));
+      h('div', { class: 'block block--metro', 'data-page': '1' }, grid),
+      h('div', { class: 'block block--metro block--page2', 'data-page': '2' }, quick));
   }
 
   function render() {

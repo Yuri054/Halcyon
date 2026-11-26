@@ -515,6 +515,11 @@ if (!app.requestSingleInstanceLock()) {
     handle('jellyfin:seasons', jf((id) => jellyfin.seasons(id)));
     handle('jellyfin:episodes', jf((series, season) => jellyfin.episodes(series, season)));
     handle('jellyfin:tracks', jf((id) => jellyfin.tracks(id)));
+    handle('jellyfin:artists', jf((id) => jellyfin.artists(id)));
+    handle('jellyfin:playlists', jf((kind) => jellyfin.playlists(kind)));
+    handle('jellyfin:artistAlbums', jf((id) => jellyfin.artistAlbums(id)));
+    handle('jellyfin:artistTracks', jf((id) => jellyfin.artistTracks(id)));
+    handle('jellyfin:playlistTracks', jf((id) => jellyfin.playlistTracks(id)));
     handle('jellyfin:search', jf((term) => jellyfin.search(term)));
     handle('jellyfin:playback', jf((id, opts) => jellyfin.playback(id, opts || {})));
     handle('jellyfin:report', (event, p) => jellyfin.report(event, p || {}));

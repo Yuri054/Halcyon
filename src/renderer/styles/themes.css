@@ -844,24 +844,40 @@ body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .g
 /* Every theme: the Guide's frame is see-through; only the blades and the list are solid. */
 [data-theme] .layer--guide .panel { background: transparent; box-shadow: none; backdrop-filter: none; }
 
-/* 360 home: the console's layout (see renderMetro in views/home.js). */
+/* 360 home: the console's layout (see renderMetro in views/home.js). Two pages side
+   by side with a wide gap, the next one peeking in at the right edge; moving into
+   a page slides it into place. Sizes follow the screen so a page always fits. */
+[data-theme='x360'] .view--home .blocks {
+  --reveal: page; --tg: 0.7rem;
+  --row: min(13.2rem, calc((100vh - 25rem) / 3));
+  --col: calc(var(--row) * 1.34);
+  --wide: calc(var(--row) * 1.9);
+  --page: calc(var(--col) * 2 + var(--wide) * 2 + var(--tg) * 3);
+  gap: 0; padding-top: 1.4rem;
+}
 [data-theme='x360'] .metro {
-  display: grid; gap: 0.4rem;
-  grid-template-columns: 17.6rem 25rem 25rem 17.6rem;
-  grid-template-rows: repeat(3, 13.2rem);
+  display: grid; gap: var(--tg);
+  grid-template-columns: var(--col) var(--wide) var(--wide) var(--col);
+  grid-template-rows: repeat(3, var(--row));
   grid-template-areas: 'a1 hero hero d1' 'a2 hero hero d2' 'a3 b3 c3 d3';
 }
-[data-theme='x360'] .metro--quick { grid-template-columns: none; grid-template-areas: none; grid-auto-flow: column; grid-auto-columns: 13.2rem; }
+[data-theme='x360'] .metro--quick { grid-template-columns: none; grid-template-areas: none; grid-auto-flow: column; grid-auto-columns: var(--col); }
 [data-theme='x360'] .metro > .tile { width: auto; height: auto; min-width: 0; }
 [data-theme='x360'] .metro .tile--hero .tile__caption { padding: 0.55rem 1rem 0.6rem; }
-[data-theme='x360'] .block--metro + .block--metro { margin-left: 0.4rem; }
+/* The next page starts a little before the right edge, so a sliver of it shows. */
+[data-theme='x360'] .block--page2 {
+  margin-left: max(7rem, calc(100vw - var(--gutter) * 2 - var(--page) + 2.5rem));
+  min-width: calc(100vw - var(--gutter) * 2);
+}
 /* The search tab peeking in from the left edge, as on the console. */
-[data-theme='x360'] .block--peek { align-self: center; margin-left: calc(-1 * var(--gutter) - 0.4rem); margin-right: 0.4rem; }
-[data-theme='x360'] .tile--peek { width: calc(var(--gutter) - 2rem); height: 4.4rem; margin-top: 13.6rem; }
+[data-theme='x360'] .block--peek { align-self: center; margin-left: calc(-1 * var(--gutter) - 0.4rem); margin-right: 3.4rem; }
+[data-theme='x360'] .tile--peek { width: calc(var(--gutter) - 3rem); height: 4.4rem; margin-top: calc(var(--row) * 1.5 - 2.2rem); }
 [data-theme='x360'] .tile--peek .tile__body { background: #6a6e70; }
 [data-theme='x360'] .tile--peek .tile__icon { top: 50%; left: auto; right: 0.9rem; transform: translateY(-50%); width: 2rem; height: 2rem; }
 [data-theme='x360'] .tile--peek.is-focused .tile__body { transform: scale(1.08); }
 [data-theme='x360'] .view--home .block--quick { order: 0; }
+[data-theme='x360'] .view--home .tile.is-focused .tile__body { transform: scale(1.05); }
+[data-theme='x360'] .view--home .tile--hero.is-focused .tile__body { transform: scale(1.02); }
 
 /* 360: media laid out like the dashboard's tv & movies page. */
 [data-theme='x360'] .media__front { gap: 0.4rem; grid-template-columns: 17.6rem 25rem 25rem 23.5rem; grid-template-rows: repeat(3, 13.2rem); }

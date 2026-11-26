@@ -16,6 +16,10 @@ import { openDetails } from '../media/details.js';
 
 const TICKS = 10000000;
 const LIB_ICON = { movies: 'film', tvshows: 'tv', music: 'music' };
+// What a music library's wall can show.
+const MUSIC_MODES = [['albums', 'Albums', 'disc'], ['artists', 'Artists', 'user'], ['playlists', 'Playlists', 'list']];
+const songTime = (sec) => (sec ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` : null);
+const shuffled = (list) => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 export function createMedia() {
   const scroller = h('div', { class: 'blocks', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
@@ -116,10 +120,20 @@ export function createMedia() {
   }
 
   // ---- a library as a wall of posters
-  async function openLibrary(lib, genre = '') {
-    const [res, g] = await Promise.all([api.jellyfin.library(lib.id, 0, genre), library?.lib?.id === lib.id ? Promise.resolve({ ok: true, data: library.genres }) : api.jellyfin.genres(lib.id)]);
+  const isMusic = (lib) => lib?.collection === 'music';
+  /** A library's wall: for music, mode picks albums, artists or playlists. */
+  function fetchWall(lib, genre, mode) {
+    if (isMusic(lib) && mode === 'artists') return api.jellyfin.artists(lib.id);
+    if (isMusic(lib) && mode === 'playlists') return api.jellyfin.playlists('Audio');
+    return api.jellyfin.library(lib.id, 0, genre);
+  }
+  async function openLibrary(lib, genre = '', mode = null) {
+    const same = library?.lib?.id === lib.id;
+    mode = isMusic(lib) ? (mode || (same && library.mode) || 'albums') : null;
+    if (genre) mode = isMusic(lib) ? 'albums' : null;
+    const [res, g] = await Promise.all([fetchWall(lib, genre, mode), same ? Promise.resolve({ ok: true, data: library.genres }) : api.jellyfin.genres(lib.id)]);
     if (!res.ok) { toast(res.error, { type: 'error', title: lib.name }); return; }
-    library = { lib, items: remember(res.data.items), total: res.data.total, genres: g.ok ? g.data : [], genre };
+    library = { lib, items: remember(res.data.items), total: res.data.total, genres: g.ok ? g.data : [], genre, mode };
     renderLibrary();
     flash(el, 'is-swapping');
     const first = wall.querySelector('[data-focus]');
@@ -134,11 +148,21 @@ export function createMedia() {
       c.addEventListener('click', () => pickGenre(id));
       return c;
     };
+    const modeChip = ([id, label, iconName]) => {
+      const c = h('div', { class: `chip chip--mode${library.mode === id ? ' is-active' : ''}`, 'data-focus': true, 'data-key': `mm:${id}`, 'data-mode': id }, icon(iconName), h('span', null, label));
+      c.addEventListener('click', () => pickMode(id));
+      return c;
+    };
+    const music = isMusic(library.lib);
+    const showGenres = library.genres.length && (!music || library.mode === 'albums');
     const chips = h('div', { class: 'chips', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true },
-      ...(library.genres.length ? [chip('', 'All'), ...library.genres.map((g) => chip(g.id, g.name))] : []));
+      ...(music ? MUSIC_MODES.map(modeChip) : []),
+      ...(music && showGenres ? [h('span', { class: 'chips__rule' })] : []),
+      ...(showGenres ? [chip('', 'All'), ...library.genres.map((g) => chip(g.id, g.name))] : []));
     wallHead.replaceChildren(h('div', { class: 'media__crumb' }, icon(LIB_ICON[library.lib.collection] || 'layers'), h('span', null, library.lib.name), h('small', null, `${library.total}`)), chips);
-    wall.classList.toggle('wall--square', library.lib.collection === 'music');
-    wall.replaceChildren(...library.items.map((it, n) => mediaTile(it, 'cover', n)));
+    wall.classList.toggle('wall--square', music || library.items.some((it) => it.type === 'MusicAlbum'));
+    wall.replaceChildren(...(library.items.length ? library.items.map((it, n) => mediaTile(it, 'cover', n))
+      : [actionTile({ key: 'mx:none', iconName: LIB_ICON[library.lib.collection] || 'layers', tone: 'glass', label: library.mode === 'playlists' ? 'No playlists yet' : 'Nothing here', sub: library.mode === 'playlists' ? 'Make one in Jellyfin and it shows up here.' : null })]));
   }
   async function pickGenre(id) {
     if (!library || library.lib.id === 'search') return;
@@ -146,7 +170,18 @@ export function createMedia() {
     const c = focus.byKey(el, `mg:${id}`);
     if (c) { focus.focus(c, { layer: focus.base(), scroll: 'smooth' }); c.scrollIntoView?.({ inline: 'center', block: 'nearest' }); }
   }
+  async function pickMode(id) {
+    if (!library || !isMusic(library.lib) || (library.mode === id && !library.genre)) return;
+    await openLibrary(library.lib, '', id);
+    const c = focus.byKey(el, `mm:${id}`);
+    if (c) focus.focus(c, { layer: focus.base(), scroll: 'smooth' });
+  }
   function cycleGenre(step) {
+    if (isMusic(library?.lib)) {
+      const ids = MUSIC_MODES.map((m) => m[0]);
+      pickMode(ids[(ids.indexOf(library.mode) + step + ids.length) % ids.length]);
+      return;
+    }
     if (!library?.genres?.length) return;
     const ids = ['', ...library.genres.map((g) => g.id)];
     const i = ids.indexOf(library.genre || '');
@@ -155,7 +190,7 @@ export function createMedia() {
   async function reloadLibrary() {
     if (!library || library.lib.id === 'search') return;
     const key = focus.base().current?.dataset.key;
-    const res = await api.jellyfin.library(library.lib.id, 0, library.genre);
+    const res = await fetchWall(library.lib, library.genre, library.mode);
     if (!res.ok) return;
     library.items = remember(res.data.items);
     renderLibrary();
@@ -211,6 +246,9 @@ export function createMedia() {
     const it = items.get(id);
     if (!it) return;
     if (it.type === 'MusicAlbum') return showAlbum(it);
+    if (it.type === 'MusicArtist') return showArtist(it);
+    if (it.type === 'Playlist') return showPlaylist(it);
+    if (it.type === 'Audio') return openPlayer({ queue: [it.id], start: 0, fromStart: true });
     if (it.type === 'Season') return details({ ...it, id: it.seriesId, type: 'Series', name: it.series });
     return details(it);
   }
@@ -276,23 +314,78 @@ export function createMedia() {
     await panel.close();
   }
 
-  async function showAlbum(album) {
-    const panel = openPanel();
+  /** A list of songs in a panel: play all, shuffle, or start from one. Stays until B. */
+  async function trackList(panel, { title, subtitle, artOf, tracks, playLabel = 'Play' }) {
+    let selected = null;
+    for (;;) {
+      const pick = await panel.ask({
+        title, subtitle, art: art(artOf), selected,
+        items: [
+          { label: playLabel, value: '@all', iconName: 'play' },
+          tracks.length > 1 && { label: 'Shuffle', value: '@shuffle', iconName: 'shuffle' },
+          { heading: 'Songs' },
+          ...tracks.map((t) => ({
+            label: t.index != null && !t.listed ? `${t.index}. ${t.name}` : t.name, value: t.id, iconName: 'music', verb: 'Play',
+            sub: t.albumArtist && t.albumArtist !== artOf.albumArtist && t.albumArtist !== artOf.name ? t.albumArtist : null,
+            hint: songTime(t.runtimeSec),
+          })),
+        ],
+      });
+      if (pick == null) return;
+      selected = pick;
+      let q = tracks.map((t) => t.id);
+      let start = 0;
+      if (pick === '@shuffle') q = shuffled(q);
+      else if (pick !== '@all') start = Math.max(0, q.indexOf(pick));
+      await openPlayer({ queue: q, start, fromStart: true });
+    }
+  }
+
+  async function showAlbum(album, panelIn = null) {
+    const panel = panelIn || openPanel();
     const res = await api.jellyfin.tracks(album.id);
-    if (!res.ok) { await panel.close(); toast(res.error, { type: 'error' }); return; }
+    if (!res.ok) { if (!panelIn) await panel.close(); toast(res.error, { type: 'error' }); return; }
     const tracks = remember(res.data);
-    const pick = await panel.ask({
-      title: album.name, subtitle: [album.albumArtist, album.year, `${tracks.length} tracks`].filter(Boolean).join('  ·  '), art: art(album),
-      items: [
-        { label: 'Play album', value: '@all', iconName: 'play' },
-        { heading: 'Tracks' },
-        ...tracks.map((t) => ({ label: t.index != null ? `${t.index}. ${t.name}` : t.name, value: t.id, iconName: 'music', hint: t.runtimeMin ? `${t.runtimeMin} min` : null, verb: 'Play' })),
-      ],
-    });
+    await trackList(panel, { title: album.name, subtitle: [album.albumArtist, album.year, `${tracks.length} songs`].filter(Boolean).join('  ·  '), artOf: album, tracks, playLabel: 'Play album' });
+    if (!panelIn) await panel.close();
+  }
+
+  async function showArtist(artist) {
+    const panel = openPanel();
+    const res = await api.jellyfin.artistAlbums(artist.id);
+    if (!res.ok) { await panel.close(); toast(res.error, { type: 'error' }); return; }
+    const albums = remember(res.data);
+    let selected = null;
+    for (;;) {
+      const pick = await panel.ask({
+        title: artist.name, subtitle: `${albums.length} ${albums.length === 1 ? 'album' : 'albums'}`, art: art(artist), selected,
+        items: [
+          { label: 'Shuffle all songs', value: '@shuffle', iconName: 'shuffle' },
+          albums.length > 0 && { heading: 'Albums' },
+          ...albums.map((a) => ({ label: a.name, value: a.id, iconName: 'disc', hint: a.year ? String(a.year) : null })),
+        ],
+      });
+      if (pick == null) break;
+      selected = pick;
+      if (pick === '@shuffle') {
+        const t = await api.jellyfin.artistTracks(artist.id);
+        if (!t.ok || !t.data.length) { toast(t.ok ? 'No songs by this artist.' : t.error, { type: t.ok ? 'info' : 'error', title: artist.name }); continue; }
+        await openPlayer({ queue: t.data.map((x) => x.id), start: 0, fromStart: true });
+        continue;
+      }
+      const album = albums.find((a) => a.id === pick);
+      if (album) await showAlbum(album, panel);
+    }
     await panel.close();
-    if (pick == null) return;
-    const q = tracks.map((t) => t.id);
-    await openPlayer({ queue: q, start: pick === '@all' ? 0 : Math.max(0, q.indexOf(pick)), fromStart: true });
+  }
+
+  async function showPlaylist(list) {
+    const panel = openPanel();
+    const res = await api.jellyfin.playlistTracks(list.id);
+    if (!res.ok) { await panel.close(); toast(res.error, { type: 'error' }); return; }
+    const tracks = remember(res.data).map((t) => ({ ...t, listed: true }));
+    await trackList(panel, { title: list.name, subtitle: `${tracks.length} songs`, artOf: list, tracks, playLabel: 'Play playlist' });
+    await panel.close();
   }
 
   async function details(it) {
@@ -303,7 +396,7 @@ export function createMedia() {
   /** Y on a tile: the quick things to do with it. */
   async function options(id) {
     const it = items.get(id);
-    if (!it || it.type === 'MusicAlbum') { if (it) open(id); return; }
+    if (!it || ['MusicAlbum', 'MusicArtist', 'Playlist', 'Audio'].includes(it.type)) { if (it) open(id); return; }
     const resuming = it.progress > 0 && it.progress < 100;
     const pick = await menu({
       title: it.type === 'Episode' ? it.series : it.name,
@@ -364,6 +457,7 @@ export function createMedia() {
     hints(target) {
       if (target?.dataset.quickplay) return [{ a: 'accept', label: 'Resume' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
       if (target?.dataset.media) return [{ a: 'accept', label: 'Open' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
+      if (target?.dataset.mode) return [{ a: 'accept', label: 'Show' }, { a: 'lt', b: 'rt', label: 'Albums / artists / playlists' }];
       if (target?.dataset.genre != null) return [{ a: 'accept', label: 'Show' }, { a: 'lt', b: 'rt', label: 'Genre' }];
       return [{ a: 'accept', label: 'Select' }];
     },
@@ -371,7 +465,8 @@ export function createMedia() {
       const it = target?.dataset.media && items.get(target.dataset.media);
       if (it) {
         return { title: it.type === 'Episode' ? `${it.series}: ${it.name}` : it.name,
-          meta: [it.type === 'Episode' ? (episodeCode(it) || 'Episode') : it.type === 'Series' ? 'Series' : it.type === 'MusicAlbum' ? (it.albumArtist || 'Album') : 'Movie',
+          meta: [it.type === 'Episode' ? (episodeCode(it) || 'Episode') : it.type === 'Series' ? 'Series' : it.type === 'MusicAlbum' ? (it.albumArtist || 'Album')
+            : it.type === 'MusicArtist' ? 'Artist' : it.type === 'Playlist' ? `Playlist${it.childCount ? ` · ${it.childCount} songs` : ''}` : it.type === 'Audio' ? (it.albumArtist || 'Song') : 'Movie',
             it.year, it.runtimeMin && `${it.runtimeMin} min`, it.progress > 0 && it.progress < 100 && `${it.progress}% watched`, it.played && 'Watched'].filter(Boolean).map(String) };
       }
       const label = target?.querySelector('.tile__label');

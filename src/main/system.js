@@ -112,9 +112,10 @@ function setAutostart(on, appPath) {
       'Type=Application',
       'Name=Halcyon',
       'Comment=Console-style game launcher',
-      `Exec="${process.execPath}" "${appPath}"`,
-      `Path=${appPath}`,
-      'Icon=input-gaming',
+      // The AppImage, the installed program, or (from source) Electron with the project folder.
+      `Exec=${process.env.APPIMAGE ? `"${process.env.APPIMAGE}"` : require('electron').app.isPackaged ? `"${process.execPath}"` : `"${process.execPath}" "${appPath}"`}`,
+      ...(require('electron').app.isPackaged ? [] : [`Path=${appPath}`]),
+      `Icon=${require('electron').app.isPackaged ? 'halcyon' : 'input-gaming'}`,
       'Terminal=false',
       'X-GNOME-Autostart-enabled=true',
       '',

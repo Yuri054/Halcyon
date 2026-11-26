@@ -5,7 +5,29 @@ entirely from a controller. Steam, emulators and anything else you can start fro
 
 ![Home](docs/home.png)
 
-## Run
+## Install
+
+Download the latest build from [Releases](https://github.com/Yuri054/Halcyon/releases):
+
+- **AppImage** (any distribution): make it executable and run it.
+
+  ```bash
+  chmod +x Halcyon-1.0.0-x86_64.AppImage
+  ```
+
+  ```bash
+  ./Halcyon-1.0.0-x86_64.AppImage
+  ```
+
+- **.deb** (Debian, Ubuntu, Pop!_OS, Mint): install it, then start Halcyon from the app menu.
+
+  ```bash
+  sudo apt install ./Halcyon-1.0.0-amd64.deb
+  ```
+
+Settings and artwork live in `~/.config/Halcyon` either way.
+
+## Run from source
 
 ```bash
 npm install
@@ -16,7 +38,7 @@ npm start
 ```
 
 `npm run windowed` starts in a window instead of fullscreen. `scripts/install-desktop.sh` adds
-Halcyon to your application menu.
+Halcyon to your application menu. `npm run dist` builds the AppImage and .deb into `dist/`.
 
 ## Controls
 

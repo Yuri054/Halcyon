@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron .",
     "windowed": "electron . --windowed",
-    "test:ui": "node scripts/run-ui-test.js"
+    "test:ui": "node scripts/run-ui-test.js",
+    "dist": "electron-builder --linux AppImage deb"
   },
   "license": "MIT",
   "dependencies": {
@@ -15,6 +16,67 @@
     "hls.js": "^1.6.15"
   },
   "devDependencies": {
-    "electron": "^45.3.0"
-  }
+    "electron": "^45.3.0",
+    "electron-builder": "^26.18.0"
+  },
+  "homepage": "https://github.com/Yuri054/Halcyon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yuri054/Halcyon.git"
+  },
+  "author": {
+    "name": "Yuri054",
+    "email": "77180461+Yuri054@users.noreply.github.com"
+  },
+  "build": {
+    "appId": "io.github.yuri054.halcyon",
+    "productName": "Halcyon",
+    "artifactName": "Halcyon-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!**/*.md"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Game",
+      "icon": "build/icon.png",
+      "executableName": "halcyon",
+      "synopsis": "A console-style game launcher for Linux",
+      "description": "A console-style game launcher for Linux: Steam, emulators and custom games, fully controller-driven.",
+      "desktop": {
+        "entry": {
+          "Name": "Halcyon",
+          "GenericName": "Game Launcher",
+          "Comment": "Console-style game launcher",
+          "Categories": "Game;",
+          "StartupWMClass": "Halcyon",
+          "Keywords": "games;launcher;steam;emulator;controller;"
+        }
+      },
+      "syncDesktopName": true
+    },
+    "deb": {
+      "depends": [
+        "libnotify4",
+        "libxtst6",
+        "libnss3",
+        "libasound2 | libasound2t64"
+      ],
+      "recommends": [
+        "pulseaudio-utils",
+        "alsa-utils"
+      ],
+      "packageCategory": "games"
+    },
+    "publish": null
+  },
+  "desktopName": "halcyon.desktop"
 }

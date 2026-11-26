@@ -820,6 +820,7 @@ if (!app.requestSingleInstanceLock()) {
       backgroundColor: '#05070a',
       autoHideMenuBar: true,
       title: DASHBOARD_TITLE,
+      icon: path.join(__dirname, '../renderer/icon.png'),
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         contextIsolation: true,

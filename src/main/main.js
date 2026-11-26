@@ -16,6 +16,7 @@ const { PadWatch } = require('./padwatch');
 const sounds = require('./sounds');
 const diary = require('./log');
 const monitorAudio = require('./monitorAudio');
+const cosmicWindows = require('./cosmicWindows');
 const { Jellyfin } = require('./media/jellyfin');
 const { IMAGE_EXT, expandHome, isDir } = require('./util');
 
@@ -145,6 +146,23 @@ if (!app.requestSingleInstanceLock()) {
     return { x: b.x + Math.round((b.width - w) / 2), y: b.y + Math.round((b.height - h) / 2), width: w, height: h };
   }
   let moving = false;   // while a window is being carried to another monitor
+  // The dashboard window's title, which is how the compositor finds it (a test copy can use
+  // another one so it never moves the real Halcyon).
+  const DASHBOARD_TITLE = process.env.HALCYON_WINDOW_TITLE || 'Halcyon';
+  const portOf = (label) => (label || '').split(' - ').pop();
+  const displayByPort = (port) => screen.getAllDisplays().find((d) => portOf(d.label) === port) || null;
+  /**
+   * The monitor the dashboard is really on. Under Wayland an app can't see where its window is
+   * (Electron only knows where it asked for it to go), so on COSMIC the compositor is asked.
+   */
+  async function dashboardDisplay() {
+    if (!win || win.isDestroyed()) return null;
+    if (cosmicWindows.available()) {
+      const outs = await cosmicWindows.windowOutputs(DASHBOARD_TITLE);
+      if (outs.length) return displayByPort(outs[0]);
+    }
+    return screen.getDisplayMatching(win.getBounds());
+  }
 
   /** Should sound go to this monitor's speakers? The setting lists monitors; unset = TVs. */
   async function wantsSound(label) {
@@ -160,17 +178,27 @@ if (!app.requestSingleInstanceLock()) {
     clearTimeout(audioTimer);
     audioTimer = setTimeout(async () => {
       if (!win || win.isDestroyed() || moving) return;
-      const d = screen.getDisplayMatching(win.getBounds());
+      const d = await dashboardDisplay();
       const label = d?.label || '';
       const model = (await wantsSound(label)) ? label.split(' - ')[1] : null;
       monitorAudio.follow(model).catch((err) => diary.log(`monitor audio: ${err.message}`));
     }, delay);
   }
   /** Move a window to the chosen monitor, coming out of fullscreen and going back in there. */
-  function placeOnMonitor(w) {
+  async function placeOnMonitor(w) {
     const d = chosenDisplay();
     if (!w || w.isDestroyed()) return;
     if (!d) { syncAudio(); return; }
+    // COSMIC: ask the compositor to move the window and fullscreen it on that output.
+    if (cosmicWindows.available()) {
+      if (moving) return;
+      moving = true;
+      const full = !windowed && store.data.settings.fullscreen;
+      const r = await cosmicWindows.moveWindow(DASHBOARD_TITLE, portOf(d.label), { fullscreen: full });
+      diary.log(`monitor: ${d.label} -> ${r.ok ? `on ${r.on.join(', ')}${r.fullscreen ? ', fullscreen' : ''}` : `not moved (${r.error})`}`);
+      moving = false;
+      if (r.ok) { syncAudio(); return; }
+    }
     const on = screen.getDisplayMatching(w.getBounds());
     if (on && on.id === d.id) { syncAudio(); return; }
     diary.log(`monitor: moving the dashboard to ${d.label || d.id}`);
@@ -559,8 +587,8 @@ if (!app.requestSingleInstanceLock()) {
       }));
     });
     // The monitors, for Settings › display › Monitor.
-    handle('system:displays', () => {
-      const here = win && !win.isDestroyed() ? screen.getDisplayMatching(win.getBounds()) : null;
+    handle('system:displays', async () => {
+      const here = await dashboardDisplay();
       const primary = screen.getPrimaryDisplay();
       return screen.getAllDisplays().map((d) => {
         const parts = (d.label || '').split(' - ');
@@ -636,7 +664,7 @@ if (!app.requestSingleInstanceLock()) {
       show: false,
       backgroundColor: '#05070a',
       autoHideMenuBar: true,
-      title: 'Halcyon',
+      title: DASHBOARD_TITLE,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         contextIsolation: true,
@@ -649,7 +677,9 @@ if (!app.requestSingleInstanceLock()) {
     // Every handler checks it still belongs to the current window: a window that has been
     // replaced (see bringToFront) must not touch settings or state on its way out.
     const current = () => win === w;
-    w.once('ready-to-show', () => { if (!w.isDestroyed()) { w.show(); placeOnMonitor(w); } });
+    w.on('page-title-updated', (e) => { e.preventDefault(); w.setTitle(DASHBOARD_TITLE); });
+    // Once the page has its title (that's how the compositor finds the window), go to the chosen monitor.
+    w.once('ready-to-show', () => { if (!w.isDestroyed()) { w.show(); setTimeout(() => { if (current()) placeOnMonitor(w); }, 400); } });
     w.on('focus', () => { if (current()) send('window:focus', true); });
     w.on('blur', () => { if (current()) send('window:focus', false); });
     // The fullscreen setting changes only when you change it (F11 or Settings). The window can

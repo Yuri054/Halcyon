@@ -129,6 +129,11 @@ games). Monitors are listed by name (make, model, port, resolution) and remember
 so rearranging them doesn't matter. If the chosen one is unplugged, Halcyon opens wherever the
 desktop puts it and moves back when it returns. *Automatic* leaves it to the desktop.
 
+Wayland doesn't let an app place its own window, so on COSMIC Halcyon asks the compositor
+instead (`src/main/cosmicWindows.js`: COSMIC's toplevel-management protocol moves the window to
+the output's workspace and fullscreens it there, and its toplevel-info protocol says which screen
+the window is really on). On other desktops it falls back to Electron's own window placement.
+
 *Sound follows the monitor* sends the system's sound to a screen's own HDMI / DisplayPort audio
 while Halcyon is on it, and puts the previous output back when Halcyon moves to another screen or
 closes (unless you changed the output yourself in the meantime). Out of the box it does this for

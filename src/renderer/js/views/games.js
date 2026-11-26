@@ -319,6 +319,20 @@ export function createGames() {
         else cycleFilter(action === 'lt' ? -1 : 1);
         return true;
       }
+      // Up from the top row of games goes to the Show / Search / View / Sort buttons (or the
+      // chips), not past them to the section tabs.
+      if (action === 'up' && inGrid) {
+        const top = target.getBoundingClientRect().top;
+        const above = [...grid.querySelectorAll('[data-focus]')].some((t) => t !== target && t.getBoundingClientRect().bottom <= top + 2);
+        if (!above) {
+          const bar = focus.byKey(tools, 't:filter')?.offsetParent ? [...tools.querySelectorAll('[data-focus]')] : [...chips.querySelectorAll('[data-focus]'), ...tools.querySelectorAll('[data-focus]')];
+          const usable = bar.filter((b) => b.offsetParent);
+          const x = target.getBoundingClientRect().left + target.getBoundingClientRect().width / 2;
+          const near = usable.sort((a, b) => Math.abs(a.getBoundingClientRect().left + a.getBoundingClientRect().width / 2 - x) - Math.abs(b.getBoundingClientRect().left + b.getBoundingClientRect().width / 2 - x))[0];
+          const pick = focus.byKey(tools, 't:filter')?.offsetParent ? focus.byKey(tools, 't:filter') : near;
+          if (pick) { focus.focus(pick, { layer: focus.base() }); sfx.move(); return true; }
+        }
+      }
       const id = target?.dataset.game;
       if (!id) return false;
       if (action === 'y') { gameMenu(id); return true; }

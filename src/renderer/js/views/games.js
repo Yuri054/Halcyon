@@ -1,8 +1,6 @@
 // Games: the full library as a two-row horizontal wall of covers,
-// with category chips, sorting and search. In the 360 theme the section opens on a
-// dashboard page first, like the console's games tab: My Games, Browse Games and
-// Search Games down the left, the last four games played beside them, and a game
-// you haven't tried yet on the right.
+// with category chips, sorting and search. The 360 theme shows it like the console's
+// "My Games": a title, then Show / Sort / Search buttons instead of the chip row.
 import { h, icon, flash } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import {
@@ -10,7 +8,7 @@ import {
   game as findGame, gameContext, fmt,
 } from '../core/state.js';
 import { app } from '../core/bus.js';
-import { gameTile, actionTile } from '../ui/tile.js';
+import { gameTile } from '../ui/tile.js';
 import { gameMenu } from '../ui/gamemenu.js';
 import { keyboard } from '../ui/osk.js';
 import { menu } from '../ui/dialog.js';
@@ -19,65 +17,9 @@ export function createGames() {
   const chips = h('div', { class: 'chips', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
   const tools = h('div', { class: 'tools', 'data-focus-group': true });
   const grid = h('div', { class: 'wall', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
-  const toolbar = h('div', { class: 'toolbar' }, chips, tools);
-  const front = h('div', { class: 'blocks games__front', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true, hidden: true });
-  const el = h('section', { class: 'view view--games' }, front, toolbar, grid);
+  const title = h('div', { class: 'games__title' }, h('span', null, 'my games'), h('small', null, ''));
+  const el = h('section', { class: 'view view--games' }, h('div', { class: 'toolbar' }, title, chips, tools), grid);
   let shown = [];
-  let atFront = true;    // 360 theme: showing the front page rather than the wall
-  const frontOn = () => document.body.dataset.theme === 'x360' && atFront;
-
-  function renderFront() {
-    const installed = visibleGames().filter((g) => g.installed);
-    const recent = sortGames(installed, 'recent').slice(0, 4);
-    const untried = installed.filter((g) => !g.lastPlayed && !recent.includes(g));
-    // A different untried game each day, so the tile changes now and then.
-    const day = Math.floor(Date.now() / 86400000);
-    const pick = untried.length ? untried[day % untried.length] : null;
-    let i = 0;
-    const at = (node, area) => { node.style.gridArea = area; return node; };
-    const tile = (key, label, iconName, area, onSelect, extra = {}) => at(actionTile({ key, label, iconName, tone: 'accent', index: i++, onSelect, ...extra }), area);
-    const uninstalled = visibleGames().filter((g) => !g.installed).length;
-    const rec = pick && at(gameTile(pick, 'cover', i++), 'rc');
-    if (rec) {
-      rec.classList.add('games__rec');
-      rec.querySelector('.tile__body')?.append(h('div', { class: 'games__rec-text' }, h('b', null, pick.name), h('span', null, 'Installed and not played yet. Give it a try?')));
-    }
-    const page1 = h('div', { class: 'metro games__metro' },
-      tile('gf:mine', 'My Games', 'pad', 'mg', () => openWall('installed'), { count: installed.length }),
-      tile('gf:browse', 'Browse Games', 'download', 'br', () => openWall('uninstalled'), { count: uninstalled || null }),
-      tile('gf:search', 'Search Games', 'search', 'se', () => app.search()),
-      ...recent.map((g, n) => at(gameTile(g, 'wide', i++), `g${n + 1}`)),
-      rec || tile('gf:fav', 'Favorites', 'star', 'rc', () => openWall('favorites')),
-      tile('gf:all', 'All games', 'grid', 'ra', () => openWall('all'), { count: visibleGames().length }));
-    const systems = state.lib.systems.filter((x) => installed.some((g) => g.system === x.id));
-    const page2 = h('div', { class: 'metro metro--quick' },
-      actionTile({ key: 'gf:steam', label: 'Steam', iconName: 'cloud', tone: 'accent', count: installed.filter((g) => g.source === 'steam').length, index: i++, onSelect: () => openWall('steam') }),
-      actionTile({ key: 'gf:favs', label: 'Favorites', iconName: 'star', tone: 'accent', count: installed.filter((g) => g.favorite).length, index: i++, onSelect: () => openWall('favorites') }),
-      ...systems.map((x) => actionTile({ key: `gf:sys:${x.id}`, label: x.name, iconName: 'chip', tone: 'accent', count: installed.filter((g) => g.system === x.id).length, index: i++, onSelect: () => openWall(`sys:${x.id}`) })),
-      state.lib.games.some((g) => g.download) && actionTile({ key: 'gf:dl', label: 'Downloading', iconName: 'download', tone: 'accent', index: i++, onSelect: () => openWall('downloads') }));
-    front.replaceChildren(
-      h('div', { class: 'block block--metro', 'data-page': '1' }, page1),
-      h('div', { class: 'block block--metro block--page2', 'data-page': '2' }, page2));
-  }
-
-  function openWall(filter) {
-    atFront = false;
-    state.filter = filter;
-    state.query = '';
-    api.ui.set({ filter });
-    render({ resetScroll: true });
-    flash(el, 'is-swapping');
-    if (shown.length) focusGrid(); else focus.focusKey(`f:${filter}`, { layer: focus.base() });
-    app.refreshChrome();
-  }
-
-  function showFront() {
-    atFront = true;
-    render();
-    flash(el, 'is-swapping');
-    focus.focus(focus.byKey(front, 'gf:mine') || front.querySelector('[data-focus]'), { layer: focus.base(), scroll: 'instant' });
-    app.refreshChrome();
-  }
 
   function filters() {
     const games = visibleGames();
@@ -101,11 +43,6 @@ export function createGames() {
   }
 
   function render({ resetScroll = false } = {}) {
-    const onFront = frontOn();
-    front.hidden = !onFront;
-    toolbar.hidden = onFront;
-    grid.hidden = onFront;
-    if (onFront) { renderFront(); return; }
     const sort = state.lib.settings.sort || 'recent';
     const keepScroll = grid.scrollLeft;
 
@@ -115,9 +52,12 @@ export function createGames() {
       onSelect: () => setFilter(f),
     })));
 
+    title.lastChild.textContent = fmt.count(filterGames(state.filter).length, 'game');
     tools.replaceChildren(
+      // 360: what's shown is picked from a menu (the chip row is hidden there).
+      Object.assign(chip('t:filter', `Show: ${filterLabel(state.filter)}`, { iconName: 'layers', active: state.filter !== 'all', onSelect: doFilter }), { className: `chip games__filter${state.filter !== 'all' ? ' is-active' : ''}` }),
       chip('t:search', state.query ? `“${state.query}”` : 'Search', { iconName: 'search', active: Boolean(state.query), onSelect: doSearch }),
-      chip('t:sort', SORTS.find(([id]) => id === sort)?.[1] || 'Sort', { iconName: 'clock', onSelect: doSort }));
+      chip('t:sort', `${document.body.dataset.theme === 'x360' ? 'Sort: ' : ''}${SORTS.find(([id]) => id === sort)?.[1] || 'Sort'}`, { iconName: 'clock', onSelect: doSort }));
 
     const base = filterGames(state.filter);
     shown = search(state.filter === 'recent' ? base : sortGames(base, sort), state.query);
@@ -159,6 +99,23 @@ export function createGames() {
     app.refreshChrome();
   }
 
+  async function doFilter() {
+    const pick = await menu({
+      title: 'Show',
+      subtitle: 'Which games the list shows',
+      selected: state.filter,
+      items: filters().map((f) => ({ label: filterLabel(f), value: f, checked: f === state.filter, hint: String(filterGames(f).length) })),
+    });
+    if (pick == null) return;
+    if (pick === state.filter) { focusGrid(); return; }
+    state.filter = pick;
+    api.ui.set({ filter: pick });
+    render({ resetScroll: true });
+    flash(el, 'is-swapping');
+    if (shown.length) focusGrid(); else focus.focusKey('t:filter');
+    app.refreshChrome();
+  }
+
   async function doSort() {
     const cur = state.lib.settings.sort || 'recent';
     const pick = await menu({
@@ -196,15 +153,12 @@ export function createGames() {
     label: 'games',
     el,
     render,
-    setFilter(f) { atFront = false; state.filter = f; state.query = ''; api.ui.set({ filter: f }); render({ resetScroll: true }); },
-    // Coming to the tab (not to a particular filter) opens the front page again.
-    reset() { atFront = true; },
-    defaultFocus: () => (frontOn() ? focus.byKey(front, 'gf:mine') || front.querySelector('[data-focus]') : grid.querySelector('[data-focus]') || focus.byKey(chips, `f:${state.filter}`)),
+    setFilter(f) { state.filter = f; state.query = ''; api.ui.set({ filter: f }); render({ resetScroll: true }); },
+    defaultFocus: () => grid.querySelector('[data-focus]') || focus.byKey(chips, `f:${state.filter}`) || focus.byKey(tools, 't:filter'),
     onAction(action, target) {
-      if (action === 'start') { if (frontOn()) app.search(); else doSearch(); return true; }
+      if (action === 'start') { doSearch(); return true; }
       if (action === 'select') { doSort(); return true; }
       const inGrid = target && grid.contains(target);
-      if ((action === 'lt' || action === 'rt') && frontOn()) return false;
       if (action === 'lt' || action === 'rt') {
         if (inGrid) focus.page(action === 'lt' ? 'left' : 'right', 5);
         else cycleFilter(action === 'lt' ? -1 : 1);
@@ -218,8 +172,7 @@ export function createGames() {
     },
     onBack(target) {
       if (state.query) { state.query = ''; render({ resetScroll: true }); focusGrid(); app.refreshChrome(); return true; }
-      if (target && grid.contains(target)) { return focus.focusKey(`f:${state.filter}`); }
-      if (document.body.dataset.theme === 'x360' && !atFront) { showFront(); return true; }
+      if (target && grid.contains(target)) { return focus.focusKey(`f:${state.filter}`) || focus.focusKey('t:filter'); }
       return false;
     },
     hints(target) {
@@ -228,15 +181,14 @@ export function createGames() {
         return [{ a: 'accept', label: g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' },
           { a: 'lt', b: 'rt', label: 'Page' }, { a: 'start', label: 'Search' }];
       }
-      if (frontOn()) return [{ a: 'accept', label: 'Select' }, { a: 'start', label: 'Search' }];
-      return [{ a: 'accept', label: 'Select' }, { a: 'lt', b: 'rt', label: 'Category' }, { a: 'start', label: 'Search' }];
+      return [{ a: 'accept', label: 'Select' }, { a: 'lt', b: 'rt', label: 'Show' }, { a: 'start', label: 'Search' }];
     },
     context(target) {
       if (target?.dataset.game) return gameContext(findGame(target.dataset.game));
       return { title: filterLabel(state.filter), meta: [fmt.count(shown.length, 'game'), state.query && `matching “${state.query}”`].filter(Boolean) };
     },
     backdrop(target) {
-      const g = target?.dataset.game ? findGame(target.dataset.game) : frontOn() ? sortGames(visibleGames().filter((x) => x.installed), 'recent')[0] : shown[0];
+      const g = target?.dataset.game ? findGame(target.dataset.game) : shown[0];
       return g ? g.art.hero : [];
     },
   };

@@ -128,10 +128,10 @@ The tabs are **home, games, tv & movies, music** and **settings**. Settings has 
 *general* and *systems* (emulators and ROM folders); LT/RT switch between them. The store and
 collections pages are switched off: nothing in the tabs, Guide or home screen leads to them.
 
-In the 360 theme the games tab opens like the console's: *My Games* (installed games), *Browse
-Games* (games you own but haven't installed), *Search Games*, your four most recent games, and an
-installed game you haven't tried yet. The next page has Steam, favorites and each emulated
-system. B from a games wall goes back to this page.
+In the 360 theme the games tab is the console's *My Games* list: every game (installed ones in
+colour, the rest greyed out, ready to install), with **Show** (all, favorites, recent, Steam, each
+system, installed, not installed, ...), **Search** and **Sort** buttons. LT/RT step through the
+Show choices from the buttons. It always opens on all games.
 
 ## Launch scene
 

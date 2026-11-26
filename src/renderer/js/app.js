@@ -471,7 +471,7 @@ async function boot() {
   });
 
   Object.assign(lastKey, state.lib.ui.focus || {});
-  state.filter = state.lib.ui.filter || 'all';
+  state.filter = 'all';   // games always start on the whole library
   const saved = state.lib.ui.section === 'media' ? 'tv' : state.lib.ui.section;
   const start = ORDER.includes(tabOf(saved)) && views[saved] ? saved : 'home';
   state.section = null;

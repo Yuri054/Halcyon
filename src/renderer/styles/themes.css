@@ -916,32 +916,16 @@ body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .g
 [data-theme='x360'] .nowplaying { border-radius: 0; background: rgba(0, 0, 0, 0.22); }
 [data-theme='x360'] .nowplaying .icon { color: #8fd85a; }
 
-/* 360 games tab: the console's games page. Green tiles down the left (each a third of
-   the height), the four last-played games in a 2 x 2 block, a game to try on the right. */
-[data-theme='x360'] .view--games .games__front {
-  --reveal: page; --tg: 0.7rem;
-  --row: min(13.2rem, calc((100vh - 25rem) / 3));
-  --col: calc(var(--row) * 1.34);
-  --wide: calc(var(--row) * 1.9);
-  --page: calc(var(--col) * 2 + var(--wide) * 2 + var(--tg) * 3);
-  --sub: calc((var(--row) * 3 - var(--tg) * 3) / 6);
-  gap: 0; padding-top: 1.4rem;
-}
-[data-theme='x360'] .games__front .metro { display: grid; gap: var(--tg); grid-template-columns: var(--col) var(--wide) var(--wide) var(--col); grid-template-rows: repeat(3, var(--row)); }
-[data-theme='x360'] .games__front .games__metro {
-  grid-template-rows: repeat(6, var(--sub));
-  grid-template-areas: 'mg g1 g2 rc' 'mg g1 g2 rc' 'br g1 g2 rc' 'br g3 g4 rc' 'se g3 g4 ra' 'se g3 g4 ra';
-}
-[data-theme='x360'] .games__front .metro--quick { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: var(--col); }
-[data-theme='x360'] .games__front .metro > .tile { width: auto; height: auto; min-width: 0; }
-[data-theme='x360'] .games__front .tile.is-focused .tile__body { transform: scale(1.05); }
-[data-theme='x360'] .games__metro .tile--action .tile__icon { top: 22%; width: 2.4rem; height: 2.4rem; }
-[data-theme='x360'] .games__metro [data-key='gf:mine'] .tile__icon { width: 3.2rem; height: 3.2rem; top: 18%; }
-/* The game to try: its cover on top, a few words under it (like a recommendation). */
-[data-theme='x360'] .games__rec .tile__body { background: #f2f2f2; display: flex; flex-direction: column; }
-[data-theme='x360'] .games__rec .tile__img { position: relative; height: 62%; width: 100%; object-fit: cover; flex: none; }
-[data-theme='x360'] .games__rec .art-fallback { height: 62%; }
-[data-theme='x360'] .games__rec .tile__shade, [data-theme='x360'] .games__rec .tile__strip, [data-theme='x360'] .games__rec .tile__caption { display: none; }
-[data-theme='x360'] .games__rec-text { position: absolute; left: 0; right: 0; bottom: 0; top: 62%; padding: 0.6rem 0.8rem; color: #333; display: flex; flex-direction: column; gap: 0.3rem; overflow: hidden; }
-[data-theme='x360'] .games__rec-text b { font-weight: 600; font-size: 1rem; color: var(--x-tile-green); line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-[data-theme='x360'] .games__rec-text span { font-size: 0.85rem; line-height: 1.2; color: #555; }
+/* Games list: the 360's "My Games": a big title, Show / Sort / Search, then the covers. */
+.games__title, .games__filter { display: none; }
+[data-theme='x360'] .view--games .toolbar { align-items: flex-end; gap: 1.4rem; height: auto; min-height: 4.4rem; padding-top: 0.8rem; }
+[data-theme='x360'] .view--games .toolbar > .chips { display: none; }
+[data-theme='x360'] .games__title { display: flex; flex-direction: column; flex: 1; color: #fff; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.25); }
+[data-theme='x360'] .games__title span { font-size: 2.6rem; font-weight: 300; line-height: 1; letter-spacing: -0.01em; }
+[data-theme='x360'] .games__title small { margin-top: 0.35rem; font-size: 1rem; color: rgba(255, 255, 255, 0.85); }
+[data-theme='x360'] .games__filter { display: inline-flex; }
+[data-theme='x360'] .view--games .tools .chip { background: rgba(255, 255, 255, 0.9); color: #333; font-size: 1rem; padding: 0.55rem 1.1rem; }
+[data-theme='x360'] .view--games .tools .chip .icon { color: var(--x-tile-green); }
+[data-theme='x360'] .view--games .tools .chip.is-active { background: #fff; box-shadow: inset 0 -0.2rem 0 var(--x-tile-green); }
+[data-theme='x360'] .view--games .tools .chip.is-focused { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); color: #fff; }
+[data-theme='x360'] .view--games .tools .chip.is-focused .icon { color: #fff; }

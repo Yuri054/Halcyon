@@ -23,7 +23,7 @@ function renderHints() {
     h('span', { class: 'hint__label' }, hint.label))));
 }
 
-const openedAt = performance.now();
+let openedAt = performance.now();
 
 function onAction(action, repeat) {
   // Home again puts the game back, like closing the console's Guide. (The press that opened
@@ -72,6 +72,18 @@ async function run() {
 
   focus.setOnChange(renderHints);
   input.init({ onAction, onMode: renderHints });
+
+  // A spare window, loaded ahead of time, waits hidden until Home shows it.
+  if (new URLSearchParams(location.search).has('wait')) {
+    await new Promise((resolve) => api.on('guide:open', resolve));
+    openedAt = performance.now();
+    state.lib = await api.library.get();
+    const st = await api.system.status().catch(() => null);
+    const now = (st?.nowPlaying || []).slice(-1)[0];
+    const game = now && state.lib.games.find((x) => x.id === now.id);
+    const pic = game && [...game.art.hero, ...game.art.cover][0];
+    if (pic) $('overlayBg').style.backgroundImage = `url("${pic}")`;
+  }
   state.pads = [...navigator.getGamepads()].filter((p) => p && p.connected).map((p) => ({ index: p.index, id: p.id, name: p.id }));
 
   await openGuide();

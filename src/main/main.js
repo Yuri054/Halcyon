@@ -119,18 +119,12 @@ if (!app.requestSingleInstanceLock()) {
   // Desktops (Wayland ones especially) do not let a background window push itself in
   // front of a game, but a newly opened window is given focus. So the menu is a small
   // window of its own, opened on demand; closing it returns focus to the game.
-  let gameMenu = null;
+  let gameMenu = null;   // the Guide window while it is on screen
+  let spare = null;      // a loaded, hidden Guide window, so Home can show one instantly
   let lastSummon = 0;
-  function closeGameMenu() {
-    if (gameMenu && !gameMenu.isDestroyed()) gameMenu.destroy();
-    gameMenu = null;
-  }
-  function summonGameMenu(force = false) {
-    if (gameMenu) return { ok: true, open: true };                   // its own Home handler closes it
-    if (!force && win && !win.isDestroyed() && win.isFocused()) return { ok: true, alreadyFocused: true }; // the dashboard's guide covers this
-    if (Date.now() - lastSummon < 700) return { ok: true };
-    lastSummon = Date.now();
-    gameMenu = new BrowserWindow({
+
+  function makeGuideWindow(waitForOpen) {
+    const w = new BrowserWindow({
       fullscreen: true,
       frame: false,
       // Opaque: a see-through window over a fullscreen game is not composited above it on
@@ -143,23 +137,62 @@ if (!app.requestSingleInstanceLock()) {
       alwaysOnTop: true,
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
     });
-    const menu = gameMenu;
-    diary.log('guide-over-game: open');
+    w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    w.webContents.on('will-navigate', (e) => e.preventDefault());
+    w.loadFile(path.join(__dirname, '../renderer/gamemenu.html'), waitForOpen ? { query: { wait: '1' } } : undefined);
+    w.webContents.once('did-finish-load', () => { w.loaded = true; });
+    return w;
+  }
+
+  /** Keep a Guide window loaded and hidden while a game runs: shown on Home with no gap. */
+  function prewarmGuide() {
+    if (spare && !spare.isDestroyed()) return;
+    if (store.data.settings.homeButtonGuide === false || !launcher.nowPlaying().length) return;
+    spare = makeGuideWindow(true);
+    spare.on('closed', function onClosed() { if (spare && spare.isDestroyed()) spare = null; });
+    diary.log('guide-over-game: spare ready');
+  }
+  function dropSpare() {
+    if (spare && !spare.isDestroyed()) spare.destroy();
+    spare = null;
+  }
+
+  function closeGameMenu() {
+    if (gameMenu && !gameMenu.isDestroyed()) gameMenu.destroy();
+    gameMenu = null;
+    setTimeout(() => prewarmGuide(), 600);
+  }
+
+  function summonGameMenu(force = false) {
+    if (gameMenu) return { ok: true, open: true };                   // its own Home handler closes it
+    if (!force && win && !win.isDestroyed() && win.isFocused()) return { ok: true, alreadyFocused: true }; // the dashboard's guide covers this
+    if (Date.now() - lastSummon < 700) return { ok: true };
+    lastSummon = Date.now();
+
+    const ready = spare && !spare.isDestroyed() && spare.loaded;
+    const menu = ready ? spare : makeGuideWindow(false);
+    if (ready) spare = null;
+    gameMenu = menu;
     let shownAt = 0;
-    menu.once('ready-to-show', () => { if (!menu.isDestroyed()) { menu.show(); menu.focus(); shownAt = Date.now(); diary.log('guide-over-game: shown, focused =', menu.isFocused()); } });
+    const show = () => {
+      if (menu.isDestroyed()) return;
+      menu.show();
+      menu.focus();
+      shownAt = Date.now();
+      if (ready) menu.webContents.send('guide:open');
+      diary.log(`guide-over-game: shown (${ready ? 'ready' : 'fresh'}), focused =`, menu.isFocused());
+    };
+    if (ready) show(); else menu.once('ready-to-show', show);
     menu.on('focus', () => diary.log('guide-over-game: focus'));
     // If the game takes the screen back, close the Guide straight away: left open behind a
     // game it would keep the focus, and the game would stop taking input.
     menu.on('blur', () => {
       diary.log('guide-over-game: blur after', Date.now() - shownAt, 'ms');
-      setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused()) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 400);
+      setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused() && gameMenu === menu) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 400);
     });
     menu.on('closed', () => { diary.log('guide-over-game: closed'); if (gameMenu === menu) gameMenu = null; });
-    menu.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    menu.webContents.on('will-navigate', (e) => e.preventDefault());
-    menu.loadFile(path.join(__dirname, '../renderer/gamemenu.html'));
     if (process.env.HALCYON_DEV_MENU_SCRIPT) require('./devscript').run(menu, process.env.HALCYON_DEV_MENU_SCRIPT);
-    return { ok: true, opened: true };
+    return { ok: true, opened: true, ready };
   }
   const padWatch = new PadWatch({
     onPress: () => {
@@ -495,7 +528,7 @@ if (!app.requestSingleInstanceLock()) {
     // Pushed out of fullscreen by something else (not F11 or Settings, which change the setting
     // first): go straight back, so the desktop never shows around the dashboard.
     w.on('leave-full-screen', () => { if (current() && !windowed && store.data.settings.fullscreen) setTimeout(() => { if (!w.isDestroyed() && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); }, 150); });
-    w.on('closed', () => { if (current()) { win = null; closeGameMenu(); } });
+    w.on('closed', () => { if (current()) { win = null; closeGameMenu(); dropSpare(); } });
     w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     w.webContents.on('will-navigate', (e) => e.preventDefault());
     w.webContents.on('before-input-event', (e, input) => {
@@ -570,6 +603,8 @@ if (!app.requestSingleInstanceLock()) {
       send('launch:event', event);
       syncPadWatch();
       if (event.type === 'exited' && !launcher.nowPlaying().some((p) => p.quittable)) closeGameMenu();
+      if (event.type === 'started') setTimeout(() => prewarmGuide(), 1500);
+      if (event.type === 'exited' && !launcher.nowPlaying().length) setTimeout(dropSpare, 700);
       if (event.type !== 'exited') return;
       // The game is over: put the dashboard back in front, like a console returning home.
       // (Automated runs keep their one window: the test script is attached to it.)

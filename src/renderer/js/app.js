@@ -15,7 +15,7 @@ import { createMedia } from './views/media.js';
 import { nowPlaying, onNowPlaying, stopBackground } from './media/player.js';
 import { openDownloads } from './ui/downloads.js';
 import { openStorage } from './ui/storage.js';
-import { openAchievements, achievementTotal } from './ui/achievements.js';
+import { openAchievements, gamerscore } from './ui/achievements.js';
 import { createIntro } from './ui/intro.js';
 import { openGuide, closeGuide, isOpen as guideOpen } from './ui/guide.js';
 import { createHome } from './views/home.js';
@@ -150,7 +150,7 @@ function renderProfile() {
   const games = state.lib.games.filter((g) => g.installed && !g.shadowedBy).length;
   const hours = Math.round(state.lib.games.reduce((n, g) => n + (g.playtimeMin || 0), 0) / 60);
   // The score: achievements unlocked (like a Gamerscore), else hours played.
-  const unlocked = achievementTotal();
+  const unlocked = gamerscore();
   el.replaceChildren(
     h('div', { class: 'profile__pic' }, p.avatar ? h('img', { src: p.avatar, alt: '' }) : icon('user')),
     h('div', { class: 'profile__text' }, h('div', { class: 'profile__name' }, p.name || 'Player'),

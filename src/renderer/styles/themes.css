@@ -1013,3 +1013,19 @@ body[data-theme='x360'].x360-glow .view--games .wall { padding-top: 1.4rem; padd
 /* Achievements: square icons; locked ones grey. */
 .row--ach .row__thumb { width: 3.4rem; aspect-ratio: 1; }
 .row--ach:not(.is-earned) .row__thumb { filter: grayscale(1); opacity: 0.7; }
+
+/* Achievements list (the 360's): square pictures, "n of m Achievements", score with a G badge. */
+.row--achgame .row__thumb { width: 3.4rem; aspect-ratio: 1; }
+.row--achgame .row__hint, .row--achsum .row__hint { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.row--achgame .row__hint::after, .row--achsum .row__hint::after {
+  content: 'G'; display: inline-grid; place-items: center; width: 1.1rem; height: 1.1rem; margin-left: 0.4rem; border-radius: 50%;
+  border: 0.12rem solid currentColor; font-size: 0.65rem; font-weight: 700; vertical-align: 0.1rem;
+}
+.row--achsum.row--disabled { opacity: 1; }
+[data-theme='x360'] .layer--achlist .row--achsum { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); color: #fff; }
+[data-theme='x360'] .layer--achlist .row--achsum .row__label, [data-theme='x360'] .layer--achlist .row--achsum .row__sub, [data-theme='x360'] .layer--achlist .row--achsum .row__icon { color: #fff; opacity: 1; }
+/* The achievements box sits in the middle of the screen, as on the console. */
+[data-theme='x360'] .layer--achlist:not(.layer--left) .panel { left: calc(50% - 31rem); width: 62rem; top: 8.5rem; max-height: calc(100vh - 17rem); }
+body[data-theme='x360']:has(.layer--achlist:not(.is-closing)) #hints { left: calc(50% - 31rem); }
+.layer--achlist .row--achsum .row__hint { color: inherit; opacity: 1; }
+[data-theme='x360'] .layer--achlist .row--achsum .row__hint { color: #fff; }

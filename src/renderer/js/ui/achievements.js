@@ -19,8 +19,18 @@ export function achievementTotal() {
   return Object.values(state.lib.achievements || {}).reduce((n, s) => n + (s.unlocked || 0), 0);
 }
 
+/**
+ * A 360-style score: like a retail 360 game, each game is worth 1,000 G, earned in step with
+ * the share of its achievements unlocked. (Steam has no points of its own.)
+ */
+export const gameScore = (s) => (s && s.total ? Math.round((s.unlocked / s.total) * 1000) : 0);
+export function gamerscore() {
+  return Object.values(state.lib.achievements || {}).reduce((n, s) => n + gameScore(s), 0);
+}
+
 export async function openGameAchievements(appid, panelIn = null) {
   const panel = panelIn || openPanel();
+  panel.el.classList.add('layer--achlist');
   const r = await api.achievements.game(String(appid), { refresh: true });
   if (!r || !r.ok) {
     if (!panelIn) await panel.close();
@@ -59,36 +69,52 @@ export async function openGameAchievements(appid, panelIn = null) {
   if (!panelIn) await panel.close();
 }
 
-/** Every game with achievements, the ones most recently played first. */
+/**
+ * Every game with achievements, laid out like the 360's Achievements list: a row per game with
+ * its picture, "3 of 12 Achievements" and its score; a summary row on top. X switches between
+ * installed games and all of them (remembered).
+ */
 export async function openAchievements() {
   const sums = state.lib.achievements || {};
-  const ids = Object.keys(sums).filter((id) => sums[id].total);
-  if (!ids.length) {
+  const all = Object.keys(sums).filter((id) => sums[id].total);
+  if (!all.length) {
     toast(state.lib.steamAccount?.hasKey ? 'Halcyon is still collecting them from Steam; try again in a few minutes.' : 'Add your Steam Web API key under Settings › steam to see achievements.', { title: 'Achievements' });
     return;
   }
   const last = (id) => findGame(`steam:${id}`)?.lastPlayed || 0;
-  ids.sort((a, b) => last(b) - last(a) || sums[b].unlocked - sums[a].unlocked);
-  const total = ids.reduce((n, id) => n + sums[id].unlocked, 0);
-  const all = ids.reduce((n, id) => n + sums[id].total, 0);
+  const installedOnly = () => state.lib.settings.achievementsInstalled === true;
   const panel = openPanel();
+  panel.el.classList.add('layer--achlist');
   let selected = null;
   for (;;) {
+    const ids = all.filter((id) => !installedOnly() || findGame(`steam:${id}`)?.installed)
+      .sort((a, b) => last(b) - last(a) || gameScore(sums[b]) - gameScore(sums[a]));
+    const score = ids.reduce((n, id) => n + gameScore(sums[id]), 0);
+    const unlocked = ids.reduce((n, id) => n + sums[id].unlocked, 0);
+    const possible = ids.reduce((n, id) => n + sums[id].total, 0);
+    let flip = false;
     const pick = await panel.ask({
       title: 'Achievements',
-      subtitle: `${total.toLocaleString()} of ${all.toLocaleString()} unlocked across ${fmt.count(ids.length, 'game')}`,
+      subtitle: installedOnly() ? 'Installed games' : 'All games',
       selected,
-      items: ids.map((id) => {
-        const g = findGame(`steam:${id}`);
-        const s = sums[id];
-        return {
-          label: nameOf(id), value: id, verb: 'Open', iconName: 'star',
-          art: g ? [...g.art.hero, ...g.art.cover] : [`https://shared.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`],
-          sub: s.unlocked === s.total ? 'All unlocked' : `${Math.round((s.unlocked / s.total) * 100)}%`,
-          hint: `${s.unlocked} / ${s.total}`, meter: Math.round((s.unlocked / s.total) * 100),
-        };
-      }),
+      onAction: (action) => { if (action !== 'x') return false; flip = true; panel.cancel(); return true; },
+      hints: [{ a: 'x', label: installedOnly() ? 'Show all games' : 'Installed games only' }],
+      items: [
+        { label: installedOnly() ? 'Installed Steam games' : 'Steam games', value: 'noop', disabled: true, iconName: 'pad', cls: 'row--achsum',
+          sub: `${unlocked.toLocaleString()} of ${possible.toLocaleString()} Achievements`, hint: score.toLocaleString() },
+        ...ids.map((id) => {
+          const g = findGame(`steam:${id}`);
+          const s = sums[id];
+          return {
+            label: nameOf(id), value: id, verb: 'Open', iconName: 'pad', cls: 'row--achgame',
+            art: g ? [...g.art.cover, ...g.art.hero] : [`https://shared.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900.jpg`, `https://shared.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`],
+            sub: `${s.unlocked} of ${s.total} Achievements`, hint: gameScore(s).toLocaleString(),
+          };
+        }),
+        !ids.length && { label: 'No installed games with achievements yet', value: 'noop', disabled: true, sub: 'Press X to show all games' },
+      ].filter(Boolean),
     });
+    if (flip) { await api.settings.set({ achievementsInstalled: !installedOnly() }); continue; }
     if (pick == null) break;
     selected = pick;
     await openGameAchievements(pick, panel);

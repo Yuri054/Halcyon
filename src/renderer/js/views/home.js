@@ -8,7 +8,7 @@ import { gameMenu, editCustomGame, addGame } from '../ui/gamemenu.js';
 import { api } from '../core/state.js';
 import { toast } from '../ui/toast.js';
 import { menu } from '../ui/dialog.js';
-import { achievementTotal } from '../ui/achievements.js';
+import { gamerscore } from '../ui/achievements.js';
 
 /**
  * The tiles the home page's tile section can hold, in a catalog: the person picks which, and
@@ -22,7 +22,7 @@ const TILES = {
   steam: { label: 'Steam', iconName: 'cloud', count: (g) => g.filter((x) => x.source === 'steam').length, go: () => app.go('games', { filter: 'steam', enter: true }) },
   emulated: { label: 'Emulated', iconName: 'chip', count: (g) => g.filter((x) => x.source === 'emulator').length, go: () => app.go('games', { filter: 'emulated', enter: true }) },
   ports: { label: 'PC ports', iconName: 'pad', count: (g) => g.filter((x) => x.source === 'port').length, go: () => app.go('games', { filter: 'ports', enter: true }) },
-  achievements: { label: 'Achievements', iconName: 'star', count: () => achievementTotal() || undefined, go: () => app.achievements?.() },
+  achievements: { label: 'Achievements', iconName: 'star', count: () => gamerscore() || undefined, go: () => app.achievements?.() },
   tv: { label: 'TV & movies', iconName: 'film', go: () => app.go('tv', { enter: true }) },
   music: { label: 'Music', iconName: 'music', go: () => app.go('music', { enter: true }) },
   downloads: { label: 'Downloads', iconName: 'download', go: () => app.downloads() },

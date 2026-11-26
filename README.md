@@ -158,7 +158,10 @@ and open the full list: unlocked first (newest first, with the date), then locke
 first, with how many players have it; hidden ones stay hidden until earned). The Guide and a home
 tile open every game with achievements. Halcyon fills in each played game's count quietly in the
 background (and daily), and again after you close a game, and the 360 profile corner's score is
-the total unlocked, like a Gamerscore.
+a Gamerscore: like a retail 360 game, each game is worth 1,000 G, earned in step with the share of
+its achievements unlocked. The Achievements list (the 360's layout, in the middle of the screen)
+shows a total row, then each game with "n of m Achievements" and its score; X switches between
+installed games and all games.
 
 ## Monitor
 

@@ -15,6 +15,7 @@ const steamClient = require('./steam/client');
 const { PadWatch } = require('./padwatch');
 const sounds = require('./sounds');
 const diary = require('./log');
+const monitorAudio = require('./monitorAudio');
 const { Jellyfin } = require('./media/jellyfin');
 const { IMAGE_EXT, expandHome, isDir } = require('./util');
 
@@ -144,18 +145,40 @@ if (!app.requestSingleInstanceLock()) {
     return { x: b.x + Math.round((b.width - w) / 2), y: b.y + Math.round((b.height - h) / 2), width: w, height: h };
   }
   let moving = false;   // while a window is being carried to another monitor
+
+  /** Should sound go to this monitor's speakers? The setting lists monitors; unset = TVs. */
+  async function wantsSound(label) {
+    const chosen = store.data.settings.monitorAudio;
+    if (Array.isArray(chosen)) return chosen.includes(label);
+    const model = (label || '').split(' - ')[1];
+    const out = model && (await monitorAudio.outputs()).find((o) => o.monitor.toLowerCase() === model.toLowerCase());
+    return Boolean(out && monitorAudio.tvLike(out));
+  }
+  /** Sound follows the monitor the dashboard is on (and goes back when it leaves). */
+  let audioTimer = null;
+  function syncAudio(delay = 800) {
+    clearTimeout(audioTimer);
+    audioTimer = setTimeout(async () => {
+      if (!win || win.isDestroyed() || moving) return;
+      const d = screen.getDisplayMatching(win.getBounds());
+      const label = d?.label || '';
+      const model = (await wantsSound(label)) ? label.split(' - ')[1] : null;
+      monitorAudio.follow(model).catch((err) => diary.log(`monitor audio: ${err.message}`));
+    }, delay);
+  }
   /** Move a window to the chosen monitor, coming out of fullscreen and going back in there. */
   function placeOnMonitor(w) {
     const d = chosenDisplay();
-    if (!d || !w || w.isDestroyed()) return;
+    if (!w || w.isDestroyed()) return;
+    if (!d) { syncAudio(); return; }
     const on = screen.getDisplayMatching(w.getBounds());
-    if (on && on.id === d.id) return;
+    if (on && on.id === d.id) { syncAudio(); return; }
     diary.log(`monitor: moving the dashboard to ${d.label || d.id}`);
     const wasFull = w.isFullScreen();
     const go = () => {
       w.setBounds(boundsOn(d));
-      if (wasFull || (!windowed && store.data.settings.fullscreen)) setTimeout(() => { if (!w.isDestroyed()) w.setFullScreen(true); moving = false; }, 120);
-      else moving = false;
+      if (wasFull || (!windowed && store.data.settings.fullscreen)) setTimeout(() => { if (!w.isDestroyed()) w.setFullScreen(true); moving = false; syncAudio(); }, 120);
+      else { moving = false; syncAudio(); }
     };
     moving = true;
     if (wasFull) { w.once('leave-full-screen', () => setTimeout(go, 60)); w.setFullScreen(false); } else go();
@@ -501,6 +524,7 @@ if (!app.requestSingleInstanceLock()) {
       Object.assign(cfg().settings, patch);
       store.save();
       if ('monitor' in patch && patch.monitor !== before.monitor && win) placeOnMonitor(win);
+      if ('monitorAudio' in patch) syncAudio(0);
       if ('fullscreen' in patch && win) win.setFullScreen(Boolean(patch.fullscreen));
       if ('remoteArt' in patch && patch.remoteArt !== before.remoteArt) await rescan(); else pushLibrary();
       if (patch.controllerOnly && !before.controllerOnly) checkControllers({ announce: true });
@@ -524,6 +548,16 @@ if (!app.requestSingleInstanceLock()) {
       gameMenuOpen: Boolean(gameMenu),
       homeButton: padWatch.active ? (padWatch.listening ? 'listening' : 'unavailable') : 'idle',
     }));
+    // Monitors with their own speakers (HDMI / DP sound), for Settings › display › Sound.
+    handle('system:monitorAudio', async () => {
+      const outs = await monitorAudio.outputs();
+      const displays = screen.getAllDisplays();
+      return Promise.all(outs.map(async (o) => {
+        const d = displays.find((x) => (x.label || '').split(' - ')[1]?.toLowerCase() === o.monitor.toLowerCase());
+        const label = d?.label || o.monitor;
+        return { monitor: o.monitor, label, tv: monitorAudio.tvLike(o), on: await wantsSound(label) };
+      }));
+    });
     // The monitors, for Settings › display › Monitor.
     handle('system:displays', () => {
       const here = win && !win.isDestroyed() ? screen.getDisplayMatching(win.getBounds()) : null;
@@ -780,6 +814,7 @@ if (!app.requestSingleInstanceLock()) {
   let released = false;
   app.on('before-quit', (e) => {
     padWatch.stop();
+    monitorAudio.restoreSync();   // sound back to where it was before Halcyon
     if (store) store.flush();
     if (released || !store || !(store.data.steamGuideFocusOff || store.data.steamOverlayOff)) return;
     e.preventDefault();

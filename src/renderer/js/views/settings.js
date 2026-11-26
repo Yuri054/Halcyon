@@ -36,6 +36,25 @@ export function createSettings() {
 
   const set = (patch) => api.settings.set(patch);
 
+  /** Which monitors' speakers Halcyon switches the sound to while it is on them. */
+  async function pickSound() {
+    let selected = null;
+    for (;;) {
+      const list = await api.system.monitorAudio().catch(() => []);
+      if (!list.length) { toast('None of your monitors has HDMI or DisplayPort sound.', { title: 'Sound follows the monitor' }); return; }
+      const pick = await menu({
+        title: 'Sound follows the monitor',
+        subtitle: 'While Halcyon is on a ticked screen, the sound plays there; it goes back when Halcyon moves or closes',
+        selected,
+        items: list.map((o) => ({ label: o.monitor, value: o.label, iconName: 'sound', checked: o.on, sub: o.tv ? 'TV or receiver' : 'Monitor speakers', verb: o.on ? 'Turn off' : 'Turn on' })),
+      });
+      if (pick == null) return;
+      selected = pick;
+      const on = list.filter((o) => o.on).map((o) => o.label);
+      await set({ monitorAudio: on.includes(pick) ? on.filter((x) => x !== pick) : [...on, pick] });
+    }
+  }
+
   async function pickMonitor() {
     const list = await api.system.displays().catch(() => []);
     const cur = state.lib.settings.monitor || '';
@@ -69,6 +88,7 @@ export function createSettings() {
       card('display', [
         row({ key: 'fullscreen', label: 'Fullscreen', iconName: 'screen', toggle: s.fullscreen, onSelect: () => set({ fullscreen: !s.fullscreen }), tip: 'F11 also toggles fullscreen' }),
         row({ key: 'monitor', label: 'Monitor', iconName: 'screen', value: s.monitor ? (s.monitor.split(' - ')[1] || s.monitor) : 'Automatic', onSelect: pickMonitor, tip: 'Which screen Halcyon fills' }),
+        row({ key: 'monitorAudio', label: 'Sound follows the monitor', iconName: 'sound', value: Array.isArray(s.monitorAudio) ? (s.monitorAudio.length ? s.monitorAudio.map((x) => x.split(' - ')[1] || x).join(', ') : 'Off') : 'TVs', onSelect: pickSound, tip: 'Switches the sound to a TV’s HDMI while Halcyon is on it' }),
         row({ key: 'theme', label: 'Theme', iconName: 'layers', value: theme[1],
           onSelect: () => set({ theme: THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length][0] }), tip: `${theme[2]}. Select to switch; the accent color applies to every theme.` }),
         row({ key: 'accent', label: 'Accent color', iconName: 'palette', value: s.accent[0].toUpperCase() + s.accent.slice(1), swatch: s.accent,

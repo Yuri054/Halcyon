@@ -129,6 +129,13 @@ games). Monitors are listed by name (make, model, port, resolution) and remember
 so rearranging them doesn't matter. If the chosen one is unplugged, Halcyon opens wherever the
 desktop puts it and moves back when it returns. *Automatic* leaves it to the desktop.
 
+*Sound follows the monitor* sends the system's sound to a screen's own HDMI / DisplayPort audio
+while Halcyon is on it, and puts the previous output back when Halcyon moves to another screen or
+closes (unless you changed the output yourself in the meantime). Out of the box it does this for
+TVs and receivers only (outputs that report more than plain stereo); tick or untick any monitor in
+the setting. The monitor on each output is read from the graphics card (`amixer`'s ELD data), as
+PipeWire's own labels for these outputs can name the wrong screen.
+
 ## Sections
 
 The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,

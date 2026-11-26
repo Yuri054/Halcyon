@@ -312,8 +312,9 @@ if (!app.requestSingleInstanceLock()) {
     },
     onHold: () => {
       if (!launcher.nowPlaying().some((p) => p.quittable)) return;
-      const result = launcher.quit();
-      if (result.ok) { closeGameMenu(); notice(`${result.name} was closed`, { title: 'Game closed', iconName: 'power' }); }
+      launcher.quit().then((result) => {
+        if (result.ok) { closeGameMenu(); notice(`${result.name} was closed`, { title: 'Game closed', iconName: 'power' }); }
+      });
     },
   });
   /**
@@ -492,6 +493,11 @@ if (!app.requestSingleInstanceLock()) {
     handle('steam:open', () => launcher.openSteam());
     handle('steam:action', (action, appid) => launcher.steamAction(action, appid));
     handle('steam:leaveBigPicture', () => launcher.leaveBigPicture());
+    // Settings and the Guide: open Steam Big Picture on request (it closes again from the Guide).
+    handle('steam:openBigPicture', async () => {
+      const done = await launcher.bigPicture(null, { force: true });
+      return done ? { ok: true } : { ok: false, error: 'Steam is not installed.' };
+    });
     handle('steam:skipShaders', (actionId) => steamClient.skipShaders(actionId));
     handle('steam:hookStatus', () => steamClient.launchHookStatus());
     // ---- download manager (Steam's own download controls; see steam/client.js)

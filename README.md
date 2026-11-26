@@ -148,6 +148,16 @@ home screen's top-left tile becomes *Resume <game>*, its tile anywhere says *Res
 *Play*, and the Guide lists *Resume <game>* (Steam games too). Any of these puts Halcyon aside and
 the game back on screen instead of starting it again.
 
+*Quit game* sits in the Guide and in a running game's options (Y on its tile, on home or
+anywhere). Games Halcyon started are closed directly. Steam games are closed through Steam's own
+Stop when Download controls are on; if Steam can't be asked, or the game is still there a few
+seconds later, Halcyon closes the game's processes (found by the `SteamAppId` Steam gives them),
+politely first.
+
+*Steam Big Picture* opens from the Guide and from Settings › steam (*Open Big Picture*); the Guide
+closes it again. *Game start animation* (Settings › display) turns the Halcyon intro that plays
+while a game starts on or off.
+
 ## Sections
 
 The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,

@@ -113,8 +113,6 @@ export async function openGuide({ select = null } = {}) {
       const busy = dl ? dl.queue.length + dl.scheduled.length + dl.waiting.length + (dl.active ? 1 : 0) : 0;
       return [
         ...playing.flatMap((p) => {
-          // Steam's games can't be closed from here, but they can be gone back to.
-          if (!p.quittable) return [{ label: `Resume ${p.name}`, value: `resume:${p.id}`, key: `resume:${p.id}`, iconName: 'play', verb: 'Resume', sub: 'Playing through Steam' }];
           return [
             { label: `Resume ${p.name}`, value: `resume:${p.id}`, key: `resume:${p.id}`, iconName: 'play', verb: 'Resume' },
             { label: 'Quit game', value: `quit:${p.id}`, key: `quit:${p.id}`, iconName: 'exit', danger: true, verb: 'Quit' },
@@ -128,6 +126,7 @@ export async function openGuide({ select = null } = {}) {
         !overTask && { label: 'TV & movies', value: 'go:tv', key: 'go:tv', iconName: 'film' },
         !overTask && { label: 'Music', value: 'go:music', key: 'go:music', iconName: 'music' },
         status?.bigPictureOpen && { label: 'Close Steam Big Picture', value: 'leavebpm', key: 'leavebpm', iconName: 'screen' },
+        !overTask && steamHere && !status?.bigPictureOpen && { label: 'Steam Big Picture', value: 'openbpm', key: 'openbpm', iconName: 'pad', verb: 'Open' },
       ];
     }
     if (blade === 'games') {
@@ -201,12 +200,14 @@ export async function openGuide({ select = null } = {}) {
       });
       if (sure == null) continue;
       if (sure === 'no') { after = () => api.game.resume(); break; }
+      toast(`Closing ${name}…`, { iconName: 'exit', ms: 2500 });
       const result = await api.game.quit(id);
       if (!result.ok) toast(result.error, { type: 'error', title: 'Couldn’t quit the game' });
       break;
     }
     if (pick.startsWith('play:')) { after = () => app.launch(pick.slice(5)); break; }
     if (pick.startsWith('go:')) { after = () => app.go(pick.slice(3), { enter: true }); break; }
+    if (pick === 'openbpm') { const r = await api.steam.openBigPicture(); if (r && r.ok === false) toast(r.error, { type: 'error' }); else toast('Opening Big Picture', { iconName: 'pad', ms: 2000 }); break; }
     if (pick === 'leavebpm') { const r = await api.steam.leaveBigPicture(); if (r && r.ok === false) toast(r.error, { type: 'error' }); break; }
     if (pick === 'search') { after = () => app.search(); break; }
     if (pick === 'np:show') { after = () => nowPlaying()?.show(); break; }

@@ -87,6 +87,7 @@ export function createSettings() {
     scroller.replaceChildren(
       card('display', [
         row({ key: 'fullscreen', label: 'Fullscreen', iconName: 'screen', toggle: s.fullscreen, onSelect: () => set({ fullscreen: !s.fullscreen }), tip: 'F11 also toggles fullscreen' }),
+        row({ key: 'launchScene', label: 'Game start animation', iconName: 'spark', toggle: s.launchScene !== false, onSelect: () => set({ launchScene: s.launchScene === false }), sub: s.launchScene !== false ? 'The Halcyon intro plays while a game starts' : 'Off: a simple loading card', tip: 'Dawn over the sea, a kingfisher, the Halcyon card, then the game’s title until it opens. Off shows the simple loading card.' }),
         row({ key: 'monitor', label: 'Monitor', iconName: 'screen', value: s.monitor ? (s.monitor.split(' - ')[1] || s.monitor) : 'Automatic', onSelect: pickMonitor, tip: 'Which screen Halcyon fills' }),
         row({ key: 'monitorAudio', label: 'Sound follows the monitor', iconName: 'sound', value: Array.isArray(s.monitorAudio) ? (s.monitorAudio.length ? s.monitorAudio.map((x) => x.split(' - ')[1] || x).join(', ') : 'Off') : 'TVs', onSelect: pickSound, tip: 'Switches the sound to a TV’s HDMI while Halcyon is on it' }),
         row({ key: 'theme', label: 'Theme', iconName: 'layers', value: theme[1],
@@ -133,6 +134,7 @@ export function createSettings() {
           tip: 'Steam’s “Processing Vulkan shaders” before a game. Skipping starts the game sooner; it may stutter a little at first. Needs download controls.' }),
         installs.length > 0 && row({ key: 'steam:bigpicture', label: 'Big Picture for store and installs', iconName: 'pad', toggle: Boolean(s.steamBigPicture), onSelect: () => set({ steamBigPicture: !s.steamBigPicture }),
           tip: 'Switches Steam to Big Picture when you buy or install a game, so Steam’s own screens work with the controller. Games themselves start without it.' }),
+        installs.length > 0 && row({ key: 'steam:bpm', label: 'Open Big Picture', iconName: 'pad', sub: 'Steam’s controller mode; close it again from the Guide', onSelect: () => report(api.steam.openBigPicture(), 'Opening Big Picture') }),
         installs.length > 0 && row({ key: 'steam:open', label: 'Open Steam', iconName: 'screen', onSelect: () => report(api.steam.open(), 'Opening Steam') }),
       ]),
       card('system', [
@@ -142,7 +144,6 @@ export function createSettings() {
           onSelect: () => set({ homeButtonGuide: s.homeButtonGuide === false }),
           tip: 'Opens Halcyon’s Guide over any game or the desktop. While Halcyon runs it turns off Steam’s “Guide button focuses Steam”, and turns it back on when Halcyon closes.' }),
         row({ key: 'autostart', label: 'Start Halcyon on login', iconName: 'login', toggle: autostart, onSelect: toggleAutostart, tip: 'Boots straight into the dashboard when you sign in to your desktop' }),
-        row({ key: 'launchScene', label: 'Launch scene', iconName: 'spark', toggle: s.launchScene !== false, onSelect: () => set({ launchScene: s.launchScene === false }), sub: 'A Halcyon intro while a game starts', tip: 'Dawn over the sea, a kingfisher, the Halcyon card, then the game’s title until it opens. Off shows the simple loading card.' }),
         row({ key: 'bootAnimation', label: 'Start-up animation', iconName: 'spark', toggle: s.bootAnimation !== false, onSelect: () => set({ bootAnimation: s.bootAnimation === false }) }),
         row({ key: 'about', label: `Halcyon ${info?.version || ''}`, iconName: 'info', sub: info ? info.configFile : '' }),
         row({ key: 'power', label: 'Power', iconName: 'power', sub: 'Sleep, restart, shut down or exit', danger: true, onSelect: () => app.guide({ select: 'power:suspend' }) }),

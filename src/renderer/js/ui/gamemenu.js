@@ -1,6 +1,6 @@
 // Per-game options, collection membership, and the custom game editor.
 import { h } from '../core/dom.js';
-import { api, state, game as findGame, fmt, downloadLabel } from '../core/state.js';
+import { api, state, game as findGame, fmt, downloadLabel, isPlaying } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { openPanel, confirm } from './dialog.js';
 import { keyboard } from './osk.js';
@@ -35,7 +35,8 @@ export async function gameMenu(id) {
       art: cover(g),
       selected,
       items: [
-        { label: g.installed ? 'Play' : 'Install', value: 'play', iconName: g.installed ? 'play' : 'download', sub: g.status || (g.download ? downloadLabel(g.download) : !g.installed ? 'Steam will ask where to put it' : null) },
+        isPlaying(g.id) && { label: 'Quit game', value: 'quitgame', iconName: 'exit', danger: true, sub: 'Anything the game has not saved will be lost' },
+        { label: isPlaying(g.id) ? 'Resume' : g.installed ? 'Play' : 'Install', value: 'play', iconName: g.installed ? 'play' : 'download', sub: g.status || (g.download ? downloadLabel(g.download) : !g.installed ? 'Steam will ask where to put it' : null) },
         { label: g.favorite ? 'Remove from favorites' : 'Add to favorites', value: 'fav', iconName: g.favorite ? 'starFill' : 'star' },
         { heading: 'Customize' },
         { label: 'Set cover art', value: 'cover', iconName: 'image' },
@@ -60,6 +61,14 @@ export async function gameMenu(id) {
     selected = choice;
 
     if (choice === 'play') { await panel.close(); return app.launch(id); }
+    if (choice === 'quitgame') {
+      if (!(await confirm({ title: `Quit ${g.name}?`, subtitle: 'Anything the game has not saved will be lost.', yes: 'Quit game', no: 'Keep it running', danger: true, iconName: 'exit' }))) continue;
+      await panel.close();
+      toast(`Closing ${g.name}…`, { iconName: 'exit', ms: 2500 });
+      const r = await api.game.quit(id);
+      if (!r.ok) toast(r.error, { type: 'error', title: 'Couldn’t quit the game' });
+      return;
+    }
     if (choice === 'download') { await panel.close(); return app.downloads({ focusApp: g.id.slice(6) }); }
     if (choice === 'steamStore') await report(api.steam.action('store', g.id.slice(6)), 'Opening the store page in Steam');
     if (choice === 'uninstall') await report(api.steam.action('uninstall', g.id.slice(6)), 'Confirm the uninstall in Steam');

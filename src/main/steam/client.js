@@ -220,6 +220,13 @@ async function gameActions() {
  * Start a game the way Steam's own library does (SteamClient.Apps.RunGame). Unlike a
  * steam://rungameid link, this does not bring Steam's window up first.
  */
+/** Ask Steam to close a running game (as its own library's Stop button does). */
+function terminateApp(appid) {
+  const id = String(appid);
+  if (!/^\d+$/.test(id)) return Promise.resolve({ ok: false, error: 'Unknown game.' });
+  return run(`SteamClient.Apps.TerminateApp(${JSON.stringify(id)}, false)`);
+}
+
 function runGame(appid) {
   const id = String(appid);
   if (!/^\d+$/.test(id)) return Promise.resolve({ ok: false, error: 'Unknown game.' });
@@ -350,4 +357,4 @@ function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, boolSetting, PORT };
+module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, terminateApp, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, boolSetting, PORT };

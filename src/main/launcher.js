@@ -51,11 +51,34 @@ class Launcher {
     return [...this.running.values()].map(({ id, name, since, quittable }) => ({ id, name, since, quittable }));
   }
 
-  /** Close a game Halcyon started: ask politely, then insist. */
-  quit(id) {
+  /**
+   * The processes of a running Steam game: Steam starts every game with SteamAppId (or
+   * SteamGameId) in its environment, so they can be found even though Steam started them.
+   */
+  steamGamePids(appid) {
+    const pids = [];
+    const want = new Set([`SteamAppId=${appid}`, `SteamGameId=${appid}`]);
+    const uid = process.getuid ? process.getuid() : null;
+    for (const name of fs.readdirSync('/proc')) {
+      if (!/^\d+$/.test(name) || Number(name) === process.pid) continue;
+      try {
+        if (uid != null && fs.statSync(`/proc/${name}`).uid !== uid) continue;
+        const env = fs.readFileSync(`/proc/${name}/environ`, 'latin1').split('\0');
+        if (!env.some((e) => want.has(e))) continue;
+        // Steam's own helpers (the reaper that wraps the game) are left to Steam.
+        const comm = fs.readFileSync(`/proc/${name}/comm`, 'latin1').trim();
+        if (/^(steam|reaper|steamwebhelper|pressure-vessel.*|srt-bwrap)$/.test(comm)) continue;
+        pids.push(Number(name));
+      } catch { /* gone, or not ours */ }
+    }
+    return pids;
+  }
+
+  /** Close a running game: Halcyon's own by signal; Steam's through Steam, or by signal as a last resort. */
+  async quit(id) {
     const entry = id ? this.running.get(id) : [...this.running.values()].reverse().find((e) => e.quittable);
     if (!entry) return { ok: false, error: 'That game is no longer running.' };
-    if (!entry.quittable) return { ok: false, error: `${entry.name} was started by Steam. Close it from the game or from Steam.` };
+    if (!entry.quittable) return this.quitSteamGame(entry);
     entry.quitting = true;
     const signal = (sig) => {
       // The game is its own process group (it was started detached), so this reaches helpers too.
@@ -69,6 +92,27 @@ class Launcher {
     }
     setTimeout(() => { if (this.running.get(entry.id) === entry) signal('SIGKILL'); }, 4000).unref();
     return sent ? { ok: true, name: entry.name } : { ok: false, error: `Could not close ${entry.name}.` };
+  }
+
+  async quitSteamGame(entry) {
+    const appid = String(entry.id).replace(/^steam:/, '');
+    if (process.env.HALCYON_DRY_RUN) { console.log('[dry-run] would close Steam game', appid); return { ok: true, name: entry.name, dryRun: true }; }
+    entry.quitting = true;
+    // Steam's own Stop, when Halcyon can talk to Steam: it closes the game the way Steam's library does.
+    if (steamClient.enabled(this.library.raw.steam.installs || [])) {
+      const r = await steamClient.terminateApp(appid);
+      diary.log(`quit ${entry.name} through Steam:`, r.ok ? 'asked' : r.error);
+    }
+    // If it is still running a moment later (or Steam couldn't be asked), close its processes.
+    await new Promise((r) => setTimeout(r, 2500));
+    let pids = this.steamGamePids(appid);
+    if (!pids.length) return { ok: true, name: entry.name };
+    for (const pid of pids) { try { process.kill(pid, 'SIGTERM'); } catch { /* gone */ } }
+    diary.log(`quit ${entry.name}: SIGTERM to ${pids.join(', ')}`);
+    await new Promise((r) => setTimeout(r, 4000));
+    pids = this.steamGamePids(appid);
+    for (const pid of pids) { try { process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
+    return { ok: true, name: entry.name };
   }
 
   /** pid/argv are only known for games Halcyon started itself (not through Steam). */
@@ -229,8 +273,8 @@ class Launcher {
    * so whatever Steam shows next (shader processing with its Skip button, install prompts,
    * the store) can be driven with the controller. Returns true when Big Picture is in use.
    */
-  async bigPicture(target) {
-    if (!this.library.config.settings.steamBigPicture) return false;
+  async bigPicture(target, { force = false } = {}) {
+    if (!force && !this.library.config.settings.steamBigPicture) return false;
     const install = target || (this.library.raw.steam.installs || [])[0] || {};
     const argv = steam.clientCommand(install.kind, install.root, 'steam://open/bigpicture');
     if (!argv) return false;

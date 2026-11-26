@@ -36,6 +36,27 @@ export function createSettings() {
 
   const set = (patch) => api.settings.set(patch);
 
+  async function pickMonitor() {
+    const list = await api.system.displays().catch(() => []);
+    const cur = state.lib.settings.monitor || '';
+    const pick = await menu({
+      title: 'Monitor',
+      subtitle: 'The screen Halcyon (and its Guide over games) fills',
+      selected: cur || '@auto',
+      items: [
+        { label: 'Automatic', value: '@auto', iconName: 'screen', checked: !cur, sub: 'Wherever the desktop opens it' },
+        { heading: 'Monitors' },
+        ...list.map((d) => ({
+          label: d.name, value: d.label, iconName: 'screen', checked: cur === d.label,
+          sub: [d.maker, d.port, `${d.width} × ${d.height}`, d.primary && 'primary', d.current && 'Halcyon is here now'].filter(Boolean).join(' · '),
+        })),
+        cur && !list.some((d) => d.label === cur) && { label: cur.split(' - ')[1] || cur, value: cur, iconName: 'screen', checked: true, sub: 'Not connected right now' },
+      ],
+    });
+    if (pick == null) return;
+    await set({ monitor: pick === '@auto' ? '' : pick });
+  }
+
   function render() {
     const s = state.lib.settings;
     const installs = state.lib.steam.installs;
@@ -47,6 +68,7 @@ export function createSettings() {
     scroller.replaceChildren(
       card('display', [
         row({ key: 'fullscreen', label: 'Fullscreen', iconName: 'screen', toggle: s.fullscreen, onSelect: () => set({ fullscreen: !s.fullscreen }), tip: 'F11 also toggles fullscreen' }),
+        row({ key: 'monitor', label: 'Monitor', iconName: 'screen', value: s.monitor ? (s.monitor.split(' - ')[1] || s.monitor) : 'Automatic', onSelect: pickMonitor, tip: 'Which screen Halcyon fills' }),
         row({ key: 'theme', label: 'Theme', iconName: 'layers', value: theme[1],
           onSelect: () => set({ theme: THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length][0] }), tip: `${theme[2]}. Select to switch; the accent color applies to every theme.` }),
         row({ key: 'accent', label: 'Accent color', iconName: 'palette', value: s.accent[0].toUpperCase() + s.accent.slice(1), swatch: s.accent,

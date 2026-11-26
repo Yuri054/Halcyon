@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, protocol, net, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net, Menu, shell, screen } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { JsonStore, DEFAULTS } = require('./store');
@@ -127,8 +127,44 @@ if (!app.requestSingleInstanceLock()) {
   let spare = null;      // a loaded, hidden Guide window, so Home can show one instantly
   let lastSummon = 0;
 
+  // ---- which monitor Halcyon uses (Settings › display › Monitor). Monitors are remembered by
+  // the name the desktop gives them ("make - model - port"), which survives reboots and
+  // rearranging; a monitor that is unplugged leaves Halcyon wherever the desktop puts it.
+  function chosenDisplay() {
+    const want = store.data.settings.monitor;
+    if (!want) return null;
+    const all = screen.getAllDisplays();
+    const port = want.split(' - ').pop();
+    return all.find((d) => d.label === want) || all.find((d) => d.label && d.label.split(' - ').pop() === port) || null;
+  }
+  /** Window bounds on the chosen monitor (centred, for a window that is not fullscreen). */
+  function boundsOn(d, width = 1600, height = 900) {
+    const b = d.workArea || d.bounds;
+    const w = Math.min(width, b.width); const h = Math.min(height, b.height);
+    return { x: b.x + Math.round((b.width - w) / 2), y: b.y + Math.round((b.height - h) / 2), width: w, height: h };
+  }
+  let moving = false;   // while a window is being carried to another monitor
+  /** Move a window to the chosen monitor, coming out of fullscreen and going back in there. */
+  function placeOnMonitor(w) {
+    const d = chosenDisplay();
+    if (!d || !w || w.isDestroyed()) return;
+    const on = screen.getDisplayMatching(w.getBounds());
+    if (on && on.id === d.id) return;
+    diary.log(`monitor: moving the dashboard to ${d.label || d.id}`);
+    const wasFull = w.isFullScreen();
+    const go = () => {
+      w.setBounds(boundsOn(d));
+      if (wasFull || (!windowed && store.data.settings.fullscreen)) setTimeout(() => { if (!w.isDestroyed()) w.setFullScreen(true); moving = false; }, 120);
+      else moving = false;
+    };
+    moving = true;
+    if (wasFull) { w.once('leave-full-screen', () => setTimeout(go, 60)); w.setFullScreen(false); } else go();
+  }
+
   function makeGuideWindow(waitForOpen) {
+    const there = chosenDisplay();
     const w = new BrowserWindow({
+      ...(there ? boundsOn(there) : {}),
       // Mapped at once, already dark: the desktop never shows while the page loads.
       show: !waitForOpen,
       fullscreen: true,
@@ -464,6 +500,7 @@ if (!app.requestSingleInstanceLock()) {
       const before = { ...cfg().settings };
       Object.assign(cfg().settings, patch);
       store.save();
+      if ('monitor' in patch && patch.monitor !== before.monitor && win) placeOnMonitor(win);
       if ('fullscreen' in patch && win) win.setFullScreen(Boolean(patch.fullscreen));
       if ('remoteArt' in patch && patch.remoteArt !== before.remoteArt) await rescan(); else pushLibrary();
       if (patch.controllerOnly && !before.controllerOnly) checkControllers({ announce: true });
@@ -487,6 +524,22 @@ if (!app.requestSingleInstanceLock()) {
       gameMenuOpen: Boolean(gameMenu),
       homeButton: padWatch.active ? (padWatch.listening ? 'listening' : 'unavailable') : 'idle',
     }));
+    // The monitors, for Settings › display › Monitor.
+    handle('system:displays', () => {
+      const here = win && !win.isDestroyed() ? screen.getDisplayMatching(win.getBounds()) : null;
+      const primary = screen.getPrimaryDisplay();
+      return screen.getAllDisplays().map((d) => {
+        const parts = (d.label || '').split(' - ');
+        return {
+          label: d.label || String(d.id),
+          name: parts.length >= 2 ? parts[1] : d.label || `Display ${d.id}`,
+          maker: parts.length >= 3 ? parts[0] : '',
+          port: parts.length >= 2 ? parts[parts.length - 1] : '',
+          width: Math.round(d.bounds.width * d.scaleFactor), height: Math.round(d.bounds.height * d.scaleFactor),
+          primary: d.id === primary.id, current: Boolean(here && here.id === d.id),
+        };
+      });
+    });
     handle('system:setVolume', (patch) => system.setVolume(patch || {}));
     handle('system:power', async (action) => {
       store.flush();
@@ -538,9 +591,11 @@ if (!app.requestSingleInstanceLock()) {
 
   function createWindow() {
     const fullscreen = !windowed && store.data.settings.fullscreen;
+    const there = chosenDisplay();
     const w = new BrowserWindow({
       width: 1600,
       height: 900,
+      ...(there ? boundsOn(there) : {}),
       minWidth: 960,
       minHeight: 540,
       fullscreen,
@@ -560,7 +615,7 @@ if (!app.requestSingleInstanceLock()) {
     // Every handler checks it still belongs to the current window: a window that has been
     // replaced (see bringToFront) must not touch settings or state on its way out.
     const current = () => win === w;
-    w.once('ready-to-show', () => { if (!w.isDestroyed()) w.show(); });
+    w.once('ready-to-show', () => { if (!w.isDestroyed()) { w.show(); placeOnMonitor(w); } });
     w.on('focus', () => { if (current()) send('window:focus', true); });
     w.on('blur', () => { if (current()) send('window:focus', false); });
     // The fullscreen setting changes only when you change it (F11 or Settings). The window can
@@ -569,7 +624,7 @@ if (!app.requestSingleInstanceLock()) {
     w.on('focus', () => { if (current() && !windowed && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); });
     // Pushed out of fullscreen by something else (not F11 or Settings, which change the setting
     // first): go straight back, so the desktop never shows around the dashboard.
-    w.on('leave-full-screen', () => { if (current() && !windowed && store.data.settings.fullscreen) setTimeout(() => { if (!w.isDestroyed() && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); }, 150); });
+    w.on('leave-full-screen', () => { if (current() && !moving && !windowed && store.data.settings.fullscreen) setTimeout(() => { if (!w.isDestroyed() && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); }, 150); });
     w.on('closed', () => { if (current()) { win = null; closeGameMenu(); dropSpare(); } });
     w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     w.webContents.on('will-navigate', (e) => e.preventDefault());
@@ -618,6 +673,10 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
+    // The chosen monitor plugged back in (or turned on): go back to it.
+    const replace = () => setTimeout(() => { if (win) placeOnMonitor(win); }, 1500);
+    screen.on('display-added', replace);
+    screen.on('display-removed', replace);
 
     // media://local/<encoded absolute path> — serves local artwork, images only.
     // jf://image/<itemId>/<Primary|Backdrop|Thumb>?w=<px>  and  jf://stream/<server path>

@@ -100,6 +100,7 @@ contextBridge.exposeInMainWorld('halcyon', {
   system: {
     status: call('system:status'),
     setVolume: call('system:setVolume'),
+    displays: call('system:displays'),
     power: call('system:power'),
     setAutostart: call('system:setAutostart'),
   },

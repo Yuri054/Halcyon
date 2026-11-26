@@ -122,6 +122,13 @@ The 360 theme's home is laid out like the console's dashboard: the page of big a
 the search tab peeking in at the left, and the next page waiting at the right edge; moving onto it
 slides the whole page across.
 
+## Monitor
+
+Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over
+games). Monitors are listed by name (make, model, port, resolution) and remembered by that name,
+so rearranging them doesn't matter. If the chosen one is unplugged, Halcyon opens wherever the
+desktop puts it and moves back when it returns. *Automatic* leaves it to the desktop.
+
 ## Sections
 
 The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,

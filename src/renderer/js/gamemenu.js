@@ -53,6 +53,12 @@ async function run() {
     if (pack && pack.ok) await setPack(pack.sounds);
   }
   document.body.classList.add('is-ready');
+  // Behind the Guide: the running game's art (the game itself cannot show through).
+  const status0 = await api.system.status().catch(() => null);
+  const playingNow = (status0?.nowPlaying || []).slice(-1)[0];
+  const g = playingNow && lib.games.find((x) => x.id === playingNow.id);
+  const art = g && [...g.art.hero, ...g.art.cover][0];
+  if (art) $('overlayBg').style.backgroundImage = `url("${art}")`;
 
   // What the Guide's choices mean from over a game: the dashboard takes over for anything
   // that is "go somewhere"; downloads open right here.

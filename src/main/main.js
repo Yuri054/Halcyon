@@ -133,8 +133,10 @@ if (!app.requestSingleInstanceLock()) {
     gameMenu = new BrowserWindow({
       fullscreen: true,
       frame: false,
-      transparent: true,
-      backgroundColor: '#00000000',
+      // Opaque: a see-through window over a fullscreen game is not composited above it on
+      // some desktops (the game is scanned out directly). The page paints the game's own art.
+      transparent: false,
+      backgroundColor: '#05070a',
       skipTaskbar: true,
       show: false,
       title: 'Halcyon Guide',

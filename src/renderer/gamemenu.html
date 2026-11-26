@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' media: data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' media: data: https://*.steamstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'">
   <title>Halcyon game menu</title>
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/dashboard.css">
@@ -10,10 +10,13 @@
   <link rel="stylesheet" href="styles/themes.css">
   <style>
     /* This window floats over a running game: nothing but the blade and a dimmer. */
-    html, body { background: transparent !important; }
+    html, body { background: #05070a !important; }
+    /* The running game's art, dimmed, where the game would show through. */
+    .overlay-bg { position: fixed; inset: -3rem; background-size: cover; background-position: center 25%; filter: blur(1.4rem) brightness(0.38) saturate(1.1); }
   </style>
 </head>
 <body data-accent="emerald" data-theme="halcyon" data-input="pad" class="is-overlay">
+  <div class="overlay-bg" id="overlayBg"></div>
   <div id="layers"></div>
   <div id="hints"></div>
   <div id="toasts"></div>

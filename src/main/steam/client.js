@@ -223,7 +223,41 @@ async function gameActions() {
 function runGame(appid) {
   const id = String(appid);
   if (!/^\d+$/.test(id)) return Promise.resolve({ ok: false, error: 'Unknown game.' });
-  return run(`SteamClient.Apps.RunGame(${JSON.stringify(id)}, "", -1, 100)`);
+  // Launch option 0, the game's default: -1 would make Steam ask with a dialog of its own.
+  return run(`SteamClient.Apps.RunGame(${JSON.stringify(id)}, "", 0, 100)`);
+}
+
+/**
+ * A listener that lives inside Steam and answers its launch prompts the moment they come,
+ * before any dialog can show: "Processing Vulkan shaders" is skipped when skipShaders is on.
+ * Installed once per Steam session (it survives until Steam restarts); calling again only
+ * updates the switch.
+ */
+function installLaunchHooks({ skipShaders: skip }) {
+  return run(`(() => {
+    const h = window.__halcyon = window.__halcyon || {};
+    h.skipShaders = ${skip ? 'true' : 'false'};
+    if (!h.userRequest) {
+      h.userRequest = SteamClient.Apps.RegisterForGameActionUserRequest((actionId, gameId, action, request) => {
+        try {
+          if (action === 'LaunchApp' && request === 'ProcessingShaderCache' && h.skipShaders) {
+            h.skipped = (h.skipped || 0) + 1;
+            setTimeout(() => SteamClient.Apps.ContinueGameAction(actionId, 'SkipShaders'), 30);
+          }
+        } catch (e) { h.error = String(e); }
+      });
+    }
+  })()`);
+}
+
+/** How many shader steps the in-Steam listener has skipped since Steam started (for checks). */
+async function launchHookStatus() {
+  try {
+    const v = await evaluate('(() => { const h = window.__halcyon || {}; return { installed: Boolean(h.userRequest), skipShaders: Boolean(h.skipShaders), skipped: h.skipped || 0, error: h.error || null }; })()');
+    return { ok: true, ...v };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
 /** Put Steam's main window away (as closing it to the tray does), if it is up. */
@@ -292,4 +326,4 @@ function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, hideMainWindow, boolSetting, PORT };
+module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, hideMainWindow, installLaunchHooks, launchHookStatus, boolSetting, PORT };

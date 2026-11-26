@@ -163,6 +163,8 @@ function fakeSteam(seed) {
   // One game (900050) is mid-launch, processing Vulkan shaders, until something presses Skip.
   state.shaders = { nGameActionID: 77, gameid: '900050', strActionName: 'LaunchApp', strTaskName: 'ProcessingShaderCache', strTaskDetails: '', numDone: 43, numTotal: 100 };
   const Apps = {
+    // A launch prompt listener, as Steam's own interface registers one.
+    RegisterForGameActionUserRequest(cb) { state.userRequestListeners = (state.userRequestListeners || []).concat(cb); return { unregister() {} }; },
     GetActiveGameActions: async () => (state.shaders ? [state.shaders] : []),
     ContinueGameAction(id, what) {
       state.calls.push(['continue', id, what]);
@@ -173,7 +175,9 @@ function fakeSteam(seed) {
       }
     },
   };
-  return { state, context: vm.createContext({ SteamClient: { Downloads, Apps }, setTimeout, Promise, JSON }) };
+  const context = vm.createContext({ SteamClient: { Downloads, Apps }, setTimeout, Promise, JSON, String, Boolean });
+  context.window = context;   // Steam's pages have a window object
+  return { state, context };
 }
 
 function startSteamDebug(port, seed) {

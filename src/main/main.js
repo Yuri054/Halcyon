@@ -225,7 +225,6 @@ if (!app.requestSingleInstanceLock()) {
       const result = await launcher.launch(id);
       if (result.ok) {
         pushLibrary();
-        if (cfg().settings.minimizeOnLaunch && win) win.minimize();
       }
       return result;
     });
@@ -332,6 +331,7 @@ if (!app.requestSingleInstanceLock()) {
     handle('steam:action', (action, appid) => launcher.steamAction(action, appid));
     handle('steam:leaveBigPicture', () => launcher.leaveBigPicture());
     handle('steam:skipShaders', (actionId) => steamClient.skipShaders(actionId));
+    handle('steam:hookStatus', () => steamClient.launchHookStatus());
     // ---- download manager (Steam's own download controls; see steam/client.js)
     const installs = () => steam.findInstalls(cfg().steam.extraRoots);
     handle('downloads:status', async () => {
@@ -392,6 +392,7 @@ if (!app.requestSingleInstanceLock()) {
       if ('fullscreen' in patch && win) win.setFullScreen(Boolean(patch.fullscreen));
       if ('remoteArt' in patch && patch.remoteArt !== before.remoteArt) await rescan(); else pushLibrary();
       if (patch.controllerOnly && !before.controllerOnly) checkControllers({ announce: true });
+      if ('steamSkipShaders' in patch) steamClient.installLaunchHooks({ skipShaders: patch.steamSkipShaders !== false }).catch(() => {});
       if ('homeButtonGuide' in patch) { syncPadWatch(); const r = await claimHomeButton(); if (!r.ok && patch.homeButtonGuide) notice('Turn on Steam download controls so Halcyon can stop Steam taking the Home button.', { title: 'Home button', type: 'error' }); }
       if ('showUninstalled' in patch && patch.showUninstalled !== before.showUninstalled) { library.addUninstalled(); pushLibrary(); checkControllers(); }
       return { ok: true };
@@ -554,6 +555,9 @@ if (!app.requestSingleInstanceLock()) {
     refreshOwned().catch(() => {});
     syncPadWatch();
     claimHomeButton().catch(() => {});
+    const hooks = () => { if (!process.env.HALCYON_DRY_RUN || process.env.HALCYON_STEAM_CEF_PORT) steamClient.installLaunchHooks({ skipShaders: store.data.settings.steamSkipShaders !== false }).catch(() => {}); };
+    hooks();
+    setInterval(hooks, 20000).unref();   // Steam may start (or restart) after Halcyon
     // Steam may start after Halcyon: try again until it answers.
     setInterval(() => { if (store.data.settings.homeButtonGuide !== false && !(store.data.steamGuideFocusOff && store.data.steamOverlayOff)) claimHomeButton().catch(() => {}); }, 30000).unref();
     setInterval(pollDownloads, Number(process.env.HALCYON_POLL_MS) || 4000).unref();

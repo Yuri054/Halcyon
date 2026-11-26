@@ -54,7 +54,6 @@ export function createSettings() {
         row({ key: 'sounds', label: 'Interface sounds', iconName: 'sound', toggle: s.sounds, onSelect: () => set({ sounds: !s.sounds }) }),
         row({ key: 'soundPack', label: 'Sound pack', iconName: 'sound', value: packName(s.soundPack), onSelect: pickSoundPack, tip: 'Steam Deck sound loader packs work as they are. Packs live in your Halcyon config folder under “sounds”.' }),
         row({ key: 'dim', label: 'Dim the screen when idle', iconName: 'moon', toggle: s.dimWhenIdle !== false, onSelect: () => set({ dimWhenIdle: s.dimWhenIdle === false }), tip: 'After five minutes without input. Any button wakes it.' }),
-        row({ key: 'minimize', label: 'Minimize when a game starts', iconName: 'up', toggle: s.minimizeOnLaunch, onSelect: () => set({ minimizeOnLaunch: !s.minimizeOnLaunch }), tip: 'Controller input is always ignored while Halcyon is in the background' }),
       ]),
       card('library', [
         row({ key: 'rescan', label: 'Rescan library', iconName: 'refresh', sub: `${fmt.count(state.lib.games.length, 'game')} found`, onSelect: () => report(api.library.rescan(), 'Library rescanned') }),

@@ -62,7 +62,6 @@ const DEFAULTS = {
     sounds: true,
     remoteArt: true,
     showHidden: false,
-    minimizeOnLaunch: false,
     sort: 'recent',
     bootAnimation: true,
     dimWhenIdle: true,

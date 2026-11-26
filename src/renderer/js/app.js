@@ -11,6 +11,7 @@ import { toast } from './ui/toast.js';
 import { patchProgress } from './ui/tile.js';
 import { createStore } from './views/store.js';
 import { createMedia } from './views/media.js';
+import { nowPlaying, onNowPlaying, stopBackground } from './media/player.js';
 import { openDownloads } from './ui/downloads.js';
 import { createIntro } from './ui/intro.js';
 import { openGuide, closeGuide, isOpen as guideOpen } from './ui/guide.js';
@@ -144,6 +145,7 @@ function go(section, { filter, enter = false, focusKey = null, quiet = false } =
     for (const v of Object.values(views)) {
       v.el.hidden = v.id !== section;
     }
+    if (!filter && !focusKey && views[section].reset) views[section].reset();
     state.section = section;
     lastSectionAt = performance.now();
     views[section].render();
@@ -206,6 +208,7 @@ async function launch(id) {
   const g = findGame(id);
   if (!g || launchUi) return;
   if (!g.installed) { installGame(g); return; }
+  stopBackground();   // music playing in the background stops when a game starts
 
   // The launch scene (an intro card, like the ones games open with), or the plain card.
   const intro = state.lib.settings.launchScene !== false ? createIntro(g) : null;
@@ -440,6 +443,15 @@ async function boot() {
     }
   }
   buildTabs();
+
+  // Music playing in the background: a note by the clock with the song.
+  const np = h('div', { class: 'nowplaying', hidden: true });
+  document.querySelector('#top .status').prepend(np);
+  onNowPlaying((bg) => {
+    np.hidden = !bg;
+    if (bg) np.replaceChildren(icon(bg.paused() ? 'pause' : 'music'), h('span', null, bg.title), bg.artist && h('small', null, bg.artist));
+  });
+  setInterval(() => { const bg = nowPlaying(); if (bg && np.firstChild) np.firstChild.replaceWith(icon(bg.paused() ? 'pause' : 'music')); }, 1500);
 
   const baseLayer = focus.pushLayer({
     root: $('app'),

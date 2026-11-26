@@ -11,7 +11,7 @@ import { keyboard } from '../ui/osk.js';
 import { toast } from '../ui/toast.js';
 import { artImg } from '../ui/art.js';
 import { mediaTile, mediaHero, img, episodeCode } from '../media/tile.js';
-import { openPlayer } from '../media/player.js';
+import { openPlayer, nowPlaying, onNowPlaying } from '../media/player.js';
 import { openDetails } from '../media/details.js';
 
 const TICKS = 10000000;
@@ -31,6 +31,8 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
   // Signing in or out on one media page resets the other one too.
   window.addEventListener('halcyon:jellyfin', () => { status = null; home = null; library = null; if (state.section === sectionId) render(); });
   const changedServer = () => window.dispatchEvent(new Event('halcyon:jellyfin'));
+  // The music page shows a "now playing" tile while a song plays in the background.
+  if (music) onNowPlaying(() => { if (state.section === sectionId && !library && home && focus.top() === focus.base()) { const key = focus.base().current?.dataset.key; render(); const again = focus.byKey(el, key); if (again) focus.focus(again, { layer: focus.base(), scroll: false }); } });
 
   let status = null;        // { connected, serverName, userName }
   let home = null;          // the overview from Jellyfin
@@ -129,7 +131,9 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     let i = 0;
     const libs = remember(home.libraries);
     const lib = libs[0];
+    const np = nowPlaying();
     const tail = [
+      np && actionTile({ key: 'mx:nowplaying', label: 'Now playing', sub: np.title, iconName: 'music', tone: 'accent', index: i++, onSelect: () => nowPlaying()?.show() }),
       ...libs.slice(1).map((l) => actionTile({ key: `mx:lib:${l.id}`, label: l.name, iconName: 'music', tone: 'accent', index: i++, onSelect: () => openLibrary(l) })),
       actionTile({ key: 'mx:search2', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
       actionTile({ key: 'mx:server', label: 'Server', sub: status.userName, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
@@ -153,7 +157,7 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     const lists = remember(home.playlists || []);
     if (lists.length) blocks.push(block('playlists', 'block--covers media__latest media__songs', lists.map((it) => mediaTile(it, 'cover', i++))));
     if (rest.length > 5) blocks.push(block('new albums', 'block--covers media__latest media__songs', rest.slice(5).map((it) => mediaTile(it, 'cover', i++))));
-    blocks.push(block(status.serverName || 'jellyfin', 'block--quick', tail));
+    blocks.push(block(status.serverName || 'jellyfin', 'block--quick', tail.filter(Boolean)));
     scroller.replaceChildren(...blocks);
   }
 

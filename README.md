@@ -106,6 +106,9 @@ process (images and streams reach the page through a `jf://` protocol that adds 
   recently played songs and your playlists. A music library shows albums, artists or playlists (LT/RT to switch). An artist lists
   their albums with *Shuffle all songs*; albums and playlists list their songs with *Play* and
   *Shuffle*. Songs play on a now-playing screen with the cover, artist, album and what's next.
+  B leaves the music playing while you browse (the song shows by the clock); the Guide or the
+  *Now playing* tile on the music page brings the screen back, and X stops it. Starting a game
+  or a video stops it too.
 - **Player:** A pause/play, left/right skip back 10 s / forward 30 s (hold for bigger jumps),
   the right stick changes the volume (up/down and every other button bring the bar back), X subtitles, Y audio track and subtitles
   (another language or commentary track is served by Jellyfin with that track), LB/RB
@@ -124,6 +127,11 @@ slides the whole page across.
 The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,
 *general* and *systems* (emulators and ROM folders); LT/RT switch between them. The store and
 collections pages are switched off: nothing in the tabs, Guide or home screen leads to them.
+
+In the 360 theme the games tab opens like the console's: *My Games* (installed games), *Browse
+Games* (games you own but haven't installed), *Search Games*, your four most recent games, and an
+installed game you haven't tried yet. The next page has Steam, favorites and each emulated
+system. B from a games wall goes back to this page.
 
 ## Launch scene
 

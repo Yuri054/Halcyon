@@ -10,6 +10,7 @@ import { app } from '../core/bus.js';
 import { openPanel } from './dialog.js';
 import { toast } from './toast.js';
 import { volumeRow } from './volume.js';
+import { nowPlaying } from '../media/player.js';
 import { snapshot as downloadSnapshot, downloadCard, nameOf } from './downloads.js';
 
 let active = null;   // { panel, dead }
@@ -118,6 +119,8 @@ export async function openGuide({ select = null } = {}) {
             { label: 'Quit game', value: `quit:${p.id}`, key: `quit:${p.id}`, iconName: 'exit', danger: true, verb: 'Quit' },
           ];
         }),
+        !overTask && nowPlaying() && { label: nowPlaying().title, sub: 'Now playing', value: 'np:show', key: 'np:show', iconName: 'music', verb: 'Show' },
+        !overTask && nowPlaying() && { label: nowPlaying().paused() ? 'Play music' : 'Pause music', value: 'np:toggle', key: 'np:toggle', iconName: nowPlaying().paused() ? 'play' : 'pause' },
         !overTask && { label: 'Halcyon Home', value: 'go:home', key: 'go:home', iconName: 'home' },
         !overTask && steamHere && { label: 'Downloads', value: 'downloads', key: 'downloads', iconName: 'download', hint: String(busy) },
         !overTask && { label: 'Search games', value: 'search', key: 'search', iconName: 'search' },
@@ -205,6 +208,8 @@ export async function openGuide({ select = null } = {}) {
     if (pick.startsWith('go:')) { after = () => app.go(pick.slice(3), { enter: true }); break; }
     if (pick === 'leavebpm') { const r = await api.steam.leaveBigPicture(); if (r && r.ok === false) toast(r.error, { type: 'error' }); break; }
     if (pick === 'search') { after = () => app.search(); break; }
+    if (pick === 'np:show') { after = () => nowPlaying()?.show(); break; }
+    if (pick === 'np:toggle') { nowPlaying()?.toggle(); continue; }
     if (pick === 'downloads') { after = () => app.downloads(); break; }
 
     if (pick.startsWith('power:')) {

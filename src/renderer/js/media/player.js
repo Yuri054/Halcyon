@@ -3,6 +3,8 @@
 //   right stick: volume (up / down and every other button bring the bar up) · X subtitles · Y audio track and subtitles
 //   LB / RB previous / next · B stop
 // Music gets a now-playing screen: the cover, the song, the album and what plays next.
+// B on music leaves it playing in the background (a "now playing" note sits by the
+// clock); the Guide and the music page bring the screen back. X stops it.
 // The bar and the button prompts fade out while the picture plays.
 // Jellyfin hears where you are (start, every 10 s, stop), so it remembers the place.
 import { h, icon } from '../core/dom.js';
@@ -18,6 +20,18 @@ import { img, episodeCode } from './tile.js';
 const TICKS = 10000000;
 let Hls = null;   // loaded the first time something needs HLS
 
+// Music left playing in the background: { title, artist, show(), stop(), toggle(), paused() }.
+let background = null;
+const listeners = new Set();
+const announce = () => { for (const fn of listeners) fn(background); };
+
+/** What plays in the background now, or null. */
+export const nowPlaying = () => background;
+/** fn(nowPlaying) whenever background music starts, changes or stops. */
+export function onNowPlaying(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+/** Stop background music (a game or a video is starting). */
+export function stopBackground() { if (background) background.stop(); }
+
 function clock(sec) {
   if (!Number.isFinite(sec) || sec < 0) return '0:00';
   const s = Math.floor(sec % 60);
@@ -28,6 +42,7 @@ function clock(sec) {
 
 /** queue: item ids to play in order; start: index in it. Resolves when playback ends. */
 export function openPlayer({ queue, start = 0, fromStart = false }) {
+  stopBackground();
   return new Promise((done) => {
     let index = start;
     let session = null;      // the current playback from Jellyfin
@@ -74,7 +89,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       el.classList.add('is-osd');
       quiet(false);
       clearTimeout(osdTimer);
-      osdTimer = setTimeout(() => { if (!video.paused && !closed && !menuOpen) { el.classList.remove('is-osd'); quiet(true); } }, ms);
+      osdTimer = setTimeout(() => { if (!video.paused && !closed && !menuOpen && !inBackground) { el.classList.remove('is-osd'); quiet(true); } }, ms);
     };
 
     // ---- volume (the system's, as the Guide sets it)
@@ -128,6 +143,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       sub.textContent = it.type === 'Episode' ? [episodeCode(it), it.name].filter(Boolean).join(' · ') : [it.albumArtist, it.year].filter(Boolean).join(' · ');
       audioIndex = session.audioIndex;
       el.classList.toggle('is-audio', Boolean(session.audio));
+      if (background) announce();
       if (session.audio) {
         cover.replaceChildren(artImg([img(it.images.primaryOf, 'Primary', 800)], 'player__cover-img', { lazy: false }) || icon('music'));
         songTitle.textContent = it.name;
@@ -234,9 +250,40 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       showOsd();
     }
 
+    // Music: B keeps it playing and hands the screen back.
+    let inBackground = false;
+    function toBackground() {
+      inBackground = true;
+      focus.popLayer(layer);
+      el.classList.add('is-background');
+      clearTimeout(osdTimer);
+      quiet(false);
+      background = {
+        get title() { return session?.item.name || ''; },
+        get artist() { return session?.item.albumArtist || ''; },
+        paused: () => video.paused,
+        toggle: () => { if (video.paused) video.play().catch(() => {}); else video.pause(); announce(); },
+        stop: () => close(),
+        show: () => {
+          if (closed || !inBackground) return;
+          inBackground = false;
+          background = null;
+          announce();
+          el.classList.remove('is-background');
+          layer = focus.pushLayer(layerSpec);
+          showOsd();
+          app.refreshChrome();
+        },
+      };
+      announce();
+      app.refreshChrome();
+      done();
+    }
+
     function close() {
       if (closed) return;
       closed = true;
+      if (inBackground) { inBackground = false; background = null; announce(); }
       report('stop');
       clearInterval(reportTimer);
       clearTimeout(osdTimer);
@@ -252,7 +299,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       done();
     }
 
-    const layer = focus.pushLayer({
+    const layerSpec = {
       root: el,
       current: null,
       onAction(action, _t, repeat) {
@@ -262,18 +309,21 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
         else if (action === 'right') seek(repeat ? 60 : 30);
         else if (action === 'rup') changeVolume(5);
         else if (action === 'rdown') changeVolume(-5);
+        else if (action === 'x' && !repeat && session?.audio) { sfx.back(); close(); }
         else if (action === 'x' && !repeat) cycleSubtitles();
         else if (action === 'y' && !repeat) chooseTracks();
         else if (action === 'lb' && !repeat) next(-1);
         else if (action === 'rb' && !repeat) next(1);
-        else if (action === 'back' && !repeat) { sfx.back(); close(); }
+        else if (action === 'back' && !repeat) { sfx.back(); if (session?.audio && !video.paused) toBackground(); else close(); }
         return true;
       },
       hints: () => [
         { a: 'accept', label: video.paused ? 'Play' : 'Pause' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'rup', b: 'rdown', label: 'Volume' },
-        !session?.audio && { a: 'x', label: 'Subtitles' }, !session?.audio && { a: 'y', label: 'Audio & subtitles' }, queue.length > 1 && { a: 'lb', b: 'rb', label: 'Previous / next' }, { a: 'back', label: 'Stop' },
+        session?.audio ? { a: 'x', label: 'Stop' } : { a: 'x', label: 'Subtitles' }, !session?.audio && { a: 'y', label: 'Audio & subtitles' }, queue.length > 1 && { a: 'lb', b: 'rb', label: 'Previous / next' },
+        { a: 'back', label: session?.audio && !video.paused ? 'Keep playing' : 'Stop' },
       ].filter(Boolean),
-    });
+    };
+    let layer = focus.pushLayer(layerSpec);
     app.refreshChrome();
     load(index, { fromStart });
   });

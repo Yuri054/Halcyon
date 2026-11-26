@@ -56,7 +56,7 @@ export function mediaTile(item, variant = 'cover', index = 0) {
   if (item.progress > 0 && item.progress < 100) {
     body.append(h('div', { class: 'tile__progress media__progress' }, h('div', { class: 'tile__progress-track' }, h('i', { style: { width: `${item.progress}%` } }))));
   }
-  if (item.played) body.append(h('div', { class: 'tile__badges' }, h('span', { class: 'badge badge--played' }, '✓')));
+  if (item.played && !square) body.append(h('div', { class: 'tile__badges' }, h('span', { class: 'badge badge--played' }, '✓')));
   return h('div', {
     class: `tile tile--${variant}${square ? ' tile--square-art' : ''}`,
     'data-focus': true, 'data-key': `m:${item.id}:${variant}`, 'data-media': item.id,

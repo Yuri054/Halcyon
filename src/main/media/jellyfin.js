@@ -155,10 +155,23 @@ class Jellyfin {
   get uid() { return this.cfg.userId; }
   static fields = 'Fields=Overview,Genres,ProductionYear,PrimaryImageAspectRatio,CommunityRating,OfficialRating&EnableImageTypes=Primary,Backdrop,Thumb&ImageTypeLimit=1';
 
-  async home() {
+  /** The front page of one side of the server: kind 'video' (tv & movies) or 'music'. */
+  async home(kind = 'video') {
     const views = await this.request(`/Users/${this.uid}/Views`);
     const libraries = (views?.Items || []).filter((v) => ['movies', 'tvshows', 'music', 'homevideos', 'musicvideos', 'mixed', ''].includes(v.CollectionType || ''))
+      .filter((v) => (kind === 'music') === (v.CollectionType === 'music'))
       .map(Jellyfin.item);
+    if (kind === 'music') {
+      const [recent, lists, latest] = await Promise.all([
+        this.request(`/Users/${this.uid}/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=DatePlayed&SortOrder=Descending&Filters=IsPlayed&Limit=16&${Jellyfin.fields}`).catch(() => ({ Items: [] })),
+        this.playlists('Audio').catch(() => ({ items: [] })),
+        Promise.all(libraries.slice(0, 3).map(async (lib) => {
+          const items = await this.request(`/Users/${this.uid}/Items/Latest?ParentId=${lib.id}&IncludeItemTypes=MusicAlbum&Limit=20&${Jellyfin.fields}`).catch(() => []);
+          return { library: lib, items: (items || []).map(Jellyfin.item).filter((x) => x.type === 'MusicAlbum') };
+        })),
+      ]);
+      return { libraries, resume: [], nextUp: [], recent: (recent?.Items || []).map(Jellyfin.item).filter((x) => x.type === 'Audio'), playlists: lists.items, latest: latest.filter((l) => l.items.length) };
+    }
     const [resume, nextUp] = await Promise.all([
       this.request(`/Users/${this.uid}/Items/Resume?Limit=12&MediaTypes=Video&${Jellyfin.fields}`),
       this.request(`/Shows/NextUp?UserId=${this.uid}&Limit=12&${Jellyfin.fields}`).catch(() => ({ Items: [] })),

@@ -1,6 +1,6 @@
-// Media: a Jellyfin server's movies, shows and music, browsed and played from the couch.
-// Home shows continue watching, next up and what is new in each library; a library
-// opens as a wall of posters; shows open season by season.
+// A Jellyfin server, browsed and played from the couch. Two sections use this page:
+// tv & movies (continue watching, next up, what's new; shows open season by season)
+// and music (albums, artists, playlists, recently played).
 import { h, icon, flash } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import { api, state } from '../core/state.js';
@@ -21,12 +21,16 @@ const MUSIC_MODES = [['albums', 'Albums', 'disc'], ['artists', 'Artists', 'user'
 const songTime = (sec) => (sec ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` : null);
 const shuffled = (list) => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
-export function createMedia() {
+export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & movies', kind = 'video' } = {}) {
+  const music = kind === 'music';
   const scroller = h('div', { class: 'blocks', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
   const wall = h('div', { class: 'wall', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
   const wallHead = h('div', { class: 'toolbar media__head' });
   const wallView = h('div', { class: 'media__library', hidden: true }, wallHead, wall);
-  const el = h('section', { class: 'view view--media' }, scroller, wallView);
+  const el = h('section', { class: `view view--media view--${sectionId}` }, scroller, wallView);
+  // Signing in or out on one media page resets the other one too.
+  window.addEventListener('halcyon:jellyfin', () => { status = null; home = null; library = null; if (state.section === sectionId) render(); });
+  const changedServer = () => window.dispatchEvent(new Event('halcyon:jellyfin'));
 
   let status = null;        // { connected, serverName, userName }
   let home = null;          // the overview from Jellyfin
@@ -42,11 +46,11 @@ export function createMedia() {
     loading = true;
     status = await api.jellyfin.status().catch(() => ({ connected: false }));
     if (status.connected) {
-      const res = await api.jellyfin.home();
+      const res = await api.jellyfin.home(kind);
       if (res.ok) { home = res.data; error = null; } else { error = res.error; if (res.auth) status.connected = false; }
     }
     loading = false;
-    if (state.section !== 'media') return;
+    if (state.section !== sectionId) return;
     const key = focus.base().current?.dataset.key;
     render();
     const again = focus.byKey(el, key) || el.querySelector('[data-focus]');
@@ -66,8 +70,8 @@ export function createMedia() {
     }
     if (!status.connected) {
       scroller.replaceChildren(block('media', 'block--hero', [actionTile({
-        key: 'mx:connect', size: 'hero', iconName: 'film', tone: 'accent', label: 'Connect to Jellyfin',
-        sub: 'Watch your movies and shows and play your music from your own Jellyfin server.', onSelect: connect,
+        key: 'mx:connect', size: 'hero', iconName: music ? 'music' : 'film', tone: 'accent', label: 'Connect to Jellyfin',
+        sub: music ? 'Play your music from your own Jellyfin server.' : 'Watch your movies and shows from your own Jellyfin server.', onSelect: connect,
       })]));
       return;
     }
@@ -76,6 +80,7 @@ export function createMedia() {
         block('server', 'block--quick', [actionTile({ key: 'mx:server', label: 'Server', sub: status.serverName, iconName: 'gear', tone: 'glass', onSelect: serverMenu })]));
       return;
     }
+    if (music) { renderMusicFront(); return; }
     // ---- the front page: libraries, a feature, and what to watch next, then the rails
     const resume = remember(home.resume);
     const nextUp = remember(home.nextUp).filter((n) => !resume.some((r) => r.id === n.id));
@@ -114,8 +119,41 @@ export function createMedia() {
       actionTile({ key: 'mx:server', label: 'Server', sub: status.userName, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
     ].filter(Boolean)));
     if (!feature && !home.libraries.length) {
-      blocks.unshift(block('media', 'block--hero', [actionTile({ key: 'mx:empty', size: 'hero', iconName: 'film', tone: 'glass', label: 'Nothing here yet', sub: 'Your Jellyfin user has no libraries Halcyon can show.' })]));
+      blocks.unshift(block('media', 'block--hero', [actionTile({ key: 'mx:empty', size: 'hero', iconName: 'film', tone: 'glass', label: 'Nothing here yet', sub: 'Your Jellyfin user has no movie or TV libraries Halcyon can show.' })]));
     }
+    scroller.replaceChildren(...blocks);
+  }
+
+  // ---- music's front page: albums / artists / playlists, the newest album, then rails
+  function renderMusicFront() {
+    let i = 0;
+    const libs = remember(home.libraries);
+    const lib = libs[0];
+    const tail = [
+      ...libs.slice(1).map((l) => actionTile({ key: `mx:lib:${l.id}`, label: l.name, iconName: 'music', tone: 'accent', index: i++, onSelect: () => openLibrary(l) })),
+      actionTile({ key: 'mx:search2', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
+      actionTile({ key: 'mx:server', label: 'Server', sub: status.userName, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
+    ];
+    if (!lib) {
+      scroller.replaceChildren(block('music', 'block--hero', [actionTile({ key: 'mx:empty', size: 'hero', iconName: 'music', tone: 'glass', label: 'No music library', sub: 'Add a music library in Jellyfin and it shows up here.' })]),
+        block(status.serverName || 'jellyfin', 'block--quick', tail));
+      return;
+    }
+    const albums = remember(home.latest.flatMap((l) => l.items));
+    const at = (node, area) => { node.style.gridArea = area; return node; };
+    const modeTile = ([mode, label, iconName], area) => at(actionTile({ key: `mx:mode:${mode}`, label, iconName, tone: 'accent', index: i++, onSelect: () => openLibrary(lib, '', mode) }), area);
+    const [feature, ...rest] = albums;
+    const front = h('div', { class: 'media__front' },
+      modeTile(MUSIC_MODES[0], 'a1'), modeTile(MUSIC_MODES[1], 'a2'), modeTile(MUSIC_MODES[2], 'a3'),
+      feature && at(mediaHero(feature, 'new album', i++), 'hero'),
+      ...['b3', 'c3', 'd1', 'd2', 'd3'].map((area, n) => rest[n] && at(mediaTile(rest[n], 'wide', i++), area)));
+    const blocks = [h('div', { class: 'block block--front' }, h('h3', { class: 'block__title' }, 'music'), front)];
+    const recent = remember(home.recent || []);
+    if (recent.length) blocks.push(block('recently played', 'block--covers media__latest media__songs', recent.map((it) => mediaTile(it, 'cover', i++))));
+    const lists = remember(home.playlists || []);
+    if (lists.length) blocks.push(block('playlists', 'block--covers media__latest media__songs', lists.map((it) => mediaTile(it, 'cover', i++))));
+    if (rest.length > 5) blocks.push(block('new albums', 'block--covers media__latest media__songs', rest.slice(5).map((it) => mediaTile(it, 'cover', i++))));
+    blocks.push(block(status.serverName || 'jellyfin', 'block--quick', tail));
     scroller.replaceChildren(...blocks);
   }
 
@@ -200,9 +238,10 @@ export function createMedia() {
 
   function closeLibrary() {
     const id = library.lib.id;
+    const mode = library.mode;
     library = null;
     render();
-    const back = focus.byKey(el, `mx:lib:${id}`) || el.querySelector('[data-focus]');
+    const back = focus.byKey(el, `mx:lib:${id}`) || (mode && focus.byKey(el, `mx:mode:${mode}`)) || el.querySelector('[data-focus]');
     focus.focus(back, { layer: focus.base(), scroll: 'instant' });
     app.refreshChrome();
   }
@@ -218,22 +257,23 @@ export function createMedia() {
     const res = await api.jellyfin.connect(server, user, password);
     if (!res.ok) { toast(res.error, { type: 'error', title: 'Couldn’t connect' }); return; }
     toast(`Signed in as ${res.userName}`, { title: res.serverName, iconName: 'film' });
-    status = null; home = null;
-    render();
+    changedServer();
   }
   async function serverMenu() {
     const pick = await menu({ title: status.serverName || 'Jellyfin', subtitle: `${status.server} · signed in as ${status.userName}`, items: [
       { label: 'Refresh', value: 'refresh', iconName: 'refresh' },
       { label: 'Sign out', value: 'out', iconName: 'exit', danger: true },
     ] });
-    if (pick === 'refresh') { status = null; home = null; render(); }
-    if (pick === 'out') { await api.jellyfin.disconnect(); status = null; home = null; render(); }
+    if (pick === 'refresh') changedServer();
+    if (pick === 'out') { await api.jellyfin.disconnect(); changedServer(); }
   }
   async function search() {
-    const term = await keyboard({ title: 'Search Jellyfin', placeholder: 'Movie, show or album' });
+    const term = await keyboard({ title: music ? 'Search music' : 'Search movies and shows', placeholder: music ? 'Song, album, artist or playlist' : 'Movie, show or episode' });
     if (!term || !term.trim()) return;
     const res = await api.jellyfin.search(term.trim());
     if (!res.ok) { toast(res.error, { type: 'error' }); return; }
+    const MUSIC_TYPES = ['MusicAlbum', 'MusicArtist', 'Playlist', 'Audio'];
+    res.data = res.data.filter((it) => MUSIC_TYPES.includes(it.type) === music);
     if (!res.data.length) { toast(`Nothing matches “${term.trim()}”`, { title: 'Search' }); return; }
     library = { lib: { id: 'search', name: `“${term.trim()}”`, collection: '' }, items: remember(res.data), total: res.data.length, genres: [], genre: '' };
     renderLibrary();
@@ -422,7 +462,7 @@ export function createMedia() {
   }
 
   // After watching, Jellyfin's resume points and "next up" change.
-  function refreshSoon() { setTimeout(() => { home = null; status = null; if (state.section === 'media' && !library) render(); else if (library) reloadLibrary(); }, 600); }
+  function refreshSoon() { setTimeout(() => { home = null; status = null; if (state.section === sectionId && !library) render(); else if (library) reloadLibrary(); }, 600); }
 
   el.addEventListener('click', async (e) => {
     const tile = e.target.closest('[data-media]');
@@ -438,8 +478,8 @@ export function createMedia() {
   });
 
   return {
-    id: 'media',
-    label: 'media',
+    id: sectionId,
+    label: sectionLabel,
     el,
     render,
     defaultFocus: () => (library ? wall : scroller).querySelector('[data-focus]'),
@@ -455,7 +495,7 @@ export function createMedia() {
       return false;
     },
     hints(target) {
-      if (target?.dataset.quickplay) return [{ a: 'accept', label: 'Resume' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
+      if (target?.dataset.quickplay && ['Movie', 'Episode', 'Video'].includes(items.get(target.dataset.media)?.type)) return [{ a: 'accept', label: 'Resume' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
       if (target?.dataset.media) return [{ a: 'accept', label: 'Open' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
       if (target?.dataset.mode) return [{ a: 'accept', label: 'Show' }, { a: 'lt', b: 'rt', label: 'Albums / artists / playlists' }];
       if (target?.dataset.genre != null) return [{ a: 'accept', label: 'Show' }, { a: 'lt', b: 'rt', label: 'Genre' }];

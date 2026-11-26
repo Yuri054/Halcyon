@@ -44,7 +44,7 @@ export function createHome() {
       at(actionTile({ key: 'm:pins', label: 'Favorites', iconName: 'star', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'favorites', enter: true }) }), 'a2'),
       at(actionTile({ key: 'm:recent', label: 'Recent', iconName: 'clock', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'recent', enter: true }) }), 'a3'),
       feature ? at(gameTile(feature, 'hero', i++), 'hero')
-        : at(actionTile({ key: 'm:store', size: 'hero', label: 'Steam store', iconName: 'cloud', tone: 'accent', index: i++, onSelect: () => app.go('store', { enter: true }) }), 'hero'),
+        : at(actionTile({ key: 'm:browse2', size: 'hero', label: 'Your games', iconName: 'grid', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'all', enter: true }) }), 'hero'),
       pic(under[0], 'b3'), pic(under[1], 'c3'),
       pic(side[0], 'd1'), pic(side[1], 'd2'), pic(side[2], 'd3'));
     const search = actionTile({ key: 'm:search', label: '', iconName: 'search', tone: 'slate', index: i++, onSelect: () => app.search() });
@@ -52,7 +52,8 @@ export function createHome() {
 
     const quick = h('div', { class: 'metro metro--quick' },
       actionTile({ key: 'q:all', label: 'All games', count: games.length, iconName: 'grid', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'all', enter: true }) }),
-      actionTile({ key: 'q:store', label: 'Store', iconName: 'cloud', tone: 'accent', index: i++, onSelect: () => app.go('store', { enter: true }) }),
+      actionTile({ key: 'q:tv', label: 'TV & movies', iconName: 'film', tone: 'accent', index: i++, onSelect: () => app.go('tv', { enter: true }) }),
+      actionTile({ key: 'q:music', label: 'Music', iconName: 'music', tone: 'accent', index: i++, onSelect: () => app.go('music', { enter: true }) }),
       actionTile({ key: 'q:steam', label: 'Steam', count: games.filter((g) => g.source === 'steam').length, iconName: 'download', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'steam', enter: true }) }),
       actionTile({ key: 'q:emu', label: 'Emulated', count: games.filter((g) => g.source === 'emulator').length, iconName: 'chip', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'emulated', enter: true }) }),
       actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'accent', index: i++, onSelect: async () => { const id = await editCustomGame(); if (id) app.go('games', { filter: 'custom', enter: true, focusKey: `g:${id}` }); } }),

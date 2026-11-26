@@ -21,7 +21,13 @@ import { createSystems } from './views/systems.js';
 import { createSettings } from './views/settings.js';
 
 const $ = (id) => document.getElementById(id);
-const ORDER = ['home', 'games', 'media', 'store', 'collections', 'systems', 'settings'];
+// The tabs along the top. Store and collections are switched off (their pages still exist,
+// nothing links to them); systems lives under settings as its second sub-tab.
+const ORDER = ['home', 'games', 'tv', 'music', 'settings'];
+const SUBTABS = { settings: [['settings', 'general'], ['systems', 'systems']] };
+const TAB_OF = { systems: 'settings' };
+const tabOf = (section) => TAB_OF[section] || section;
+const subGroup = (section) => SUBTABS[tabOf(section)] || null;
 const views = {};
 // Switching sections faster than this is ignored, so the transition (and its sound) can land.
 const SECTION_COOLDOWN_MS = 500;
@@ -40,7 +46,7 @@ function renderHints() {
   if (layer === focus.base()) {
     const inTabs = target && $('tabs').contains(target);
     hints = inTabs ? [{ a: 'accept', label: 'Enter' }] : (views[state.section].hints(target) || []);
-    hints = [...hints, { a: 'lb', b: 'rb', label: 'Section' }, state.section === 'home' ? { a: 'back', label: 'Guide' } : { a: 'back', label: 'Back' }];
+    hints = [...hints, subGroup(state.section) && !hints.some((x) => x.a === 'lt') && { a: 'lt', b: 'rt', label: subGroup(state.section).map((x) => x[1]).join(' / ') }, { a: 'lb', b: 'rb', label: 'Section' }, state.section === 'home' ? { a: 'back', label: 'Guide' } : { a: 'back', label: 'Back' }].filter(Boolean);
   }
   $('hints').replaceChildren(...hints.map((hint) => h('div', { class: 'hint' },
     h('span', { class: `glyph glyph--${hint.a}` }, input.glyph(hint.a)),
@@ -131,7 +137,10 @@ function go(section, { filter, enter = false, focusKey = null, quiet = false } =
   if (filter && views.games.setFilter) views.games.setFilter(filter);
 
   if (changed) {
-    const dir = ORDER.indexOf(section) > ORDER.indexOf(state.section) ? 'right' : 'left';
+    const subs = subGroup(section);
+    const dir = tabOf(section) === tabOf(state.section) && subs
+      ? (subs.findIndex((x) => x[0] === section) > subs.findIndex((x) => x[0] === state.section) ? 'right' : 'left')
+      : ORDER.indexOf(tabOf(section)) > ORDER.indexOf(tabOf(state.section)) ? 'right' : 'left';
     for (const v of Object.values(views)) {
       v.el.hidden = v.id !== section;
     }
@@ -139,7 +148,7 @@ function go(section, { filter, enter = false, focusKey = null, quiet = false } =
     lastSectionAt = performance.now();
     views[section].render();
     flash(views[section].el, `view--from-${dir}`);
-    for (const tab of $('tabs').children) tab.classList.toggle('is-active', tab.dataset.section === section);
+    for (const tab of $('tabs').children) tab.classList.toggle('is-active', tab.dataset.section === tabOf(section));
     api.ui.set({ section });
     if (!quiet) sfx.section(dir);
   } else if (filter) {
@@ -166,7 +175,7 @@ function buildTabs() {
   }));
   tabs.addEventListener('nav-focus', (e) => {
     const section = e.target.dataset.section;
-    if (section && section !== state.section) go(section);
+    if (section && section !== tabOf(state.section)) go(section);
   });
 }
 
@@ -379,13 +388,23 @@ function bump(el, dir) {
 function baseAction(action, target, repeat) {
   if (action === 'lb' || action === 'rb') {
     if (repeat || sectionCoolingDown()) return true;
-    const i = ORDER.indexOf(state.section) + (action === 'rb' ? 1 : -1);
+    const i = ORDER.indexOf(tabOf(state.section)) + (action === 'rb' ? 1 : -1);
     if (i < 0 || i >= ORDER.length) { sfx.edge(); return true; }
     go(ORDER[i], { enter: true });
     return true;
   }
   if (target && $('tabs').contains(target)) return false;
-  return views[state.section].onAction(action, target, repeat) || false;
+  if (views[state.section].onAction(action, target, repeat)) return true;
+  // LT / RT step through a tab's sub-tabs (settings: general, systems).
+  const subs = subGroup(state.section);
+  if (subs && (action === 'lt' || action === 'rt')) {
+    if (repeat || sectionCoolingDown()) return true;
+    const i = subs.findIndex((x) => x[0] === state.section) + (action === 'rt' ? 1 : -1);
+    if (i < 0 || i >= subs.length) { sfx.edge(); return true; }
+    go(subs[i][0], { enter: true });
+    return true;
+  }
+  return false;
 }
 
 function baseBack(target) {
@@ -403,10 +422,22 @@ async function boot() {
   state.lib = await api.library.get();
   applySettings();
 
-  for (const v of [createHome(), createGames(), createMedia(), createStore(), createCollections(), createSystems(), createSettings()]) {
+  const media = { tv: createMedia({ id: 'tv', label: 'tv & movies', kind: 'video' }), music: createMedia({ id: 'music', label: 'music', kind: 'music' }) };
+  for (const v of [createHome(), createGames(), media.tv, media.music, createStore(), createCollections(), createSystems(), createSettings()]) {
     views[v.id] = v;
     v.el.hidden = true;
     $('stage').append(v.el);
+    // A tab with sub-tabs gets a row of them at the top of each of its pages.
+    const subs = subGroup(v.id);
+    if (subs) {
+      const bar = h('div', { class: 'subtabs chips', 'data-focus-group': true }, ...subs.map(([id, label]) => {
+        const c = h('div', { class: `chip subtab${id === v.id ? ' is-active' : ''}`, 'data-focus': true, 'data-key': `sub:${id}` }, label);
+        c.addEventListener('click', () => { if (id !== state.section) go(id, { enter: true }); });
+        return c;
+      }));
+      v.el.prepend(bar);
+      v.el.classList.add('view--subtabs');
+    }
   }
   buildTabs();
 
@@ -429,7 +460,8 @@ async function boot() {
 
   Object.assign(lastKey, state.lib.ui.focus || {});
   state.filter = state.lib.ui.filter || 'all';
-  const start = ORDER.includes(state.lib.ui.section) ? state.lib.ui.section : 'home';
+  const saved = state.lib.ui.section === 'media' ? 'tv' : state.lib.ui.section;
+  const start = ORDER.includes(tabOf(saved)) && views[saved] ? saved : 'home';
   state.section = null;
   go(start, { enter: true, quiet: true });
 
@@ -488,7 +520,7 @@ async function boot() {
     if (guideOpen()) closeGuide();
     if (nav.launch) launch(nav.launch);
     else if (nav.search) searchGames();
-    else if (nav.section && ORDER.includes(nav.section)) go(nav.section, { enter: true });
+    else if (nav.section && views[nav.section]) go(nav.section, { enter: true });
   };
   api.on('dashboard:navigate', navigate);
   api.app.pendingNav().then(navigate).catch(() => {});

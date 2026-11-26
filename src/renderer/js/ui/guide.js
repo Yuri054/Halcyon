@@ -121,8 +121,8 @@ export async function openGuide({ select = null } = {}) {
         !overTask && { label: 'Halcyon Home', value: 'go:home', key: 'go:home', iconName: 'home' },
         !overTask && steamHere && { label: 'Downloads', value: 'downloads', key: 'downloads', iconName: 'download', hint: String(busy) },
         !overTask && { label: 'Search games', value: 'search', key: 'search', iconName: 'search' },
-        !overTask && { label: 'Store', value: 'go:store', key: 'go:store', iconName: 'cloud' },
-        !overTask && { label: 'Collections', value: 'go:collections', key: 'go:collections', iconName: 'layers' },
+        !overTask && { label: 'TV & movies', value: 'go:tv', key: 'go:tv', iconName: 'film' },
+        !overTask && { label: 'Music', value: 'go:music', key: 'go:music', iconName: 'music' },
         status?.bigPictureOpen && { label: 'Close Steam Big Picture', value: 'leavebpm', key: 'leavebpm', iconName: 'screen' },
       ];
     }

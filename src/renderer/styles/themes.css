@@ -894,3 +894,14 @@ body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .g
 [data-theme='x360'] .media__progress .tile__progress-track { border-radius: 0; height: 0.25rem; background: rgba(0, 0, 0, 0.35); }
 [data-theme='x360'] .media__progress .tile__progress-track i { border-radius: 0; background: var(--x-tile-green-hi); box-shadow: none; }
 [data-theme='x360'] .view--media .tile--cover .tile__progress { bottom: 0; }
+
+/* Music rails: square covers, two rows. */
+.media__songs.media__latest .block__tiles, [data-theme] .media__songs.media__latest .block__tiles { grid-template-rows: repeat(2, 13.2rem); }
+.media__songs.media__latest .tile--cover, [data-theme] .media__songs.media__latest .tile--cover { width: 13.2rem; }
+[data-theme] .media__songs .tile__strip { opacity: 1; }
+
+/* Sub-tabs (settings: general / systems): a small row under the main tabs. */
+.view--subtabs { flex-direction: column; }
+.subtabs { flex: none; padding: 0.2rem var(--gutter) 0; margin: 0; overflow: visible; }
+.subtab { text-transform: lowercase; }
+[data-theme='x360'] .subtabs .chip { font-size: 1.15rem; padding: 0.45rem 1.1rem; }

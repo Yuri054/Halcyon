@@ -37,7 +37,6 @@ export async function gameMenu(id) {
       items: [
         { label: g.installed ? 'Play' : 'Install', value: 'play', iconName: g.installed ? 'play' : 'download', sub: g.status || (g.download ? downloadLabel(g.download) : !g.installed ? 'Steam will ask where to put it' : null) },
         { label: g.favorite ? 'Remove from favorites' : 'Add to favorites', value: 'fav', iconName: g.favorite ? 'starFill' : 'star' },
-        { label: 'Collections', value: 'collections', iconName: 'layers', hint: g.collections.length || '' },
         { heading: 'Customize' },
         { label: 'Set cover art', value: 'cover', iconName: 'image' },
         { label: 'Set background', value: 'background', iconName: 'screen' },

@@ -89,8 +89,8 @@ controls report an error and the manager falls back to showing progress only.
 
 ## Media (Jellyfin)
 
-The **media** section plays movies, shows and music from your own Jellyfin server. Select *Connect
-to Jellyfin* and enter the server address, user name and password on the on-screen keyboard; the
+Two sections, **tv & movies** and **music**, play from your own Jellyfin server. Select *Connect
+to Jellyfin* (on either) and enter the server address, user name and password on the on-screen keyboard; the
 password is used once to sign in and is not stored, and the session token stays in the main
 process (images and streams reach the page through a `jf://` protocol that adds it).
 
@@ -102,11 +102,12 @@ process (images and streams reach the page through a `jf://` protocol that adds 
 - **Y on any tile:** play/resume, details, go to the series, mark watched, or remove from
   continue watching (Jellyfin's own "hide from resume", so its other apps agree).
 - **Libraries:** a wall of posters with genre chips along the top; LT/RT step through genres.
-- **Music:** a music library shows albums, artists or playlists (LT/RT to switch). An artist lists
+- **Music:** the music section opens on Albums / Artists / Playlists tiles, the newest album,
+  recently played songs and your playlists. A music library shows albums, artists or playlists (LT/RT to switch). An artist lists
   their albums with *Shuffle all songs*; albums and playlists list their songs with *Play* and
   *Shuffle*. Songs play on a now-playing screen with the cover, artist, album and what's next.
 - **Player:** A pause/play, left/right skip back 10 s / forward 30 s (hold for bigger jumps),
-  up/down or the right stick change the volume, X subtitles, Y audio track and subtitles
+  the right stick changes the volume (up/down and every other button bring the bar back), X subtitles, Y audio track and subtitles
   (another language or commentary track is served by Jellyfin with that track), LB/RB
   previous/next, B stop. The bar
   and the button prompts fade away while the picture plays and come back on any press. Files
@@ -117,6 +118,12 @@ process (images and streams reach the page through a `jf://` protocol that adds 
 The 360 theme's home is laid out like the console's dashboard: the page of big and small tiles,
 the search tab peeking in at the left, and the next page waiting at the right edge; moving onto it
 slides the whole page across.
+
+## Sections
+
+The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,
+*general* and *systems* (emulators and ROM folders); LT/RT switch between them. The store and
+collections pages are switched off: nothing in the tabs, Guide or home screen leads to them.
 
 ## Launch scene
 

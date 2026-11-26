@@ -1,6 +1,6 @@
 // The Jellyfin player: full screen, driven by the controller.
 //   A pause / play · left / right skip back 10 s / forward 30 s (hold to keep going)
-//   up / down or the right stick: volume · X subtitles · Y audio track and subtitles
+//   right stick: volume (up / down and every other button bring the bar up) · X subtitles · Y audio track and subtitles
 //   LB / RB previous / next · B stop
 // Music gets a now-playing screen: the cover, the song, the album and what plays next.
 // The bar and the button prompts fade out while the picture plays.
@@ -256,12 +256,12 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       root: el,
       current: null,
       onAction(action, _t, repeat) {
-        if (action !== 'up' && action !== 'down' && action !== 'rup' && action !== 'rdown') showOsd();
+        if (action !== 'rup' && action !== 'rdown') showOsd();
         if (action === 'accept' && !repeat) { if (video.paused) video.play().catch(() => {}); else video.pause(); sfx.select(); }
         else if (action === 'left') seek(repeat ? -30 : -10);
         else if (action === 'right') seek(repeat ? 60 : 30);
-        else if (action === 'up' || action === 'rup') changeVolume(5);
-        else if (action === 'down' || action === 'rdown') changeVolume(-5);
+        else if (action === 'rup') changeVolume(5);
+        else if (action === 'rdown') changeVolume(-5);
         else if (action === 'x' && !repeat) cycleSubtitles();
         else if (action === 'y' && !repeat) chooseTracks();
         else if (action === 'lb' && !repeat) next(-1);
@@ -270,7 +270,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
         return true;
       },
       hints: () => [
-        { a: 'accept', label: video.paused ? 'Play' : 'Pause' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'up', b: 'down', label: 'Volume' },
+        { a: 'accept', label: video.paused ? 'Play' : 'Pause' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'rup', b: 'rdown', label: 'Volume' },
         !session?.audio && { a: 'x', label: 'Subtitles' }, !session?.audio && { a: 'y', label: 'Audio & subtitles' }, queue.length > 1 && { a: 'lb', b: 'rb', label: 'Previous / next' }, { a: 'back', label: 'Stop' },
       ].filter(Boolean),
     });

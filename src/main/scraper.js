@@ -69,6 +69,43 @@ async function scrapeGame(key, game, artDir) {
   return out;
 }
 
+/**
+ * The artwork to choose from for one game: kind 'cover' (600x900 grids) or 'background' (heroes).
+ * Finds the game on SteamGridDB (by Steam app id, or by name), unless sgdbId says which.
+ * Resolves { matches: [{ id, name, year }], gameId, images: [{ id, url, thumb, width, height, style, score, author }] }.
+ */
+async function candidates(key, game, kind = 'cover', sgdbId = null) {
+  const term = searchTerm(game.name || '');
+  const matches = term ? (await call(key, `/search/autocomplete/${encodeURIComponent(term)}`)).slice(0, 12)
+    .map((m) => ({ id: m.id, name: m.name, year: m.release_date ? new Date(m.release_date * 1000).getFullYear() : null })) : [];
+  const route = kind === 'cover' ? 'grids' : 'heroes';
+  const query = kind === 'cover' ? '?dimensions=600x900&types=static' : '?types=static';
+  let gameId = sgdbId;
+  let list = [];
+  if (!gameId && game.source === 'steam' && game.appid) {
+    list = await call(key, `/${route}/steam/${game.appid}${query}`);
+    if (list.length) gameId = 'steam';
+  }
+  if (!list.length) {
+    gameId = gameId && gameId !== 'steam' ? gameId : matches[0]?.id;
+    if (gameId) list = await call(key, `/${route}/game/${gameId}${query}`);
+  }
+  return {
+    matches, gameId,
+    images: list.filter((x) => x.url && !x.nsfw).slice(0, 60).map((x) => ({
+      id: x.id, url: x.url, thumb: x.thumb || x.url, width: x.width, height: x.height, style: x.style || '', score: x.score || 0, author: x.author?.name || '',
+    })),
+  };
+}
+
+/** Download one chosen image for a game: kind 'cover' or 'background'. Resolves the local file. */
+async function saveChoice(url, game, kind, artDir) {
+  if (!/^https:\/\/([a-z0-9-]+\.)*steamgriddb\.com\//.test(url)) throw new ScrapeError('Not a SteamGridDB image.');
+  const stem = crypto.createHash('sha1').update(game.id).digest('hex').slice(0, 16);
+  // A new name each time, so the picture changes on screen straight away.
+  return save(url, artDir, `${stem}-${kind === 'cover' ? 'cover' : 'hero'}-${Date.now().toString(36)}`);
+}
+
 /** Check a key without changing anything. */
 async function testKey(key) {
   try {
@@ -101,4 +138,4 @@ async function scrapeMany(key, games, artDir, { onResult, onProgress } = {}) {
   return { ok: true, found, tried };
 }
 
-module.exports = { scrapeGame, scrapeMany, testKey, searchTerm };
+module.exports = { scrapeGame, scrapeMany, testKey, searchTerm, candidates, saveChoice };

@@ -99,8 +99,7 @@ contextBridge.exposeInMainWorld('halcyon', {
   },
   scraper: {
     setKey: call('scraper:setKey'),
-    run: call('scraper:run'),
-  },
+    run: call('scraper:run'), candidates: call('scraper:candidates'), choose: call('scraper:choose') },
   storage: { info: call('storage:info') },
   apps: { games: call('apps:games'), openQuiver: call('apps:openQuiver') },
   achievements: { game: call('achievements:game'), totals: call('achievements:totals') },

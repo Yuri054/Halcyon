@@ -172,6 +172,13 @@ top of Games & Apps; and Settings as the console's settings screen: a list on th
 categories, then a category's settings; B goes back) and a *Current Setting* panel on the right
 with the value and what it does.
 
+## Choosing artwork
+
+A game's options have **Choose artwork**: a grid of everything SteamGridDB has for it (covers,
+or backgrounds with LT/RT), and the one you pick becomes the game's picture (over one set by hand
+before). Y picks a different SteamGridDB game when the match is wrong. *Find artwork
+automatically* still takes SteamGridDB's top pick in one step.
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

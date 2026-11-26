@@ -518,6 +518,35 @@ if (!app.requestSingleInstanceLock()) {
       const names = (library.raw.ports || []).flatMap((p) => [p.name, (p.platform || '').split(' · ')[0]]);
       return require('./ports').gameApps(known, names);
     });
+    // Choosing artwork by hand: what SteamGridDB has for a game, and saving the one picked.
+    handle('scraper:candidates', async (id, kind, sgdbId) => {
+      const key = cfg().secrets.sgdbKey;
+      if (!key) return { ok: false, error: 'Add your SteamGridDB API key under Settings first.' };
+      const g = library.get(id);
+      if (!g) return { ok: false, error: 'Unknown game.' };
+      const o = cfg().games[id] || {};
+      try {
+        const r = await scraper.candidates(key, { id, source: g.source, appid: g.source === 'steam' ? id.slice(6) : null, name: o.name || g.gameTitle || g.name }, kind, sgdbId || null);
+        return { ok: true, ...r };
+      } catch (err) { return { ok: false, error: err.message }; }
+    });
+    handle('scraper:choose', async (id, kind, url) => {
+      const g = library.get(id);
+      if (!g) return { ok: false, error: 'Unknown game.' };
+      try {
+        const artDir = path.join(app.getPath('userData'), 'art');
+        const file = await scraper.saveChoice(url, { id }, kind, artDir);
+        const field = kind === 'cover' ? 'cover' : 'background';
+        const old = (cfg().scraped[id] || {})[field];
+        library.setScraped(id, { [field]: file });
+        // The picture picked here wins over one set by hand before.
+        if (cfg().games[id] && cfg().games[id][field]) delete cfg().games[id][field];
+        store.save();
+        if (old && old !== file && old.startsWith(artDir)) require('fs').promises.rm(old, { force: true }).catch(() => {});
+        pushLibrary();
+        return { ok: true, file };
+      } catch (err) { return { ok: false, error: err.message }; }
+    });
     handle('scraper:run', async (ids) => {
       const key = cfg().secrets.sgdbKey;
       if (!key) return { ok: false, error: 'Add your SteamGridDB API key under Settings first.' };

@@ -446,3 +446,36 @@ body.player-quiet #hints { opacity: 0; }
 [data-theme='x360'] .details__btn.is-primary { background: linear-gradient(180deg, var(--x-tile-green-hi), var(--x-tile-green)); color: #fff; }
 [data-theme='x360'] .details__btn.is-focused { background: linear-gradient(180deg, var(--x-bar-hi), var(--x-bar) 50%, var(--x-bar-lo)); color: #fff; box-shadow: 0 0.6rem 1.6rem rgba(0, 0, 0, 0.45); }
 [data-theme='x360'] .details__episodes { gap: 0.4rem; }
+
+/* ------------------------------------------------------------ artwork picker */
+.layer--artpick { background: rgba(6, 8, 10, 0.92); backdrop-filter: blur(1.2rem); display: flex; flex-direction: column; padding: 4.5rem var(--gutter) 7rem; animation: fade 0.2s ease both; }
+.layer--artpick.is-closing { animation: fadeOut 0.2s ease both; }
+.artpick__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; margin-bottom: 1.6rem; color: #fff; }
+.artpick__title { font-size: 2.4rem; font-weight: 300; }
+.artpick__sub { font-size: 1.05rem; opacity: 0.75; margin-top: 0.3rem; }
+.artpick__tabs { display: flex; gap: 0.5rem; }
+.artpick__tab { padding: 0.45rem 1rem; font-size: 1.05rem; color: rgba(255, 255, 255, 0.6); border-bottom: 0.18rem solid transparent; }
+.artpick__tab.is-on { color: #fff; border-color: var(--accent); }
+.artpick__grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: 1.1rem; padding: 0.8rem; align-content: start; scrollbar-width: none; }
+.artpick__grid.is-wide { grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); }
+.artpick__tile { position: relative; aspect-ratio: 2 / 3; background: rgba(255, 255, 255, 0.06); overflow: hidden; border-radius: 0.3rem; cursor: pointer; transition: transform 0.15s var(--ease), box-shadow 0.15s ease; }
+.artpick__grid.is-wide .artpick__tile { aspect-ratio: 96 / 31; }
+.artpick__tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.artpick__tile.is-focused { transform: scale(1.06); z-index: 2; box-shadow: 0 0 0 0.25rem var(--accent), 0 1rem 2rem rgba(0, 0, 0, 0.6); }
+.artpick__meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 0.35rem 0.6rem; font-size: 0.8rem; color: #fff; background: rgba(0, 0, 0, 0.6); opacity: 0; transition: opacity 0.15s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.artpick__tile.is-focused .artpick__meta { opacity: 1; }
+.artpick__empty { grid-column: 1 / -1; color: rgba(255, 255, 255, 0.7); font-size: 1.2rem; padding: 2rem 0; }
+[data-theme='x360'] .artpick__tile { border-radius: 0; }
+[data-theme='x360'] .artpick__tile.is-focused { box-shadow: 0 0 0 0.25rem #9bc848, 0 0 1.4rem 0.25rem rgba(140, 198, 63, 0.5), 0 1rem 2rem rgba(0, 0, 0, 0.6); }
+[data-theme='x360'] .artpick__tab.is-on { border-color: #9bc848; }
+/* Tile height from a spacer (a grid row then sizes to it), the picture laid over it. */
+.artpick__tile { aspect-ratio: auto; }
+.artpick__tile::before { content: ''; display: block; padding-top: 150%; }
+.artpick__grid.is-wide .artpick__tile { aspect-ratio: auto; }
+.artpick__grid.is-wide .artpick__tile::before { padding-top: 32.3%; }
+.artpick__tile img { position: absolute; inset: 0; }
+/* Fixed-size tiles in wrapping rows (grid rows can't size from width-based heights here). */
+.artpick__grid, .artpick__grid.is-wide { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 1.1rem; }
+.artpick__tile::before, .artpick__grid.is-wide .artpick__tile::before { display: none; }
+.artpick__tile { flex: none; width: 12.6rem; height: 18.9rem; }
+.artpick__grid.is-wide .artpick__tile { width: 27rem; height: 8.72rem; }

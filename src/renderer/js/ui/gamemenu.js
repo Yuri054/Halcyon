@@ -8,6 +8,7 @@ import { browse } from './browser.js';
 import { toast } from './toast.js';
 import { artImg, fallbackArt } from './art.js';
 import { openGameAchievements, achievementLine } from './achievements.js';
+import { chooseArtwork } from './artpicker.js';
 
 const cover = (g) => h('div', { class: 'panel__art' }, fallbackArt(g), artImg(g.art.cover, 'panel__art-img', { lazy: false }));
 
@@ -62,7 +63,8 @@ export async function gameMenu(id) {
         { heading: 'Customize' },
         { label: 'Set cover art', value: 'cover', iconName: 'image' },
         { label: 'Set background', value: 'background', iconName: 'screen' },
-        { label: 'Find artwork online', value: 'scrape', iconName: 'download', sub: state.lib.scraper.hasKey ? 'SteamGridDB' : 'Needs a SteamGridDB key, under Settings' },
+        { label: 'Choose artwork', value: 'pickArt', iconName: 'image', verb: 'Browse', sub: state.lib.scraper.hasKey ? 'Pick a cover and background from SteamGridDB' : 'Needs a SteamGridDB key, under Settings' },
+        { label: 'Find artwork automatically', value: 'scrape', iconName: 'download', sub: state.lib.scraper.hasKey ? 'SteamGridDB’s top pick' : 'Needs a SteamGridDB key, under Settings' },
         g.hasCustomArt && { label: 'Reset artwork', value: 'resetArt', iconName: 'refresh' },
         g.source === 'custom'
           ? { label: 'Edit game', value: 'edit', iconName: 'pencil' }
@@ -104,6 +106,10 @@ export async function gameMenu(id) {
     if (choice === 'cover' || choice === 'background') {
       const file = await browse({ mode: 'image', title: choice === 'cover' ? 'Choose cover art' : 'Choose a background', start: '~/Pictures' });
       if (file) await api.game.patch(id, { [choice]: file });
+    }
+    if (choice === 'pickArt') {
+      if (!state.lib.scraper.hasKey) toast('Add your SteamGridDB API key under Settings › artwork first.', { type: 'error', title: 'No API key' });
+      else await chooseArtwork(id, 'cover');
     }
     if (choice === 'scrape') {
       if (!state.lib.scraper.hasKey) toast('Add your SteamGridDB API key under Settings › artwork first.', { type: 'error', title: 'No API key' });

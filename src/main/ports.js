@@ -51,8 +51,11 @@ function quiverGames(extraHomes = []) {
       games.push({
         id: `port:${slug(a.folderName)}`,
         source: 'port',
-        platform: a.project ? `${a.project} · PC port` : 'PC port',
-        name: names[a.folderName] || a.name || a.project || a.folderName,
+        platform: 'PC port',
+        // The port's own name (Dusklight) tells it apart from the original game (a ROM, say);
+        // the original's title is kept for finding artwork and spotting the same game elsewhere.
+        name: names[a.folderName] || a.project || a.name || a.folderName,
+        gameTitle: a.name || '',
         art: { cover: [], hero: [], logo: [], header: [], icon: a.appIconUrl ? [a.appIconUrl] : [] },
         sizeBytes: size,
         lastPlayed: 0, playtimeMin: 0,

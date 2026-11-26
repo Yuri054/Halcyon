@@ -127,7 +127,9 @@ slides the whole page across.
 Games installed with **Quiver Launcher** (decomp ports and recomps, such as Dusklight) appear
 in Halcyon by themselves, under Games › *PC ports*: Halcyon reads Quiver's list (`apps.json`
 beside its AppImage, by default `~/AppImages`) and starts each game straight from its AppImage.
-Their artwork comes from SteamGridDB automatically, as for games added by hand.
+A port is listed by its own name (Dusklight), and if the same game is also there as a ROM, the
+ROM steps aside so only the port shows. Its artwork comes from SteamGridDB automatically (found by
+the original game's title), as for games added by hand.
 
 **Add a game** (home or Settings) now lists the computer's installed games (desktop entries in
 the Game category that Halcyon doesn't already have) to add in one step, opens Quiver Launcher,
@@ -193,7 +195,7 @@ collections pages are switched off: nothing in the tabs, Guide or home screen le
 
 In the 360 theme the games tab is the console's *My Games* list: every game (installed ones in
 colour, the rest greyed out, ready to install), with **Show** (all, favorites, recent, Steam, each
-system, installed, not installed, full / partial controller support, ...), **Search** and **Sort** buttons. LT/RT step through the
+installed, not installed, favorites, recently played; then *Where it's from*, *Controller support* and *More*, each opening its own short list), **Search** and **Sort** buttons. LT/RT step through the
 Show choices from the buttons. It always opens on all games.
 
 ## Launch scene

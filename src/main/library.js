@@ -117,6 +117,10 @@ class Library {
     const all = [...this.raw.steam.games, ...this.raw.emu.games, ...(this.raw.ports || []), ...this.customGames()];
     this.index = new Map(all.map((g) => [g.id, g]));
 
+    // A PC port of a game also present as a ROM (Dusklight and a Twilight Princess disc image):
+    // the port is the one to play, so the ROM steps aside.
+    const norm = (s) => String(s || '').replace(/\s*[([][^)\]]*[)\]]/g, '').toLowerCase().replace(/\bthe\b/g, '').replace(/[^a-z0-9]/g, '');
+    const portOf = new Map((this.raw.ports || []).filter((p) => p.installed && p.gameTitle).map((p) => [norm(p.gameTitle), p.id]));
     const games = all.map((g) => {
       const o = cfg.games[g.id] || {};
       const art = { cover: [...g.art.cover], hero: [...g.art.hero], logo: [...g.art.logo] };
@@ -148,6 +152,7 @@ class Library {
         lastPlayed: Math.max(g.lastPlayed || 0, o.lastPlayed || 0),
         playCount: o.playCount || 0,
         playtimeMin: (g.playtimeMin || 0) + (o.playtimeMin || 0),
+        shadowedBy: g.source === 'emulator' ? portOf.get(norm(g.name)) || null : null,
       };
     });
 

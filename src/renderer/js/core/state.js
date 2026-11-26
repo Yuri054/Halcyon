@@ -36,7 +36,8 @@ export const noPadGames = () => state.lib.games.filter((g) => g.controller === '
 
 export function visibleGames() {
   const s = state.lib.settings;
-  let list = s.showHidden ? state.lib.games : state.lib.games.filter((g) => !g.hidden);
+  // A ROM whose game is installed as a PC port (shadowedBy) isn't listed: the port is.
+  let list = (s.showHidden ? state.lib.games : state.lib.games.filter((g) => !g.hidden)).filter((g) => !g.shadowedBy);
   if (s.controllerOnly) list = list.filter((g) => g.controller !== 'none');
   return list;
 }
@@ -64,8 +65,8 @@ export function filterGames(filter, list = visibleGames()) {
 }
 
 export function filterLabel(filter) {
-  const fixed = { all: 'All games', favorites: 'Favorites', recent: 'Recent', steam: 'Steam', emulated: 'Emulated', custom: 'Custom', ports: 'PC ports', hidden: 'Hidden', nopad: 'No controller', installed: 'Installed', uninstalled: 'Not installed', downloads: 'Downloading',
-    'pad:full': 'Full controller support', 'pad:partial': 'Partial controller support', 'pad:none': 'No controller support', 'pad:unknown': 'Controller support unknown' };
+  const fixed = { all: 'All games', favorites: 'Favorites', recent: 'Recently played', steam: 'Steam', emulated: 'Emulated', custom: 'Added by hand', ports: 'PC ports', hidden: 'Hidden', nopad: 'No controller', installed: 'Installed', uninstalled: 'Not installed', downloads: 'Downloading',
+    'pad:full': 'Full controller support', 'pad:partial': 'Partial controller support', 'pad:none': 'No controller support', 'pad:unknown': 'Controller support not known' };
   if (fixed[filter]) return fixed[filter];
   if (filter.startsWith('sys:')) return state.lib.systems.find((s) => s.id === filter.slice(4))?.short || 'Platform';
   if (filter.startsWith('col:')) return state.lib.collections.find((c) => c.id === filter)?.name || 'Collection';

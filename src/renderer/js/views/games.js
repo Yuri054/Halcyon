@@ -21,18 +21,36 @@ export function createGames() {
   const el = h('section', { class: 'view view--games' }, h('div', { class: 'toolbar' }, title, chips, tools), grid);
   let shown = [];
 
-  function filters() {
+  // The filters, grouped: the everyday ones first (also the chip row and LT/RT), then where a
+  // game is from, how it does with a controller, and the rest.
+  const MAIN = ['all', 'installed', 'uninstalled', 'favorites', 'recent'];
+  function groups() {
     const games = visibleGames();
-    const list = ['all', 'favorites', 'recent', 'steam'];
-    for (const s of state.lib.systems) if (games.some((g) => g.system === s.id)) list.push(`sys:${s.id}`);
-    if (games.some((g) => g.source === 'port')) list.push('ports');
-    if (games.some((g) => g.source === 'custom')) list.push('custom');
-    if (games.some((g) => g.download)) list.push('downloads');
-    if (games.some((g) => !g.installed)) list.push('installed', 'uninstalled');
-    for (const p of ['full', 'partial', 'none', 'unknown']) if (games.some((g) => padSupport(g) === p)) list.push(`pad:${p}`);
-    for (const c of state.lib.collections) list.push(c.id);
-    if (state.lib.games.some((g) => g.hidden)) list.push('hidden');
-    if (state.lib.settings.controllerOnly && state.lib.games.some((g) => g.controller === 'none')) list.push('nopad');
+    const has = (fn) => games.some(fn);
+    const from = [
+      has((g) => g.source === 'steam') && 'steam',
+      has((g) => g.source === 'port') && 'ports',
+      has((g) => g.source === 'emulator') && 'emulated',
+      ...state.lib.systems.filter((x) => has((g) => g.system === x.id)).map((x) => `sys:${x.id}`),
+      has((g) => g.source === 'custom') && 'custom',
+    ].filter(Boolean);
+    const pad = ['full', 'partial', 'unknown'].filter((p) => has((g) => padSupport(g) === p)).map((p) => `pad:${p}`);
+    const more = [
+      has((g) => g.download) && 'downloads',
+      ...state.lib.collections.map((c) => c.id),
+      state.lib.settings.controllerOnly && state.lib.games.some((g) => g.controller === 'none') && 'nopad',
+      state.lib.games.some((g) => g.hidden) && 'hidden',
+    ].filter(Boolean);
+    return [
+      { id: '@from', label: 'Where it’s from', iconName: 'layers', list: from },
+      { id: '@pad', label: 'Controller support', iconName: 'pad', list: pad },
+      { id: '@more', label: 'More', iconName: 'grid', list: more },
+    ].filter((gr) => gr.list.length);
+  }
+  /** The short list: chips and LT / RT. A filter picked from a group joins it while it's on. */
+  function filters() {
+    const hasUninstalled = visibleGames().some((g) => !g.installed);
+    const list = MAIN.filter((f) => hasUninstalled || (f !== 'installed' && f !== 'uninstalled'));
     if (!list.includes(state.filter)) list.push(state.filter);
     return list;
   }
@@ -52,7 +70,7 @@ export function createGames() {
       active: f === state.filter,
       count: filterGames(f).length,
       onSelect: () => setFilter(f),
-    })));
+    })), chip('f:@groups', 'More filters', { iconName: 'layers', onSelect: doFilter }));
 
     title.lastChild.textContent = fmt.count(filterGames(state.filter).length, 'game');
     tools.replaceChildren(
@@ -102,12 +120,21 @@ export function createGames() {
   }
 
   async function doFilter() {
-    const pick = await menu({
+    const row = (f) => ({ label: filterLabel(f), value: f, checked: f === state.filter, hint: String(filterGames(f).length) });
+    const gs = groups();
+    let pick = await menu({
       title: 'Show',
       subtitle: 'Which games the list shows',
-      selected: state.filter,
-      items: filters().map((f) => ({ label: filterLabel(f), value: f, checked: f === state.filter, hint: String(filterGames(f).length) })),
+      selected: gs.find((g) => g.list.includes(state.filter))?.id || state.filter,
+      items: [
+        ...filters().filter((f) => MAIN.includes(f)).map(row),
+        gs.length > 0 && { heading: ' ' },
+        ...gs.map((g) => ({ label: g.label, value: g.id, iconName: g.iconName, verb: 'Open', checked: g.list.includes(state.filter),
+          hint: g.list.includes(state.filter) ? filterLabel(state.filter) : String(g.list.length) })),
+      ].filter(Boolean),
     });
+    const group = gs.find((g) => g.id === pick);
+    if (group) pick = await menu({ title: group.label, subtitle: 'Show', selected: state.filter, items: group.list.map(row) });
     if (pick == null) return;
     if (pick === state.filter) { focusGrid(); return; }
     state.filter = pick;

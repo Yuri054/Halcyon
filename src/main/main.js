@@ -492,7 +492,7 @@ if (!app.requestSingleInstanceLock()) {
       scraping = true;
       try {
         const overrides = cfg().games;
-        await scraper.scrapeMany(key, want.map((g) => ({ id: g.id, source: g.source, appid: null, name: (overrides[g.id] && overrides[g.id].name) || g.name })), path.join(app.getPath('userData'), 'art'), {
+        await scraper.scrapeMany(key, want.map((g) => ({ id: g.id, source: g.source, appid: null, name: (overrides[g.id] && overrides[g.id].name) || g.gameTitle || g.name })), path.join(app.getPath('userData'), 'art'), {
           onResult: (game, art) => { library.setScraped(game.id, art); pushLibrary(); },
         });
         diary.log('auto art for', want.map((g) => g.name).join(', '));
@@ -520,7 +520,7 @@ if (!app.requestSingleInstanceLock()) {
       if (scraping) return { ok: false, error: 'Artwork is already being fetched.' };
       const picked = Array.isArray(ids) ? ids.map((id) => library.get(id)).filter(Boolean) : library.missingArt();
       const overrides = cfg().games;
-      const games = picked.map((g) => ({ id: g.id, source: g.source, appid: g.source === 'steam' ? g.id.slice(6) : null, name: (overrides[g.id] && overrides[g.id].name) || g.name }));
+      const games = picked.map((g) => ({ id: g.id, source: g.source, appid: g.source === 'steam' ? g.id.slice(6) : null, name: (overrides[g.id] && overrides[g.id].name) || g.gameTitle || g.name }));
       if (!games.length) return { ok: true, found: 0, tried: 0 };
       scraping = true;
       try {

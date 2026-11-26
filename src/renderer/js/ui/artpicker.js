@@ -68,7 +68,6 @@ export function chooseArtwork(gameId, startKind = 'cover') {
       if (!r || !r.ok) { toast(r?.error || 'Couldn’t save that picture.', { type: 'error', title: 'Artwork' }); load(); return; }
       changed = true;
       sfx.select();
-      toast(kind === 'cover' ? 'New cover set' : 'New background set', { title: g?.name, iconName: 'image', ms: 2000 });
       close();
     }
 

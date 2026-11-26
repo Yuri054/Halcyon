@@ -44,7 +44,7 @@ async function installEmulator(e, panel) {
     ],
   });
   if (method == null) return;
-  if (method === 'page') { await report(api.emulators.openPage(e.id), 'Opened in your browser'); return; }
+  if (method === 'page') { await report(api.emulators.openPage(e.id)); return; }
 
   let finished = false;
   const run = api.emulators.install(e.id, method).then((r) => { finished = true; panel.cancel(); return r; });
@@ -119,12 +119,12 @@ export function createSystems() {
         key: `r:${root}`, size: 'wide', index: i++, tone: 'slate', iconName: 'folder', label: root.split('/').pop() || root, sub: root,
         onSelect: async () => {
           if (await confirm({ title: 'Remove this ROM library?', subtitle: `${root}\nThe files stay on disk.`, yes: 'Remove', danger: true, iconName: 'trash' })) {
-            await report(api.emulators.removeRoot(root), 'ROM library removed');
+            await report(api.emulators.removeRoot(root));
           }
         },
       })),
       actionTile({ key: 'x:root', size: 'wide', index: i++, tone: 'accent', iconName: 'folder', label: 'Add ROM library', sub: 'A folder with one sub-folder per platform', onSelect: addRoot }),
-      actionTile({ key: 'x:scan', size: 'wide', index: i++, tone: 'glass', iconName: 'refresh', label: 'Rescan everything', sub: 'Steam, emulators and ROM folders', onSelect: async () => { await report(api.library.rescan(), 'Library rescanned'); } }),
+      actionTile({ key: 'x:scan', size: 'wide', index: i++, tone: 'glass', iconName: 'refresh', label: 'Rescan everything', sub: 'Steam, emulators and ROM folders', onSelect: async () => { await report(api.library.rescan()); } }),
     ];
 
     scroller.replaceChildren(
@@ -136,7 +136,7 @@ export function createSystems() {
   async function addRoot() {
     const dir = await browse({ mode: 'dir', title: 'Choose your ROM library folder', start: '~' });
     if (!dir) return;
-    await report(api.emulators.addRoot(dir), 'ROM library added');
+    await report(api.emulators.addRoot(dir));
   }
 
   async function emulatorMenu(id) {
@@ -164,17 +164,17 @@ export function createSystems() {
       if (choice == null) break;
       selected = choice;
       if (choice === 'install') await installEmulator(e, panel);
-      if (choice === 'page') await report(api.emulators.openPage(id), 'Opened in your browser');
-      if (choice === 'open') await report(api.emulators.open(id), `Opening ${e.name}`);
+      if (choice === 'page') await report(api.emulators.openPage(id));
+      if (choice === 'open') await report(api.emulators.open(id));
       if (choice === 'path') {
         const file = await browse({ mode: 'exec', title: `Locate ${e.name}`, start: e.customPath ? e.customPath.replace(/\/[^/]*$/, '') : '~' });
-        if (file) await report(api.emulators.configure(id, { path: file }), `${e.name} path saved`);
+        if (file) await report(api.emulators.configure(id, { path: file }));
       }
       if (choice === 'args') {
         const args = await keyboard({ title: `${e.name} launch arguments — {rom} is the game file`, value: e.customArgs || e.defaultArgs, placeholder: e.defaultArgs });
         if (args != null) await report(api.emulators.configure(id, { args: args.trim() === e.defaultArgs ? '' : args.trim() }));
       }
-      if (choice === 'reset') await report(api.emulators.configure(id, { path: '', args: '' }), 'Back to automatic detection');
+      if (choice === 'reset') await report(api.emulators.configure(id, { path: '', args: '' }));
     }
     await panel.close();
   }
@@ -203,10 +203,10 @@ export function createSystems() {
       if (choice === 'browse') { await panel.close(); app.go('games', { filter: `sys:${id}`, enter: true }); return; }
       if (choice === 'add') {
         const dir = await browse({ mode: 'dir', title: `Where are your ${s.short} games?`, start: s.userDirs[0] || s.autoDirs[0] || '~' });
-        if (dir) await report(api.emulators.configureSystem(id, { romDirs: [...new Set([...s.userDirs, dir])] }), 'Folder added');
+        if (dir) await report(api.emulators.configureSystem(id, { romDirs: [...new Set([...s.userDirs, dir])] }));
       }
       if (choice.startsWith('rm:')) {
-        await report(api.emulators.configureSystem(id, { romDirs: s.userDirs.filter((d) => d !== choice.slice(3)) }), 'Folder removed');
+        await report(api.emulators.configureSystem(id, { romDirs: s.userDirs.filter((d) => d !== choice.slice(3)) }));
         selected = 'add';
       }
       if (choice === 'emulator') {

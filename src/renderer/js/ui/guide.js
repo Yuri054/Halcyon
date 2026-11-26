@@ -205,7 +205,6 @@ export async function openGuide({ select = null } = {}) {
       });
       if (sure == null) continue;
       if (sure === 'no') { after = () => api.game.resume(); break; }
-      toast(`Closing ${name}…`, { iconName: 'exit', ms: 2500 });
       const result = await api.game.quit(id);
       if (!result.ok) toast(result.error, { type: 'error', title: 'Couldn’t quit the game' });
       break;

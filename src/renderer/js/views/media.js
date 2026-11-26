@@ -260,7 +260,6 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     if (password == null) return;
     const res = await api.jellyfin.connect(server, user, password);
     if (!res.ok) { toast(res.error, { type: 'error', title: 'Couldn’t connect' }); return; }
-    toast(`Signed in as ${res.userName}`, { title: res.serverName, iconName: 'film' });
     changedServer();
   }
   async function serverMenu() {
@@ -460,7 +459,6 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     if (pick === 'watched' || pick === 'hide') {
       const r = pick === 'watched' ? await api.jellyfin.markPlayed(it.id, !it.played) : await api.jellyfin.hideFromResume(it.id);
       if (!r.ok) { toast(r.error, { type: 'error' }); return; }
-      toast(pick === 'hide' ? 'Removed from continue watching' : it.played ? 'Marked unwatched' : 'Marked watched', { title: it.name, iconName: pick === 'hide' ? 'trash' : 'check' });
       refreshSoon();
     }
   }

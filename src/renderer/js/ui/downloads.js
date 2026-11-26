@@ -207,8 +207,8 @@ async function scheduledMenu(panel, appid) {
       { label: 'Remove from the list', value: 'remove', iconName: 'trash', danger: true, sub: 'Steam may schedule it again later' },
     ],
   });
-  if (pick === 'now' && await act('resume', appid)) toast('Update started', { title: nameOf(appid), iconName: 'download' });
-  if (pick === 'queue' && await act('update', appid)) toast('Added to the queue', { title: nameOf(appid), iconName: 'layers' });
+  if (pick === 'now') await act('resume', appid);
+  if (pick === 'queue') await act('update', appid);
   if (pick === 'remove') await act('remove', appid);
 }
 
@@ -393,7 +393,7 @@ export async function openDownloads({ focusApp = null } = {}) {
       if (action === 'y') { quick = v; panel.cancel(); return true; }
       const isActive = m.active && m.active.appid === appid;
       const paused = isActive ? m.paused : m.queue.find((i) => i.appid === appid)?.paused;
-      act(isActive && !paused ? 'pause' : 'resume', appid).then(() => toast(isActive && !paused ? 'Paused' : 'Downloading', { title: nameOf(appid), iconName: 'download', ms: 1500 }));
+      act(isActive && !paused ? 'pause' : 'resume', appid);
       return true;
     };
     let quick = null;
@@ -409,14 +409,13 @@ export async function openDownloads({ focusApp = null } = {}) {
     if (pick === 'pauseAll' || pick === 'resumeAll') { await act(pick); selected = pick === 'pauseAll' ? 'resumeAll' : 'pauseAll'; }
     else if (pick === 'steam') { const r = await api.steam.action('downloads'); if (r && r.ok === false) toast(r.error, { type: 'error' }); }
     else if (pick === 'enable') await enableControls();
-    else if (pick.startsWith('queue:')) { if (await act('update', pick.slice(6))) toast('Added to the queue', { title: nameOf(pick.slice(6)), iconName: 'refresh' }); }
+    else if (pick.startsWith('queue:')) await act('update', pick.slice(6));
     else if (pick.startsWith('sched:')) await scheduledMenu(panel, pick.slice(6));
     else if (pick.startsWith('clear:')) await act('remove', pick.slice(6));
     else if (pick === 'clearAll') {
       // Steam clears finished items one at a time; do them all.
       let done = 0;
       for (const i of m.finished) if (await act('remove', i.appid)) done++;
-      if (done) toast(`Cleared ${done} finished download${done === 1 ? '' : 's'}`, { iconName: 'check', ms: 2000 });
       selected = 'active';
     }
     else if (pick.startsWith('item:')) {

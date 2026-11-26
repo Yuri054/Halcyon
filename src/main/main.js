@@ -319,7 +319,7 @@ if (!app.requestSingleInstanceLock()) {
     onHold: () => {
       if (!launcher.nowPlaying().some((p) => p.quittable)) return;
       launcher.quit().then((result) => {
-        if (result.ok) { closeGameMenu(); notice(`${result.name} was closed`, { title: 'Game closed', iconName: 'power' }); }
+        if (result.ok) closeGameMenu();
       });
     },
   });

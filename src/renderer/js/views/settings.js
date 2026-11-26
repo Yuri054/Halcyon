@@ -148,7 +148,7 @@ export function createSettings() {
       toast(`Signed in as ${r.user}. Your games are on their way.`, { title: 'RetroAchievements', iconName: 'star' });
     }
     if (pick === 'sync') { const r = await api.retro.sync(); if (r && r.ok === false && r.error) toast(r.error, { type: 'error', title: 'RetroAchievements' }); else toast(`${r?.games ?? 0} games with achievements`, { title: 'RetroAchievements', iconName: 'refresh' }); }
-    if (pick === 'out') { await api.retro.signOut(); toast('Signed out', { title: 'RetroAchievements' }); }
+    if (pick === 'out') await api.retro.signOut();
   }
 
   async function pickMonitor() {
@@ -196,7 +196,7 @@ export function createSettings() {
         row({ key: 'dim', label: 'Dim the screen when idle', iconName: 'moon', toggle: s.dimWhenIdle !== false, onSelect: () => set({ dimWhenIdle: s.dimWhenIdle === false }), tip: 'After five minutes without input. Any button wakes it.' }),
       ]),
       card('library', [
-        row({ key: 'rescan', label: 'Rescan library', iconName: 'refresh', sub: `${fmt.count(state.lib.games.length, 'game')} found`, onSelect: () => report(api.library.rescan(), 'Library rescanned') }),
+        row({ key: 'rescan', label: 'Rescan library', iconName: 'refresh', sub: `${fmt.count(state.lib.games.length, 'game')} found`, onSelect: () => report(api.library.rescan()) }),
         row({ key: 'add', label: 'Add a game', iconName: 'plus', sub: 'Any program or command', onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } }),
         row({ key: 'controllerOnly', label: 'Hide games without controller support', iconName: 'pad', toggle: s.controllerOnly,
           sub: s.controllerOnly ? `${fmt.count(noPadGames().length, 'game')} hidden` : null,
@@ -234,8 +234,8 @@ export function createSettings() {
           tip: 'Steam’s “Processing Vulkan shaders” before a game. Skipping starts the game sooner; it may stutter a little at first. Needs download controls.' }),
         installs.length > 0 && row({ key: 'steam:bigpicture', label: 'Big Picture for store and installs', iconName: 'pad', toggle: Boolean(s.steamBigPicture), onSelect: () => set({ steamBigPicture: !s.steamBigPicture }),
           tip: 'Switches Steam to Big Picture when you buy or install a game, so Steam’s own screens work with the controller. Games themselves start without it.' }),
-        installs.length > 0 && row({ key: 'steam:bpm', label: 'Open Big Picture', iconName: 'pad', sub: 'Steam’s controller mode; close it again from the Guide', onSelect: () => report(api.steam.openBigPicture(), 'Opening Big Picture') }),
-        installs.length > 0 && row({ key: 'steam:open', label: 'Open Steam', iconName: 'screen', onSelect: () => report(api.steam.open(), 'Opening Steam') }),
+        installs.length > 0 && row({ key: 'steam:bpm', label: 'Open Big Picture', iconName: 'pad', sub: 'Steam’s controller mode; close it again from the Guide', onSelect: () => report(api.steam.openBigPicture()) }),
+        installs.length > 0 && row({ key: 'steam:open', label: 'Open Steam', iconName: 'screen', onSelect: () => report(api.steam.open()) }),
       ]),
       card('system', [
         row({ key: 'pads', label: 'Controllers', iconName: 'pad', sub: state.pads.length ? state.pads.map((p) => p.name).join(', ') : 'None connected — plug one in at any time' }),
@@ -259,7 +259,7 @@ export function createSettings() {
         { label: 'Replace key', value: 'replace', iconName: 'key' },
         { label: 'Remove key', value: 'remove', iconName: 'trash', danger: true },
       ] });
-      if (pick === 'remove') await report(api.scraper.setKey(''), 'API key removed');
+      if (pick === 'remove') await report(api.scraper.setKey(''));
       if (pick !== 'replace') return;
     }
     const key = await keyboard({ title: 'SteamGridDB API key — steamgriddb.com › Preferences › API', placeholder: 'Paste with Ctrl+V or type it in' });
@@ -275,7 +275,7 @@ export function createSettings() {
         { label: 'Remove key', value: 'remove', iconName: 'trash', danger: true, sub: 'Uninstalled games disappear from the library' },
       ] });
       if (pick === 'refresh') await report(api.library.rescan(), 'Library and owned games refreshed');
-      if (pick === 'remove') await report(api.steam.setKey(''), 'Steam key removed');
+      if (pick === 'remove') await report(api.steam.setKey(''));
       if (pick !== 'replace') return;
     }
     const key = await keyboard({ title: 'Steam Web API key — steamcommunity.com/dev/apikey', placeholder: 'Paste with Ctrl+V or type it in' });
@@ -345,12 +345,12 @@ export function createSettings() {
 
   async function addRoot() {
     const dir = await browse({ mode: 'dir', title: 'Choose a Steam folder', start: '~' });
-    if (dir) await report(api.steam.addRoot(dir), 'Steam folder added');
+    if (dir) await report(api.steam.addRoot(dir));
   }
 
   async function removeRoot(root) {
     const pick = await menu({ title: 'Added Steam folder', subtitle: root, items: [{ label: 'Remove this folder', value: 'rm', iconName: 'trash', danger: true }] });
-    if (pick === 'rm') await report(api.steam.removeRoot(root), 'Steam folder removed');
+    if (pick === 'rm') await report(api.steam.removeRoot(root));
   }
 
   function showLibraries(inst) {

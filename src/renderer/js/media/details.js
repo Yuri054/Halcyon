@@ -148,7 +148,6 @@ export function openDetails(item) {
     async function toggleWatched() {
       const r = await api.jellyfin.markPlayed(it.id, !it.played);
       if (!r.ok) { toast(r.error, { type: 'error' }); return; }
-      toast(it.played ? 'Marked unwatched' : 'Marked watched', { title: it.name, iconName: 'check' });
       changed = true;
       await refresh();
       focus.focus(focus.byKey(el, 'd:watched') || buttons.querySelector('[data-focus]'), { layer, scroll: false });
@@ -157,7 +156,6 @@ export function openDetails(item) {
     async function hideResume() {
       const r = await api.jellyfin.hideFromResume(it.id);
       if (!r.ok) { toast(r.error, { type: 'error' }); return; }
-      toast('Removed from continue watching', { title: it.name, iconName: 'trash' });
       changed = true;
       await refresh();
       focus.focus(buttons.querySelector('[data-focus]'), { layer, scroll: false });

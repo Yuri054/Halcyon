@@ -128,7 +128,6 @@ export function createGames() {
     setTimeout(() => {
       const again = focus.byKey(grid, key) || grid.querySelector('[data-focus]');
       if (again) focus.focus(again, { layer: focus.base(), scroll: 'instant' });
-      toast(VIEWS.find(([v]) => v === next)[1], { title: 'View', iconName: VIEWS.find(([v]) => v === next)[2], ms: 1200 });
     }, 120);
   }
   const el = h('section', { class: 'view view--games' }, h('div', { class: 'toolbar' }, title, chips, pos, tools), grid, detail);

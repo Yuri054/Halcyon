@@ -248,7 +248,6 @@ async function installGame(g) {
       })),
     });
     if (pick == null) return;
-    toast('Asking Steam…', { title: `Installing ${g.name}`, iconName: 'download', ms: 2500 });
     const r = await api.steam.install(appid, Number(pick));
     if (!r || !r.ok) {
       toast(r?.full ? `It needs ${size(r.required)}, and that folder has ${size(r.available)}. Pick another one or free some space (Settings › system › Storage).` : r?.error || 'Steam could not start the install.',
@@ -256,7 +255,6 @@ async function installGame(g) {
       return;
     }
     if (r.steamAsks) toast(r.steamAsks === 'eula' ? 'This game has a licence agreement: accept it in Steam to start the download.' : 'Steam needs something from you to install this game: answer in Steam.', { title: `Installing ${g.name}`, iconName: 'download', ms: 8000 });
-    else toast(r.required ? `Downloading ${size(r.required)}` : 'Downloading', { title: `Installing ${g.name}`, iconName: 'download', ms: 4000 });
     // Straight to the download viewer, on this game (Steam takes a moment to queue it).
     setTimeout(() => openDownloads({ focusApp: appid }), r.steamAsks ? 6000 : 1200);
     return;
@@ -274,7 +272,6 @@ async function resumeGame(id) {
   const p = state.playing.find((x) => x.id === id) || state.playing[state.playing.length - 1];
   if (!p) return;
   sfx.select();
-  toast(`Back to ${p.name}`, { iconName: 'play', ms: 1500 });
   await api.game.resume();
 }
 
@@ -615,7 +612,6 @@ async function boot() {
       closeLaunchUi();
       if (guideOpen()) closeGuide();
       touch();
-      if (event.minutes > 0) toast(`${event.name} · ${event.minutes} min this session`, { title: 'Welcome back', iconName: 'home' });
     }
   });
 

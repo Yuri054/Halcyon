@@ -91,13 +91,12 @@ export async function gameMenu(id) {
     if (choice === 'quitgame') {
       if (!(await confirm({ title: `Quit ${g.name}?`, subtitle: 'Anything the game has not saved will be lost.', yes: 'Quit game', no: 'Keep it running', danger: true, iconName: 'exit' }))) continue;
       await panel.close();
-      toast(`Closing ${g.name}…`, { iconName: 'exit', ms: 2500 });
       const r = await api.game.quit(id);
       if (!r.ok) toast(r.error, { type: 'error', title: 'Couldn’t quit the game' });
       return;
     }
     if (choice === 'download') { await panel.close(); return app.downloads({ focusApp: g.id.slice(6) }); }
-    if (choice === 'steamStore') await report(api.steam.action('store', g.id.slice(6)), 'Opening the store page in Steam');
+    if (choice === 'steamStore') await report(api.steam.action('store', g.id.slice(6)));
     if (choice === 'uninstall' && (await uninstallGame(g))) { await panel.close(); return; }
     if (choice === 'fav') await api.game.patch(id, { favorite: !g.favorite });
     if (choice === 'hide') {
@@ -139,7 +138,6 @@ export async function gameMenu(id) {
     if (choice === 'delete') {
       if (await confirm({ title: `Delete ${g.name}?`, subtitle: 'This removes the entry from Halcyon. Nothing on disk is touched.', yes: 'Delete', danger: true, iconName: 'trash' })) {
         await api.custom.remove(id);
-        toast(`${g.name} removed`, { iconName: 'trash' });
         break;
       }
     }
@@ -209,7 +207,7 @@ export async function addGame() {
     }
     const a = apps[Number(pick.slice(4))];
     if (!a) continue;
-    const res = await report(api.custom.save({ name: a.name, command: a.command, cwd: '', cover: '', background: '' }), `${a.name} added to your library`);
+    const res = await report(api.custom.save({ name: a.name, command: a.command, cwd: '', cover: '', background: '' }));
     if (res && res.ok) { added = res.id; break; }
   }
   await panel.close();
@@ -264,7 +262,7 @@ export async function editCustomGame(id = null, existingPanel = null) {
       const file = await browse({ mode: 'image', title: choice === 'cover' ? 'Choose cover art' : 'Choose a background', start: '~/Pictures' });
       if (file) draft[choice] = file;
     } else if (choice === 'save') {
-      const res = await report(api.custom.save(draft), id ? 'Game updated' : `${draft.name} added to your library`);
+      const res = await report(api.custom.save(draft));
       if (res.ok) { saved = res.id; break; }
     }
   }

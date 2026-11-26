@@ -55,7 +55,7 @@ export function createStore() {
     let i = 0;
     const tools = block('store', 'block--quick', [
       actionTile({ key: 'st:search', label: 'Search', sub: results ? `“${results.term}”` : 'The whole Steam store', iconName: 'search', tone: 'accent', index: i++, onSelect: doSearch }),
-      actionTile({ key: 'st:steam', label: 'Open in Steam', sub: 'Cart, wishlist, checkout', iconName: 'cloud', tone: 'slate', index: i++, onSelect: () => report(api.steam.action('storefront'), 'Opening the store in Steam') }),
+      actionTile({ key: 'st:steam', label: 'Open in Steam', sub: 'Cart, wishlist, checkout', iconName: 'cloud', tone: 'slate', index: i++, onSelect: () => report(api.steam.action('storefront')) }),
       results && actionTile({ key: 'st:clear', label: 'Clear search', iconName: 'up', tone: 'glass', index: i++, onSelect: clearSearch }),
       !results && actionTile({ key: 'st:reload', label: 'Refresh', iconName: 'refresh', tone: 'glass', index: i++, onSelect: () => { rails = null; error = null; render(); } }),
     ].filter(Boolean));
@@ -144,7 +144,7 @@ export function createStore() {
         ],
       });
       if (pick == null) break;
-      if (pick === 'steam') { await report(api.steam.action('store', appid), 'Opening the store page in Steam'); continue; }
+      if (pick === 'steam') { await report(api.steam.action('store', appid)); continue; }
       if (pick === 'play') { await panel.close(); app.launch(mine.id); return; }
     }
     await panel.close();

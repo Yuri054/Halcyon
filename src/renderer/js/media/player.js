@@ -236,12 +236,11 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       });
       menuOpen = false;
       if (closed) return;
-      if (pick?.startsWith('s:')) { showSubtitles(Number(pick.slice(2))); toast(subIndex < 0 ? 'Off' : subLabel, { title: 'Subtitles' }); }
+      if (pick?.startsWith('s:')) showSubtitles(Number(pick.slice(2)));
       if (pick?.startsWith('a:')) {
         const want = Number(pick.slice(2));
         if (want !== audioIndex) {
           const a = audios.find((x) => x.index === want);
-          toast(a ? a.label : 'Audio', { title: 'Audio track' });
           const at = position();
           await load(index, { startTicks: Math.round(at * TICKS), audioIndex: want });
           return;

@@ -186,7 +186,8 @@ export function createHome() {
     label: 'home',
     el,
     render,
-    defaultFocus: () => scroller.querySelector('[data-focus]'),
+    // The first real tile (top-left), not the search tab peeking in at the edge.
+    defaultFocus: () => scroller.querySelector('.metro [data-focus]') || scroller.querySelector('[data-focus]:not(.tile--peek)') || scroller.querySelector('[data-focus]'),
     onAction(action, target) {
       if (action === 'y' && target?.dataset.homeTile) { tileMenu(target.dataset.homeTile); return true; }
       if (action === 'y' && target?.dataset.key === 'q:+') { addTile(); return true; }

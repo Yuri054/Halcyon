@@ -574,8 +574,9 @@ async function boot() {
 
   Object.assign(lastKey, state.lib.ui.focus || {});
   state.filter = 'all';   // games always start on the whole library
-  const saved = state.lib.ui.section === 'media' ? 'tv' : state.lib.ui.section;
-  const start = ORDER.includes(tabOf(saved)) && views[saved] ? saved : 'home';
+  // Halcyon always opens on home, whatever tab it was left on.
+  const start = 'home';
+  delete lastKey.home;   // and at the start of it
   state.section = null;
   go(start, { enter: true, quiet: true });
 

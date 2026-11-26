@@ -809,9 +809,11 @@ if (!app.requestSingleInstanceLock()) {
   function createWindow() {
     const fullscreen = !windowed && store.data.settings.fullscreen;
     const there = chosenDisplay();
+    // A test run can ask for its window size (HALCYON_WINDOW_SIZE=1920x1080), e.g. for recording.
+    const [askW, askH] = String(process.env.HALCYON_WINDOW_SIZE || '').split('x').map(Number);
     const w = new BrowserWindow({
-      width: 1600,
-      height: 900,
+      width: askW || 1600,
+      height: askH || 900,
       ...(there ? boundsOn(there) : {}),
       minWidth: 960,
       minHeight: 540,

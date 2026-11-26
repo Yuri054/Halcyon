@@ -18,6 +18,7 @@ const diary = require('./log');
 const monitorAudio = require('./monitorAudio');
 const cosmicWindows = require('./cosmicWindows');
 const { Jellyfin } = require('./media/jellyfin');
+const { Achievements } = require('./steam/achievements');
 const { IMAGE_EXT, expandHome, isDir } = require('./util');
 
 const windowed = process.argv.includes('--windowed');
@@ -43,6 +44,7 @@ if (!app.requestSingleInstanceLock()) {
   let library = null;
   let launcher = null;
   let jellyfin = null;
+  let achievements = null;
   let ready = Promise.resolve();
 
   const send = (channel, payload) => {
@@ -499,6 +501,8 @@ if (!app.requestSingleInstanceLock()) {
       } catch (err) { diary.log('auto art failed:', err.message); } finally { scraping = false; }
     };
     // "Add a game": installed apps that call themselves games, not already in the library.
+    handle('achievements:game', (appid, opts) => achievements.game(appid, opts || {}));
+    handle('achievements:totals', () => ({ ok: true, ...achievements.totals() }));
     handle('apps:openQuiver', async () => {
       const home = require('./ports').quiverHomes()[0] || path.join(require('os').homedir(), 'AppImages');
       const fs = require('fs');
@@ -902,9 +906,12 @@ if (!app.requestSingleInstanceLock()) {
     if (!store.data.fullscreenRepaired) { store.data.settings.fullscreen = true; store.data.fullscreenRepaired = true; store.save(); }
     library = new Library(store);
     jellyfin = new Jellyfin(store);
+    achievements = new Achievements(store, library, { dir: path.join(app.getPath('userData'), 'achievements'), onChange: () => pushLibrary() });
     launcher = new Launcher(library, (event) => {
       diary.log('launch event:', event);
       if (event.type === 'exited' || event.type === 'failed') stopFollowing();
+      // New unlocks from the session just ended.
+      if (event.type === 'exited' && /^steam:\d+$/.test(event.id || '')) setTimeout(() => achievements && achievements.game(event.id.slice(6), { refresh: true }).catch(() => {}), 8000);
       send('launch:event', event);
       syncPadWatch();
       if (event.type === 'exited' && !launcher.nowPlaying().some((p) => p.quittable)) closeGameMenu();
@@ -924,6 +931,11 @@ if (!app.requestSingleInstanceLock()) {
     await ready;
     checkControllers();
     if (autoArt) setTimeout(() => autoArt(), 3000);
+    // Achievement summaries fill in slowly in the background, and again once a day.
+    if (!process.env.HALCYON_DRY_RUN) {
+      setTimeout(() => achievements.sync().catch(() => {}), 20000);
+      setInterval(() => achievements.sync().catch(() => {}), 6 * 3600 * 1000).unref();
+    }
     refreshOwned().catch(() => {});
     syncPadWatch();
     claimHomeButton().catch(() => {});

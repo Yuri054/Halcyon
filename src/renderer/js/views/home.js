@@ -1,11 +1,40 @@
 // Home: the dashboard. Featured game, recents, favorites and quick tiles.
 import { h } from '../core/dom.js';
+import * as focus from '../core/focus.js';
 import { state, visibleGames, sortGames, game as findGame, gameContext, fmt, isPlaying } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { gameTile, actionTile } from '../ui/tile.js';
 import { gameMenu, editCustomGame, addGame } from '../ui/gamemenu.js';
 import { api } from '../core/state.js';
 import { toast } from '../ui/toast.js';
+import { menu } from '../ui/dialog.js';
+import { achievementTotal } from '../ui/achievements.js';
+
+/**
+ * The tiles the home page's tile section can hold, in a catalog: the person picks which, and
+ * their order (Y on a tile moves or removes it; the + tile adds one). Stored as settings.homeTiles.
+ */
+export const DEFAULT_HOME_TILES = ['games', 'settings', 'power'];
+const TILES = {
+  games: { label: 'Games', iconName: 'grid', count: (g) => g.length, go: () => app.go('games', { filter: 'all', enter: true }) },
+  favorites: { label: 'Favorites', iconName: 'star', count: (g) => g.filter((x) => x.favorite).length, go: () => app.go('games', { filter: 'favorites', enter: true }) },
+  recent: { label: 'Recently played', iconName: 'clock', go: () => app.go('games', { filter: 'recent', enter: true }) },
+  steam: { label: 'Steam', iconName: 'cloud', count: (g) => g.filter((x) => x.source === 'steam').length, go: () => app.go('games', { filter: 'steam', enter: true }) },
+  emulated: { label: 'Emulated', iconName: 'chip', count: (g) => g.filter((x) => x.source === 'emulator').length, go: () => app.go('games', { filter: 'emulated', enter: true }) },
+  ports: { label: 'PC ports', iconName: 'pad', count: (g) => g.filter((x) => x.source === 'port').length, go: () => app.go('games', { filter: 'ports', enter: true }) },
+  achievements: { label: 'Achievements', iconName: 'star', count: () => achievementTotal() || undefined, go: () => app.achievements?.() },
+  tv: { label: 'TV & movies', iconName: 'film', go: () => app.go('tv', { enter: true }) },
+  music: { label: 'Music', iconName: 'music', go: () => app.go('music', { enter: true }) },
+  downloads: { label: 'Downloads', iconName: 'download', go: () => app.downloads() },
+  storage: { label: 'Storage', iconName: 'folder', go: () => app.storage() },
+  search: { label: 'Search', iconName: 'search', go: () => app.search() },
+  add: { label: 'Add a game', iconName: 'plus', go: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } },
+  steamui: { label: 'Open Steam', iconName: 'screen', go: async () => { const r = await api.steam.open(); if (r && r.ok === false) toast(r.error, { type: 'error' }); } },
+  bigpicture: { label: 'Big Picture', iconName: 'pad', go: async () => { const r = await api.steam.openBigPicture(); if (r && r.ok === false) toast(r.error, { type: 'error' }); } },
+  settings: { label: 'Settings', iconName: 'gear', go: () => app.go('settings', { enter: true }) },
+  power: { label: 'Power', iconName: 'power', go: () => app.guide({ select: 'power:suspend' }) },
+};
+const homeTiles = () => (Array.isArray(state.lib.settings.homeTiles) ? state.lib.settings.homeTiles : DEFAULT_HOME_TILES).filter((id) => TILES[id]);
 
 export function createHome() {
   const scroller = h('div', { class: 'blocks', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
@@ -53,20 +82,66 @@ export function createHome() {
     const search = actionTile({ key: 'm:search', label: '', iconName: 'search', tone: 'slate', index: i++, onSelect: () => app.search() });
     search.classList.add('tile--peek');
 
-    const quick = h('div', { class: 'metro metro--quick' },
-      actionTile({ key: 'q:all', label: 'All games', count: games.length, iconName: 'grid', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'all', enter: true }) }),
-      actionTile({ key: 'q:tv', label: 'TV & movies', iconName: 'film', tone: 'accent', index: i++, onSelect: () => app.go('tv', { enter: true }) }),
-      actionTile({ key: 'q:music', label: 'Music', iconName: 'music', tone: 'accent', index: i++, onSelect: () => app.go('music', { enter: true }) }),
-      actionTile({ key: 'q:steam', label: 'Steam', count: games.filter((g) => g.source === 'steam').length, iconName: 'download', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'steam', enter: true }) }),
-      actionTile({ key: 'q:emu', label: 'Emulated', count: games.filter((g) => g.source === 'emulator').length, iconName: 'chip', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'emulated', enter: true }) }),
-      actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'accent', index: i++, onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } }),
-      actionTile({ key: 'q:settings', label: 'Settings', iconName: 'gear', tone: 'accent', index: i++, onSelect: () => app.go('settings', { enter: true }) }),
-      actionTile({ key: 'q:power', label: 'Power', iconName: 'power', tone: 'accent', index: i++, onSelect: () => app.guide({ select: 'power:suspend' }) }));
+    const quick = h('div', { class: 'metro metro--quick' }, ...quickTiles(games, () => i++, 'accent'));
 
     scroller.replaceChildren(
       h('div', { class: 'block block--peek' }, search),
       h('div', { class: 'block block--metro', 'data-page': '1' }, grid),
       h('div', { class: 'block block--metro block--page2', 'data-page': '2' }, quick));
+  }
+
+  /** The tile section: the chosen tiles in order, then a + tile to add more. */
+  function quickTiles(games, next, tone) {
+    const tones = { games: 'accent', settings: 'glass', power: 'danger', favorites: 'gold', emulated: 'violet', steam: 'slate' };
+    const tiles = homeTiles().map((id) => {
+      const t = TILES[id];
+      const tile = actionTile({ key: `q:${id}`, label: t.label, count: t.count ? t.count(games) : undefined, iconName: t.iconName, tone: tone || tones[id] || 'glass', index: next(), onSelect: t.go });
+      tile.dataset.homeTile = id;
+      return tile;
+    });
+    const plus = actionTile({ key: 'q:+', label: 'Add a tile', iconName: 'plus', tone: 'ghost', index: next(), onSelect: () => addTile() });
+    plus.classList.add('tile--addtile');
+    return [...tiles, plus];
+  }
+
+  const saveTiles = (list) => api.settings.set({ homeTiles: list });
+  /** + : pick a tile to add (at the end). */
+  async function addTile() {
+    const have = homeTiles();
+    const free = Object.keys(TILES).filter((id) => !have.includes(id));
+    if (!free.length) { toast('Every tile is already on the home page.', { title: 'Home' }); return; }
+    const pick = await menu({ title: 'Add a tile', subtitle: 'It goes at the end; Y on it moves it', items: free.map((id) => ({ label: TILES[id].label, value: id, iconName: TILES[id].iconName, verb: 'Add' })) });
+    if (!pick) return;
+    await saveTiles([...have, pick]);
+    setTimeout(() => focusTile(pick), 150);
+  }
+  function focusTile(id) {
+    const t = focus.byKey(el, `q:${id}`);
+    if (t) focus.focus(t, { layer: focus.base() });
+  }
+  /** Y on a home tile: move it, remove it, or add another. */
+  async function tileMenu(id) {
+    const list = homeTiles();
+    const n = list.indexOf(id);
+    const pick = await menu({
+      title: TILES[id].label, subtitle: 'Home tile',
+      items: [
+        n > 0 && { label: 'Move left', value: 'left', iconName: 'up' },
+        n < list.length - 1 && { label: 'Move right', value: 'right', iconName: 'up' },
+        { label: 'Remove from home', value: 'remove', iconName: 'trash', danger: true },
+        { label: 'Add a tile', value: 'add', iconName: 'plus' },
+        { label: 'Back to the usual tiles', value: 'reset', iconName: 'refresh', sub: 'Games, Settings and Power' },
+      ].filter(Boolean),
+    });
+    if (pick === 'left' || pick === 'right') {
+      const j = n + (pick === 'left' ? -1 : 1);
+      [list[n], list[j]] = [list[j], list[n]];
+      await saveTiles(list);
+      setTimeout(() => focusTile(id), 150);
+    }
+    if (pick === 'remove') { await saveTiles(list.filter((x) => x !== id)); setTimeout(() => focusTile(list[n + 1] || list[n - 1] || '+'), 150); }
+    if (pick === 'add') await addTile();
+    if (pick === 'reset') await saveTiles([...DEFAULT_HOME_TILES]);
   }
 
   function render() {
@@ -96,16 +171,7 @@ export function createHome() {
     if (next.length) blocks.push(block('recent', 'block--wide', next.map((g) => gameTile(g, 'wide', i++))));
     if (favorites.length) blocks.push(block('favorites', 'block--covers', favorites.map((g) => gameTile(g, 'cover', i++))));
 
-    blocks.push(block('library', 'block--quick', [
-      actionTile({ key: 'q:all', label: 'All games', count: games.length, iconName: 'grid', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'all', enter: true }) }),
-      actionTile({ key: 'q:steam', label: 'Steam', count: steam, iconName: 'cloud', tone: 'slate', index: i++, onSelect: () => app.go('games', { filter: 'steam', enter: true }) }),
-      actionTile({ key: 'q:fav', label: 'Favorites', count: games.filter((g) => g.favorite).length, iconName: 'star', tone: 'gold', index: i++, onSelect: () => app.go('games', { filter: 'favorites', enter: true }) }),
-      actionTile({ key: 'q:emu', label: 'Emulated', count: emulated, iconName: 'chip', tone: 'violet', index: i++, onSelect: () => app.go('games', { filter: 'emulated', enter: true }) }),
-      actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'glass', index: i++, onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } }),
-      actionTile({ key: 'q:settings', label: 'Settings', iconName: 'gear', tone: 'glass', index: i++, onSelect: () => app.go('settings', { enter: true }) }),
-      actionTile({ key: 'q:steamui', label: 'Open Steam', iconName: 'screen', tone: 'glass', index: i++, onSelect: async () => { const r = await api.steam.open(); if (r && r.ok === false) toast(r.error, { type: 'error' }); } }),
-      actionTile({ key: 'q:power', label: 'Power', iconName: 'power', tone: 'danger', index: i++, onSelect: () => app.guide({ select: 'power:suspend' }) }),
-    ]));
+    blocks.push(block('library', 'block--quick', quickTiles(games, () => i++, null)));
 
     scroller.replaceChildren(...blocks);
   }
@@ -122,6 +188,8 @@ export function createHome() {
     render,
     defaultFocus: () => scroller.querySelector('[data-focus]'),
     onAction(action, target) {
+      if (action === 'y' && target?.dataset.homeTile) { tileMenu(target.dataset.homeTile); return true; }
+      if (action === 'y' && target?.dataset.key === 'q:+') { addTile(); return true; }
       const id = target?.dataset.game;
       if (!id) return false;
       if (action === 'y' || action === 'start') { gameMenu(id); return true; }
@@ -133,6 +201,7 @@ export function createHome() {
         const g = findGame(target.dataset.game);
         return [{ a: 'accept', label: isPlaying(g?.id) ? 'Resume' : g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' }];
       }
+      if (target?.dataset.homeTile) return [{ a: 'accept', label: 'Open' }, { a: 'y', label: 'Move / remove' }];
       return [{ a: 'accept', label: 'Open' }];
     },
     context(target) {

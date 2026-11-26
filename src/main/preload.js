@@ -103,6 +103,7 @@ contextBridge.exposeInMainWorld('halcyon', {
   },
   storage: { info: call('storage:info') },
   apps: { games: call('apps:games'), openQuiver: call('apps:openQuiver') },
+  achievements: { game: call('achievements:game'), totals: call('achievements:totals') },
   system: {
     status: call('system:status'),
     setVolume: call('system:setVolume'),

@@ -123,6 +123,7 @@ export async function openGuide({ select = null } = {}) {
         !overTask && { label: 'Halcyon Home', value: 'go:home', key: 'go:home', iconName: 'home' },
         !overTask && steamHere && { label: 'Downloads', value: 'downloads', key: 'downloads', iconName: 'download', hint: String(busy) },
         !overTask && { label: 'Storage', value: 'storage', key: 'storage', iconName: 'folder' },
+        !overTask && state.lib.steamAccount?.hasKey && { label: 'Achievements', value: 'achievements', key: 'achievements', iconName: 'star' },
         !overTask && { label: 'Search games', value: 'search', key: 'search', iconName: 'search' },
         !overTask && { label: 'TV & movies', value: 'go:tv', key: 'go:tv', iconName: 'film' },
         !overTask && { label: 'Music', value: 'go:music', key: 'go:music', iconName: 'music' },
@@ -215,6 +216,7 @@ export async function openGuide({ select = null } = {}) {
     if (pick === 'np:toggle') { nowPlaying()?.toggle(); continue; }
     if (pick === 'downloads') { after = () => app.downloads(); break; }
     if (pick === 'storage') { after = () => app.storage(); break; }
+    if (pick === 'achievements') { after = () => app.achievements(); break; }
 
     if (pick.startsWith('power:')) {
       const id = pick.slice(6);

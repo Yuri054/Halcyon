@@ -144,6 +144,22 @@ count with a fade at the list's right edge, a faint wash of the selected game's 
 top of the screen, and a profile corner by the clock (Steam picture and name, with hours played
 and games installed in place of a Gamerscore).
 
+## Home tiles
+
+The home page's tile section starts with **Games, Settings and Power**. Y on a tile moves it left
+or right or removes it; the **+** tile adds one from the catalog (favorites, recently played,
+Steam, emulated, PC ports, achievements, TV & movies, music, downloads, storage, search, add a
+game, Open Steam, Big Picture). *Back to the usual tiles* resets it.
+
+## Achievements
+
+With a Steam Web API key (Settings › steam), a Steam game's options show its achievements count
+and open the full list: unlocked first (newest first, with the date), then locked (the most common
+first, with how many players have it; hidden ones stay hidden until earned). The Guide and a home
+tile open every game with achievements. Halcyon fills in each played game's count quietly in the
+background (and daily), and again after you close a game, and the 360 profile corner's score is
+the total unlocked, like a Gamerscore.
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

@@ -44,7 +44,7 @@ class Jellyfin {
       throw new Error(`Could not reach the Jellyfin server (${err.name === 'TimeoutError' ? 'timed out' : err.cause?.code || err.message}).`);
     }
     if (res.status === 401) throw Object.assign(new Error('Jellyfin did not accept the sign-in. Sign in again under Media.'), { auth: true });
-    if (!res.ok) throw new Error(`Jellyfin answered with an error (HTTP ${res.status}).`);
+    if (!res.ok) throw Object.assign(new Error(`Jellyfin answered with an error (HTTP ${res.status}).`), { status: res.status });
     if (res.status === 204) return null;
     const text = await res.text();
     return text ? JSON.parse(text) : null;
@@ -121,6 +121,12 @@ class Jellyfin {
       rating: i.OfficialRating || '',
       community: i.CommunityRating || null,
       genres: (i.Genres || []).slice(0, 3),
+      tagline: (i.Taglines || [])[0] || '',
+      studio: (i.Studios || [])[0]?.Name || '',
+      cast: (i.People || []).filter((p) => p.Type === 'Actor').slice(0, 5).map((p) => p.Name),
+      director: (i.People || []).find((p) => p.Type === 'Director')?.Name || '',
+      ends: i.EndDate ? new Date(i.EndDate).getFullYear() : null,
+      status: i.Status || '',
       collection: i.CollectionType || '',
       albumArtist: i.AlbumArtist || (i.Artists || [])[0] || '',
       played: Boolean(ud.Played),
@@ -135,6 +141,8 @@ class Jellyfin {
         primaryOf: i.ImageTags && i.ImageTags.Primary ? i.Id : (i.SeriesId || i.AlbumId || i.Id),
         backdropOf: i.BackdropImageTags && i.BackdropImageTags.length ? i.Id : (i.ParentBackdropItemId || i.SeriesId || i.Id),
         thumbOf: i.ImageTags && i.ImageTags.Thumb ? i.Id : (i.ParentThumbItemId || i.SeriesId || i.Id),
+        logo: Boolean(i.ImageTags && i.ImageTags.Logo) || Boolean(i.ParentLogoItemId),
+        logoOf: i.ImageTags && i.ImageTags.Logo ? i.Id : (i.ParentLogoItemId || i.SeriesId || i.Id),
         seriesPrimary: i.SeriesId || null,
       },
     };
@@ -164,13 +172,48 @@ class Jellyfin {
   }
 
   /** Everything in a library: movies, shows or albums, A to Z. */
-  async library(id, start = 0) {
-    const r = await this.request(`/Users/${this.uid}/Items?ParentId=${encodeURIComponent(id)}&Recursive=true&IncludeItemTypes=Movie,Series,MusicAlbum,Video&SortBy=SortName&SortOrder=Ascending&StartIndex=${start}&Limit=200&${Jellyfin.fields}`);
+  async library(id, start = 0, genreId = '') {
+    const genre = genreId ? `&GenreIds=${encodeURIComponent(genreId)}` : '';
+    const r = await this.request(`/Users/${this.uid}/Items?ParentId=${encodeURIComponent(id)}&Recursive=true&IncludeItemTypes=Movie,Series,MusicAlbum,Video&SortBy=SortName&SortOrder=Ascending&StartIndex=${start}&Limit=300${genre}&${Jellyfin.fields}`);
     return { items: (r?.Items || []).map(Jellyfin.item), total: r?.TotalRecordCount || 0 };
   }
 
   async details(id) {
-    return Jellyfin.item(await this.request(`/Users/${this.uid}/Items/${encodeURIComponent(id)}?${Jellyfin.fields}`));
+    return Jellyfin.item(await this.request(`/Users/${this.uid}/Items/${encodeURIComponent(id)}?${Jellyfin.fields},Taglines,Studios,People`));
+  }
+
+  /** The genres in a library, for filtering it. */
+  async genres(parentId) {
+    const r = await this.request(`/Genres?ParentId=${encodeURIComponent(parentId)}&UserId=${this.uid}&SortBy=SortName&SortOrder=Ascending`);
+    return (r?.Items || []).map((g) => ({ id: g.Id, name: g.Name }));
+  }
+
+  /** Try each request in turn until one exists on this server (endpoints moved between versions). */
+  async attempt(list) {
+    let last = null;
+    for (const [path, opts] of list) {
+      try { return await this.request(path, opts); } catch (err) { last = err; if (err.status !== 404 && err.status !== 405) throw err; }
+    }
+    throw last || new Error('Jellyfin does not support that.');
+  }
+
+  /** Mark an item (or a whole series or season) watched or unwatched. */
+  async markPlayed(id, played) {
+    const method = played ? 'POST' : 'DELETE';
+    const e = encodeURIComponent(id);
+    await this.attempt([[`/UserPlayedItems/${e}?userId=${this.uid}`, { method }], [`/Users/${this.uid}/PlayedItems/${e}`, { method }]]);
+    return { ok: true };
+  }
+
+  /** Take something off "continue watching" (as Jellyfin's own apps do), keeping it unwatched. */
+  async hideFromResume(id) {
+    const e = encodeURIComponent(id);
+    await this.attempt([
+      [`/Users/${this.uid}/Items/${e}/HideFromResume?hide=true`, { method: 'POST' }],
+      [`/UserItems/${e}/UserData?userId=${this.uid}`, { method: 'POST', body: { PlaybackPositionTicks: 0 } }],
+      [`/Users/${this.uid}/Items/${e}/UserData`, { method: 'POST', body: { PlaybackPositionTicks: 0 } }],
+    ]);
+    return { ok: true };
   }
 
   async seasons(seriesId) {

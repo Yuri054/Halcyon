@@ -94,14 +94,20 @@ to Jellyfin* and enter the server address, user name and password on the on-scre
 password is used once to sign in and is not stored, and the session token stays in the main
 process (images and streams reach the page through a `jf://` protocol that adds it).
 
-- **Home:** continue watching, next up, what's new in each library, and tiles for each library,
-  search and the server (refresh, sign out).
-- **Browsing:** a library opens as a wall of posters (B goes back); a show opens season by season
-  with the next unwatched episode selected; an album lists its tracks.
+- **Home:** a featured title, library tiles, continue watching, next up and what's new in each
+  library, plus search and the server (refresh, sign out).
+- **Details:** selecting a movie or show opens its own page: backdrop, logo, year, rating, genres,
+  tagline, cast, and buttons to resume, play from the start, mark watched/unwatched or remove it
+  from continue watching. A show lists its seasons (LT/RT to switch) and their episodes.
+- **Y on any tile:** play/resume, details, go to the series, mark watched, or remove from
+  continue watching (Jellyfin's own "hide from resume", so its other apps agree).
+- **Libraries:** a wall of posters with genre chips along the top; LT/RT step through genres.
 - **Player:** A pause/play, left/right skip back 10 s / forward 30 s (hold for bigger jumps),
-  up/down show the bar, X subtitles, LB/RB previous/next, B stop. Files Chromium can play are
-  played as they are; anything else Jellyfin transcodes to HLS, played with hls.js. Jellyfin is told
-  where you are, so resume points and "next up" stay in step with its other apps.
+  up/down or the right stick change the volume, X subtitles, LB/RB previous/next, B stop. The bar
+  and the button prompts fade away while the picture plays and come back on any press. Files
+  Chromium can play are played as they are; anything else Jellyfin transcodes to HLS, played with
+  hls.js. Jellyfin is told where you are, so resume points and "next up" stay in step with its
+  other apps.
 
 ## Launch scene
 
@@ -222,7 +228,7 @@ src/renderer/
   js/core/                focus engine, gamepad/keyboard input, sounds, state
   js/ui/                  tiles, blade menu, guide, on-screen keyboard, file picker, toasts
   js/views/               home, games, media, store, collections, systems, settings
-  js/media/               Jellyfin tiles and the player
+  js/media/               Jellyfin tiles, details page and the player
   styles/
 ```
 

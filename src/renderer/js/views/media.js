@@ -12,6 +12,7 @@ import { toast } from '../ui/toast.js';
 import { artImg } from '../ui/art.js';
 import { mediaTile, mediaHero, img, episodeCode } from '../media/tile.js';
 import { openPlayer } from '../media/player.js';
+import { openDetails } from '../media/details.js';
 
 const TICKS = 10000000;
 const LIB_ICON = { movies: 'film', tvshows: 'tv', music: 'music' };
@@ -115,10 +116,10 @@ export function createMedia() {
   }
 
   // ---- a library as a wall of posters
-  async function openLibrary(lib) {
-    const res = await api.jellyfin.library(lib.id, 0);
+  async function openLibrary(lib, genre = '') {
+    const [res, g] = await Promise.all([api.jellyfin.library(lib.id, 0, genre), library?.lib?.id === lib.id ? Promise.resolve({ ok: true, data: library.genres }) : api.jellyfin.genres(lib.id)]);
     if (!res.ok) { toast(res.error, { type: 'error', title: lib.name }); return; }
-    library = { lib, items: remember(res.data.items), total: res.data.total };
+    library = { lib, items: remember(res.data.items), total: res.data.total, genres: g.ok ? g.data : [], genre };
     renderLibrary();
     flash(el, 'is-swapping');
     const first = wall.querySelector('[data-focus]');
@@ -128,10 +129,40 @@ export function createMedia() {
   function renderLibrary() {
     scroller.hidden = true;
     wallView.hidden = false;
-    wallHead.replaceChildren(h('div', { class: 'media__crumb' }, icon(LIB_ICON[library.lib.collection] || 'layers'), h('span', null, library.lib.name), h('small', null, `${library.total}`)));
+    const chip = (id, label) => {
+      const c = h('div', { class: `chip${(library.genre || '') === id ? ' is-active' : ''}`, 'data-focus': true, 'data-key': `mg:${id}`, 'data-genre': id }, label);
+      c.addEventListener('click', () => pickGenre(id));
+      return c;
+    };
+    const chips = h('div', { class: 'chips', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true },
+      ...(library.genres.length ? [chip('', 'All'), ...library.genres.map((g) => chip(g.id, g.name))] : []));
+    wallHead.replaceChildren(h('div', { class: 'media__crumb' }, icon(LIB_ICON[library.lib.collection] || 'layers'), h('span', null, library.lib.name), h('small', null, `${library.total}`)), chips);
     wall.classList.toggle('wall--square', library.lib.collection === 'music');
     wall.replaceChildren(...library.items.map((it, n) => mediaTile(it, 'cover', n)));
   }
+  async function pickGenre(id) {
+    if (!library || library.lib.id === 'search') return;
+    await openLibrary(library.lib, id);
+    const c = focus.byKey(el, `mg:${id}`);
+    if (c) { focus.focus(c, { layer: focus.base(), scroll: 'smooth' }); c.scrollIntoView?.({ inline: 'center', block: 'nearest' }); }
+  }
+  function cycleGenre(step) {
+    if (!library?.genres?.length) return;
+    const ids = ['', ...library.genres.map((g) => g.id)];
+    const i = ids.indexOf(library.genre || '');
+    pickGenre(ids[(i + step + ids.length) % ids.length]);
+  }
+  async function reloadLibrary() {
+    if (!library || library.lib.id === 'search') return;
+    const key = focus.base().current?.dataset.key;
+    const res = await api.jellyfin.library(library.lib.id, 0, library.genre);
+    if (!res.ok) return;
+    library.items = remember(res.data.items);
+    renderLibrary();
+    const again = focus.byKey(el, key);
+    if (again) focus.focus(again, { layer: focus.base(), scroll: false });
+  }
+
   function closeLibrary() {
     const id = library.lib.id;
     library = null;
@@ -169,7 +200,7 @@ export function createMedia() {
     const res = await api.jellyfin.search(term.trim());
     if (!res.ok) { toast(res.error, { type: 'error' }); return; }
     if (!res.data.length) { toast(`Nothing matches “${term.trim()}”`, { title: 'Search' }); return; }
-    library = { lib: { id: 'search', name: `“${term.trim()}”`, collection: '' }, items: remember(res.data), total: res.data.length };
+    library = { lib: { id: 'search', name: `“${term.trim()}”`, collection: '' }, items: remember(res.data), total: res.data.length, genres: [], genre: '' };
     renderLibrary();
     focus.focus(wall.querySelector('[data-focus]'), { layer: focus.base(), scroll: 'instant' });
     app.refreshChrome();
@@ -179,10 +210,9 @@ export function createMedia() {
   async function open(id) {
     const it = items.get(id);
     if (!it) return;
-    if (it.type === 'Series') return showSeries(it);
-    if (it.type === 'Season') return showSeries({ ...it, id: it.seriesId, name: it.series }, it.id);
     if (it.type === 'MusicAlbum') return showAlbum(it);
-    return showItem(it);
+    if (it.type === 'Season') return details({ ...it, id: it.seriesId, type: 'Series', name: it.series });
+    return details(it);
   }
 
   const art = (it) => h('div', { class: 'panel__art' }, artImg([img(it.images.primaryOf, 'Primary', 400)], 'panel__art-img', { lazy: false }));
@@ -265,8 +295,41 @@ export function createMedia() {
     await openPlayer({ queue: q, start: pick === '@all' ? 0 : Math.max(0, q.indexOf(pick)), fromStart: true });
   }
 
+  async function details(it) {
+    const changed = await openDetails(it);
+    if (changed) refreshSoon();
+  }
+
+  /** Y on a tile: the quick things to do with it. */
+  async function options(id) {
+    const it = items.get(id);
+    if (!it || it.type === 'MusicAlbum') { if (it) open(id); return; }
+    const resuming = it.progress > 0 && it.progress < 100;
+    const pick = await menu({
+      title: it.type === 'Episode' ? it.series : it.name,
+      subtitle: it.type === 'Episode' ? [episodeCode(it), it.name].filter(Boolean).join(' · ') : [it.year, it.runtimeMin && `${it.runtimeMin} min`].filter(Boolean).join(' · '),
+      art: h('div', { class: 'panel__art' }, artImg([img(it.images.primaryOf, 'Primary', 400)], 'panel__art-img', { lazy: false })),
+      items: [
+        it.type !== 'Series' && { label: resuming ? 'Resume' : 'Play', value: 'play', iconName: 'play' },
+        { label: it.type === 'Series' ? 'Open the show' : 'Details', value: 'details', iconName: 'info' },
+        it.type === 'Episode' && it.seriesId && { label: `Go to ${it.series}`, value: 'series', iconName: 'tv' },
+        { label: it.played ? 'Mark unwatched' : 'Mark watched', value: 'watched', iconName: it.played ? 'eyeOff' : 'check' },
+        resuming && { label: 'Remove from continue watching', value: 'hide', iconName: 'trash', sub: 'Stays unwatched' },
+      ],
+    });
+    if (pick === 'play') { await openPlayer({ queue: [it.id], start: 0, fromStart: !resuming }); refreshSoon(); }
+    if (pick === 'details') details(it);
+    if (pick === 'series') details({ ...it, id: it.seriesId, type: 'Series', name: it.series });
+    if (pick === 'watched' || pick === 'hide') {
+      const r = pick === 'watched' ? await api.jellyfin.markPlayed(it.id, !it.played) : await api.jellyfin.hideFromResume(it.id);
+      if (!r.ok) { toast(r.error, { type: 'error' }); return; }
+      toast(pick === 'hide' ? 'Removed from continue watching' : it.played ? 'Marked unwatched' : 'Marked watched', { title: it.name, iconName: pick === 'hide' ? 'trash' : 'check' });
+      refreshSoon();
+    }
+  }
+
   // After watching, Jellyfin's resume points and "next up" change.
-  function refreshSoon() { setTimeout(() => { home = null; status = null; if (state.section === 'media' && !library) render(); }, 600); }
+  function refreshSoon() { setTimeout(() => { home = null; status = null; if (state.section === 'media' && !library) render(); else if (library) reloadLibrary(); }, 600); }
 
   el.addEventListener('click', async (e) => {
     const tile = e.target.closest('[data-media]');
@@ -289,8 +352,9 @@ export function createMedia() {
     defaultFocus: () => (library ? wall : scroller).querySelector('[data-focus]'),
     onAction(action, target) {
       if (action === 'start') { if (status?.connected) search(); return true; }
-      if (action === 'y' && target?.dataset.media) { open(target.dataset.media); return true; }
+      if (action === 'y' && target?.dataset.media) { options(target.dataset.media); return true; }
       if ((action === 'lt' || action === 'rt') && library && target && wall.contains(target)) { focus.page(action === 'lt' ? 'left' : 'right', 5); return true; }
+      if ((action === 'lt' || action === 'rt') && library) { cycleGenre(action === 'lt' ? -1 : 1); return true; }
       return false;
     },
     onBack() {
@@ -298,8 +362,9 @@ export function createMedia() {
       return false;
     },
     hints(target) {
-      if (target?.dataset.quickplay) return [{ a: 'accept', label: 'Resume' }, { a: 'y', label: 'Details' }, { a: 'start', label: 'Search' }];
-      if (target?.dataset.media) return [{ a: 'accept', label: 'Open' }, { a: 'start', label: 'Search' }];
+      if (target?.dataset.quickplay) return [{ a: 'accept', label: 'Resume' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
+      if (target?.dataset.media) return [{ a: 'accept', label: 'Open' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
+      if (target?.dataset.genre != null) return [{ a: 'accept', label: 'Show' }, { a: 'lt', b: 'rt', label: 'Genre' }];
       return [{ a: 'accept', label: 'Select' }];
     },
     context(target) {

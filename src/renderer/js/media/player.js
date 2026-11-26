@@ -1,6 +1,7 @@
 // The Jellyfin player: full screen, driven by the controller.
 //   A pause / play · left / right skip back 10 s / forward 30 s (hold to keep going)
-//   up / down show the bar · X subtitles · LB / RB previous / next · B stop
+//   up / down or the right stick: volume · X subtitles · LB / RB previous / next · B stop
+// The bar and the button prompts fade out while the picture plays.
 // Jellyfin hears where you are (start, every 10 s, stop), so it remembers the place.
 import { h, icon } from '../core/dom.js';
 import * as focus from '../core/focus.js';
@@ -46,14 +47,36 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       h('div', { class: 'player__titles' }, title, sub),
       h('div', { class: 'player__row' }, state, now, bar, total));
     const spinner = h('div', { class: 'player__spinner' });
-    const el = h('div', { class: 'layer layer--player' }, poster, video, spinner, osd);
+    const volFill = h('i');
+    const volText = h('span', null, '');
+    const vol = h('div', { class: 'player__volume' }, icon('sound'), h('div', { class: 'player__volbar' }, volFill), volText);
+    const el = h('div', { class: 'layer layer--player' }, poster, video, spinner, osd, vol);
     document.getElementById('layers').append(el);
 
+    // The bar and the prompts come up on any press and go away again while it plays.
+    const quiet = (on) => document.body.classList.toggle('player-quiet', on);
     const showOsd = (ms = 3200) => {
       el.classList.add('is-osd');
+      quiet(false);
       clearTimeout(osdTimer);
-      osdTimer = setTimeout(() => { if (!video.paused) el.classList.remove('is-osd'); }, ms);
+      osdTimer = setTimeout(() => { if (!video.paused && !closed) { el.classList.remove('is-osd'); quiet(true); } }, ms);
     };
+
+    // ---- volume (the system's, as the Guide sets it)
+    let volume = null;
+    let volTimer = null;
+    api.system.status().then((st) => { if (st?.volume?.ok) volume = { level: st.volume.level, muted: st.volume.muted }; }).catch(() => {});
+    function changeVolume(step) {
+      if (!volume) return;
+      volume.level = Math.max(0, Math.min(100, Math.round(volume.level / 5) * 5 + step));
+      volume.muted = false;
+      volFill.style.width = `${volume.level}%`;
+      volText.textContent = `${volume.level}`;
+      vol.classList.add('is-on');
+      clearTimeout(volTimer);
+      volTimer = setTimeout(() => vol.classList.remove('is-on'), 1400);
+      api.system.setVolume({ level: volume.level, muted: false });
+    }
     const paint = () => {
       const d = video.duration;
       now.textContent = clock(video.currentTime);
@@ -64,7 +87,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
     };
     video.addEventListener('timeupdate', paint);
     video.addEventListener('play', () => { paint(); showOsd(); report('progress'); });
-    video.addEventListener('pause', () => { paint(); el.classList.add('is-osd'); report('progress'); });
+    video.addEventListener('pause', () => { paint(); el.classList.add('is-osd'); quiet(false); clearTimeout(osdTimer); report('progress'); });
     video.addEventListener('waiting', () => el.classList.add('is-loading'));
     video.addEventListener('playing', () => el.classList.remove('is-loading'));
     video.addEventListener('ended', () => next(1, true));
@@ -138,6 +161,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       report('stop');
       clearInterval(reportTimer);
       clearTimeout(osdTimer);
+      quiet(false);
       if (hls) hls.destroy();
       video.pause();
       video.removeAttribute('src');
@@ -153,10 +177,12 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       root: el,
       current: null,
       onAction(action, _t, repeat) {
+        if (action !== 'up' && action !== 'down' && action !== 'rup' && action !== 'rdown') showOsd();
         if (action === 'accept' && !repeat) { if (video.paused) video.play().catch(() => {}); else video.pause(); sfx.select(); }
         else if (action === 'left') seek(repeat ? -30 : -10);
         else if (action === 'right') seek(repeat ? 60 : 30);
-        else if (action === 'up' || action === 'down') showOsd();
+        else if (action === 'up' || action === 'rup') changeVolume(5);
+        else if (action === 'down' || action === 'rdown') changeVolume(-5);
         else if (action === 'x' && !repeat) cycleSubtitles();
         else if (action === 'lb' && !repeat) next(-1);
         else if (action === 'rb' && !repeat) next(1);
@@ -164,7 +190,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
         return true;
       },
       hints: () => [
-        { a: 'accept', label: video.paused ? 'Play' : 'Pause' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' },
+        { a: 'accept', label: video.paused ? 'Play' : 'Pause' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'up', b: 'down', label: 'Volume' },
         { a: 'x', label: 'Subtitles' }, queue.length > 1 && { a: 'lb', b: 'rb', label: 'Previous / next' }, { a: 'back', label: 'Stop' },
       ].filter(Boolean),
     });

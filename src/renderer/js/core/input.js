@@ -2,7 +2,8 @@
 //   up down left right accept back x y lb rb lt rt start select guide
 // Gamepads are polled every frame (hot-plug safe); held directions auto-repeat.
 
-const REPEATABLE = new Set(['up', 'down', 'left', 'right', 'lt', 'rt']);
+// rup / rdown: the right stick pushed up or down (volume in the player).
+const REPEATABLE = new Set(['up', 'down', 'left', 'right', 'lt', 'rt', 'rup', 'rdown']);
 const REPEAT_DELAY = 380;
 const REPEAT_FAST_AFTER = 1400;
 const STICK_ON = 0.55;
@@ -12,7 +13,7 @@ const KEYS = {
   ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
   Enter: 'accept', ' ': 'accept', Escape: 'back', Backspace: 'back',
   q: 'lb', e: 'rb', PageUp: 'lt', PageDown: 'rt',
-  f: 'x', Tab: 'y', m: 'y', '/': 'start', Home: 'select', g: 'guide', F1: 'guide',
+  f: 'x', Tab: 'y', m: 'y', '/': 'start', Home: 'select', g: 'guide', F1: 'guide', '+': 'rup', '=': 'rup', '-': 'rdown',
 };
 
 const listeners = { action: () => {}, pads: () => {}, mode: () => {}, activity: () => {}, backgroundGuide: () => {} };
@@ -41,6 +42,8 @@ function readPad(pad) {
     s.down = b(13) || ax(1) > STICK_ON;
     s.left = b(14) || ax(0) < -STICK_ON;
     s.right = b(15) || ax(0) > STICK_ON;
+    s.rup = ax(3) < -STICK_ON;
+    s.rdown = ax(3) > STICK_ON;
   } else {
     // Unmapped Linux joystick layout (xpad-style): hat on the last two axes, triggers as axes.
     const n = pad.axes.length;
@@ -54,6 +57,8 @@ function readPad(pad) {
     s.down = hatY > 0.5 || ax(1) > STICK_ON;
     s.left = hatX < -0.5 || ax(0) < -STICK_ON;
     s.right = hatX > 0.5 || ax(0) > STICK_ON;
+    s.rup = n >= 5 && ax(4) < -STICK_ON;
+    s.rdown = n >= 5 && ax(4) > STICK_ON;
   }
   return s;
 }
@@ -154,7 +159,7 @@ export function rumble(ms = 120, strength = 0.5) {
 
 /** Glyph text for an action in the current input mode. */
 export function glyph(action) {
-  const arrows = { left: '◀', right: '▶', up: '▲', down: '▼' };
+  const arrows = { left: '◀', right: '▶', up: '▲', down: '▼', rup: mode === 'pad' ? 'R▲' : '+', rdown: mode === 'pad' ? 'R▼' : '−' };
   if (arrows[action]) return arrows[action];
   const pad = { accept: 'A', back: 'B', x: 'X', y: 'Y', lb: 'LB', rb: 'RB', lt: 'LT', rt: 'RT', start: '☰', select: '⧉', guide: '⌂' };
   const keys = { accept: 'Enter', back: 'Esc', x: 'F', y: 'Tab', lb: 'Q', rb: 'E', lt: 'PgUp', rt: 'PgDn', start: '/', select: 'Home', guide: 'G' };

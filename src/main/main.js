@@ -507,7 +507,10 @@ if (!app.requestSingleInstanceLock()) {
     handle('jellyfin:connect', (server, user, password) => jellyfin.connect(server, user, password));
     handle('jellyfin:disconnect', () => jellyfin.disconnect());
     handle('jellyfin:home', jf(() => jellyfin.home()));
-    handle('jellyfin:library', jf((id, start) => jellyfin.library(id, start)));
+    handle('jellyfin:library', jf((id, start, genre) => jellyfin.library(id, start, genre)));
+    handle('jellyfin:genres', jf((id) => jellyfin.genres(id)));
+    handle('jellyfin:markPlayed', jf((id, played) => jellyfin.markPlayed(id, played)));
+    handle('jellyfin:hideFromResume', jf((id) => jellyfin.hideFromResume(id)));
     handle('jellyfin:details', jf((id) => jellyfin.details(id)));
     handle('jellyfin:seasons', jf((id) => jellyfin.seasons(id)));
     handle('jellyfin:episodes', jf((series, season) => jellyfin.episodes(series, season)));

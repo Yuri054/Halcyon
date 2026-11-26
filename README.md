@@ -87,14 +87,15 @@ program on this computer can control Steam, including the store**; it does not a
 from other computers. These are undocumented Steam internals: if a Steam update changes them, the
 controls report an error and the manager falls back to showing progress only.
 
-## Steam Big Picture and the Home button
+## Steam launches, shaders and Big Picture
 
-- **Use Steam Big Picture** (Settings › steam, off by default). Halcyon switches Steam into Big
-  Picture before starting or installing a Steam game or opening the store, and takes it back out
-  when the game ends. Steam's own screens, such as "Processing Vulkan shaders" with its Skip
-  button, then work with the controller. Leaving Big Picture makes Steam show its desktop
-  window, so Halcyon then re-opens its own window to be in front again; it returns to the section
-  and tile you left. If Big Picture is left open, the Guide has *Close Steam Big Picture*.
+Steam games start from the desktop Steam client while Halcyon stays fullscreen behind them. With
+download controls on, Halcyon follows Steam's launch steps and shows them on its launch card
+(syncing cloud saves, starting, ...). When Steam stops to **process Vulkan shaders**, the card shows
+the progress and **A skips it**; *Skip shader processing* (Settings › steam) skips it every time.
+*Big Picture for store and installs* switches Steam to Big Picture only when you buy or install a
+game, so Steam's own screens work with the controller; games themselves never open it.
+
 - **Home goes to Steam instead of Halcyon?** While Steam is running it takes the controller's
   Home/PS button for itself. Turn off Steam › Settings › Controller › *Guide button focuses
   Steam*. Select + Start (Share + Options) opens the in-game menu either way, and B on the home

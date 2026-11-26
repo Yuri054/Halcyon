@@ -87,8 +87,11 @@ export function createSettings() {
           sub: dl.enabled ? (dl.connected ? 'Connected to Steam' : 'Restart Steam to finish') : 'Pause, resume, reorder and update from Halcyon',
           onSelect: toggleDownloads, tip: 'Uses Steam’s debugging port (the Decky Loader method). While on, any program on this computer can control Steam.' }),
         installs.length > 0 && row({ key: 'steam:queue', label: 'Downloads', iconName: 'download', onSelect: () => app.downloads() }),
-        installs.length > 0 && row({ key: 'steam:bigpicture', label: 'Use Steam Big Picture', iconName: 'pad', toggle: Boolean(s.steamBigPicture), onSelect: () => set({ steamBigPicture: !s.steamBigPicture }),
-          tip: 'Switches Steam to Big Picture when you start or install a Steam game or open the store, so Steam’s own screens (like the shader Skip button) work with the controller. Closes it again when the game ends.' }),
+        installs.length > 0 && row({ key: 'steam:shaders', label: 'Skip shader processing', iconName: 'spark', toggle: Boolean(s.steamSkipShaders), onSelect: () => set({ steamSkipShaders: !s.steamSkipShaders }),
+          sub: s.steamSkipShaders ? 'Always skipped' : 'Press A on the launch screen to skip',
+          tip: 'Steam’s “Processing Vulkan shaders” before a game. Skipping starts the game sooner; it may stutter a little at first. Needs download controls.' }),
+        installs.length > 0 && row({ key: 'steam:bigpicture', label: 'Big Picture for store and installs', iconName: 'pad', toggle: Boolean(s.steamBigPicture), onSelect: () => set({ steamBigPicture: !s.steamBigPicture }),
+          tip: 'Switches Steam to Big Picture when you buy or install a game, so Steam’s own screens work with the controller. Games themselves start without it.' }),
         installs.length > 0 && row({ key: 'steam:open', label: 'Open Steam', iconName: 'screen', onSelect: () => report(api.steam.open(), 'Opening Steam') }),
       ]),
       card('system', [

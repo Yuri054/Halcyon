@@ -265,3 +265,5 @@ body.is-booting .boot__mark { animation-name: fade2; }
 .guide-from-left { animation: guideFromLeft 0.28s var(--ease) both; }
 @keyframes guideFromRight { from { opacity: 0; transform: translateX(2.5rem); } }
 @keyframes guideFromLeft { from { opacity: 0; transform: translateX(-2.5rem); } }
+/* Real progress (Steam's shader processing) instead of the sweep. */
+.launch__bar.is-determinate i { animation: none; left: 0; background: var(--accent); transition: width 0.6s linear; }

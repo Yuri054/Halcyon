@@ -160,7 +160,13 @@ function fakeSteam(seed) {
     RemoveFromDownloadList(id, client) { if (client !== '0') return; state.calls.push(['remove', id]); state.items = state.items.filter((i) => i.appid !== Number(id)); reindex(); },
     EnableAllDownloads(on, client) { if (client !== '0') return; state.calls.push(['all', on]); state.paused = !on; reindex(); },
   };
-  return { state, context: vm.createContext({ SteamClient: { Downloads }, setTimeout, Promise, JSON }) };
+  // One game (900050) is mid-launch, processing Vulkan shaders, until something presses Skip.
+  state.shaders = { nGameActionID: 77, gameid: '900050', strActionName: 'LaunchApp', strTaskName: 'ProcessingShaderCache', strTaskDetails: '', numDone: 43, numTotal: 100 };
+  const Apps = {
+    GetActiveGameActions: async () => (state.shaders ? [state.shaders] : []),
+    ContinueGameAction(id, what) { state.calls.push(['continue', id, what]); if (state.shaders && id === state.shaders.nGameActionID && what === 'SkipShaders') state.shaders = null; },
+  };
+  return { state, context: vm.createContext({ SteamClient: { Downloads, Apps }, setTimeout, Promise, JSON }) };
 }
 
 function startSteamDebug(port, seed) {

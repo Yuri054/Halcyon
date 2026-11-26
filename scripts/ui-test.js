@@ -101,7 +101,7 @@
   await press(B.B); await sleep(600); check('B dismisses now-playing card', overlay() === null);
   document.querySelector('[data-key="f:steam"]').click(); await sleep(300);
   focus.focus(document.querySelector('.wall .tile')); await press(B.A); await sleep(1300);
-  check('Steam launch resolves (dry run)', overlay() === 'Now playing'); await press(B.B); await sleep(600);
+  check('Steam launch resolves (dry run), waiting on Steam', /Starting in Steam|Now playing/.test(String(overlay())), String(overlay())); await press(B.B); await sleep(600);
 
   // back stack + exit dialog
   await press(B.B); await sleep(300); check('B from grid -> category chips', cur()?.startsWith('f:'), cur());
@@ -275,6 +275,19 @@
   const fail = await window.halcyon.downloads.control('pause', 'nope');
   check('bad requests are refused before reaching Steam', fail.ok === false && /Unknown download/.test(fail.error));
   await press(B.B); await sleep(500);
+
+  // ---- Steam's shader processing, shown on Halcyon's launch card (stand-in Steam)
+  (await import('./js/core/bus.js')).app.launch('steam:900050');
+  const card = () => document.querySelector('.layer--launch:not(.is-closing) .launch__status')?.textContent || '';
+  check('launch card shows Steam processing shaders', await waitUntil(() => /Processing Vulkan shaders\s+43%/.test(card()), 6000) && document.querySelector('.layer--launch .launch__bar.is-determinate i')?.style.width === '43%', card());
+  check('A to skip is offered', [...document.querySelectorAll('#hints .hint__label')].some((n) => n.textContent === 'Skip shader processing'));
+  await press(B.A);
+  check('A skips shader processing in Steam', await waitUntil(() => /Skipping shader processing|Starting/.test(card()) && ![...document.querySelectorAll('#hints .hint__label')].some((n) => n.textContent === 'Skip shader processing'), 4000), card());
+  await waitUntil(() => [...document.querySelectorAll('#hints .hint__label')].some((n) => n.textContent === 'Return to dashboard'), 5000);
+  await press(B.B); await sleep(600);
+  check('B returns to the dashboard', !document.querySelector('.layer--launch:not(.is-closing)'), card());
+  focus.focus(dlRow('pauseAll') || document.querySelector('.layer--panel .row'));
+  await press(B.B); await sleep(500);
   check('manager closes', panel() === null, String(panel()));
   await window.halcyon.downloads.enable(false);
   check('turning off removes the switch', (await window.halcyon.downloads.status()).enabled === false);
@@ -293,7 +306,7 @@
   check('Big Picture is off by default', plain.ok && plain.bigPicture === false && (await window.halcyon.system.status()).bigPictureOpen === false);
   await window.halcyon.settings.set({ steamBigPicture: true }); await sleep(300);
   const viaBpm = await window.halcyon.game.launch(aSteamGame.id);
-  check('with the option on, Steam games start through Big Picture', viaBpm.ok && viaBpm.bigPicture === true && (await window.halcyon.system.status()).bigPictureOpen === true);
+  check('games start without Big Picture even with the option on', viaBpm.ok && viaBpm.bigPicture === false && (await window.halcyon.system.status()).bigPictureOpen === false);
   check('store hand-off also uses Big Picture', (await window.halcyon.steam.action('store', aSteamGame.id.slice(6))).bigPicture === true);
   document.querySelector('[data-key="tab:home"]').click(); await sleep(400);
   pad.buttons[16] = { pressed: true, value: 1 }; await sleep(80); pad.buttons[16] = mk(); await sleep(700);

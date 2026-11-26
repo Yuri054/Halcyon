@@ -331,6 +331,7 @@ if (!app.requestSingleInstanceLock()) {
     handle('steam:open', () => launcher.openSteam());
     handle('steam:action', (action, appid) => launcher.steamAction(action, appid));
     handle('steam:leaveBigPicture', () => launcher.leaveBigPicture());
+    handle('steam:skipShaders', (actionId) => steamClient.skipShaders(actionId));
     // ---- download manager (Steam's own download controls; see steam/client.js)
     const installs = () => steam.findInstalls(cfg().steam.extraRoots);
     handle('downloads:status', async () => {
@@ -460,14 +461,21 @@ if (!app.requestSingleInstanceLock()) {
     w.once('ready-to-show', () => { if (!w.isDestroyed()) w.show(); });
     w.on('focus', () => { if (current()) send('window:focus', true); });
     w.on('blur', () => { if (current()) send('window:focus', false); });
-    w.on('enter-full-screen', () => { if (current()) { store.data.settings.fullscreen = true; store.save(); pushLibrary(); } });
-    w.on('leave-full-screen', () => { if (current() && !windowed) { store.data.settings.fullscreen = false; store.save(); pushLibrary(); } });
+    // The fullscreen setting changes only when you change it (F11 or Settings). The window can
+    // drop out of fullscreen on its own (a game going fullscreen over it, the desktop
+    // rearranging); it goes back in as soon as Halcyon is in front again.
+    w.on('focus', () => { if (current() && !windowed && store.data.settings.fullscreen && !w.isFullScreen()) w.setFullScreen(true); });
     w.on('closed', () => { if (current()) { win = null; closeGameMenu(); } });
     w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     w.webContents.on('will-navigate', (e) => e.preventDefault());
     w.webContents.on('before-input-event', (e, input) => {
       if (input.type !== 'keyDown') return;
-      if (input.key === 'F11') { w.setFullScreen(!w.isFullScreen()); e.preventDefault(); }
+      if (input.key === 'F11') {
+        const on = !w.isFullScreen();
+        w.setFullScreen(on);
+        store.data.settings.fullscreen = on; store.save(); pushLibrary();
+        e.preventDefault();
+      }
       if (input.key === 'F12' && process.env.HALCYON_DEV) w.webContents.toggleDevTools();
     });
     w.loadFile(path.join(__dirname, '../renderer/index.html'));
@@ -520,6 +528,9 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     store = new JsonStore(path.join(app.getPath('userData'), 'config.json'), DEFAULTS);
+    // Earlier versions saved "not fullscreen" whenever the window merely dropped out of
+    // fullscreen; put the setting back on once.
+    if (!store.data.fullscreenRepaired) { store.data.settings.fullscreen = true; store.data.fullscreenRepaired = true; store.save(); }
     library = new Library(store);
     launcher = new Launcher(library, (event) => {
       send('launch:event', event);

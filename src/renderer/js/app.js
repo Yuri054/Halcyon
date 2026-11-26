@@ -207,14 +207,20 @@ async function launch(id) {
   const layer = focus.pushLayer({
     root: el,
     current: null,
-    // Swallow everything while a game is coming up; B returns once it has started.
+    // Swallow everything while a game is coming up; A skips Steam's shader processing,
+    // B returns once the game has been handed over.
     onAction: (action, _target, repeat) => {
+      if (action === 'accept' && !repeat && launchUi?.shaderAction) { sfx.select(); skipShaders(); return true; }
       if (action === 'back' && !repeat && launchUi?.dismissable) { sfx.back(); closeLaunchUi(); }
       return true;
     },
-    hints: () => (launchUi?.dismissable ? [{ a: 'guide', label: 'Game menu' }, { a: 'back', label: 'Return to dashboard' }] : []),
+    hints: () => [
+      launchUi?.shaderAction && { a: 'accept', label: 'Skip shader processing' },
+      launchUi?.dismissable && { a: 'back', label: 'Return to dashboard' },
+    ].filter(Boolean),
   });
-  launchUi = { el, layer, dismissable: false, blurred: false, timer: null };
+  const bar = el.querySelector('.launch__bar');
+  launchUi = { el, layer, status, bar, id, dismissable: false, blurred: false, timer: null, shaderAction: 0, task: null };
   sfx.launch();
   refreshChrome();
 
@@ -226,12 +232,46 @@ async function launch(id) {
     return;
   }
   input.rumble(160, 0.6);
-  status.textContent = 'Now playing';
+  // A Steam game is not running yet: Steam still has steps to go (cloud saves, shaders...).
+  // Its card says what Steam is doing until the game itself appears.
+  if (!launchUi.task) status.textContent = result.followsSteam && !launchUi.started ? 'Starting in Steam' : 'Now playing';
   launchUi.dismissable = true;
-  launchUi.id = id;
   // A game we can follow keeps its card up until it exits; otherwise the card bows out by itself.
   if (!result.tracked) launchUi.timer = setTimeout(closeLaunchUi, 25000);
   renderHints();
+}
+
+/** Steam's launch steps, in words, on the launch card. */
+const STEAM_TASKS = {
+  ProcessingShaderCache: 'Processing Vulkan shaders',
+  SynchronizingCloud: 'Syncing cloud saves', SynchronizingControllerConfig: 'Loading controller settings',
+  UpdatingDRM: 'Checking the game', CreatingProcess: 'Starting', WaitingGameWindow: 'Waiting for the game window',
+  ShowInterstitials: 'Starting', SiteLicenseSeatCheckout: 'Starting', DelayLaunch: 'Starting', Completed: 'Starting',
+  ShowEula: 'Accept the agreement in Steam', ShowCDKey: 'Steam is showing a key', ShowLaunchOption: 'Choose a launch option in Steam',
+  RunningInstallScript: 'Running first-time setup', VerifyingInstalledFiles: 'Checking files',
+};
+
+function setSteamTask(event) {
+  if (!launchUi) return;
+  const shaders = event && event.task === 'ProcessingShaderCache';
+  launchUi.shaderAction = shaders ? event.actionId : 0;
+  launchUi.task = event && event.task ? event.task : null;
+  launchUi.el.classList.toggle('is-shaders', Boolean(shaders));
+  if (event && event.task) {
+    launchUi.status.textContent = `${STEAM_TASKS[event.task] || 'Starting in Steam'}${shaders && event.percent != null ? `  ${event.percent}%` : ''}`;
+  }
+  const fill = launchUi.bar.querySelector('i');
+  // While shaders process, the bar shows real progress instead of the sweep.
+  launchUi.bar.classList.toggle('is-determinate', Boolean(shaders && event.percent != null));
+  fill.style.width = shaders && event.percent != null ? `${event.percent}%` : '';
+  renderHints();
+}
+
+async function skipShaders() {
+  if (!launchUi?.shaderAction) return;
+  const res = await api.steam.skipShaders(launchUi.shaderAction);
+  if (res && res.ok === false) toast(res.error, { type: 'error', title: 'Couldn’t skip' });
+  else if (launchUi) { launchUi.status.textContent = 'Skipping shader processing'; launchUi.shaderAction = 0; renderHints(); }
 }
 
 // ------------------------------------------------------------------- guide
@@ -405,7 +445,14 @@ async function boot() {
       closeLaunchUi();
       toast(event.error, { type: 'error', title: 'Launch failed' });
     } else if (event.type === 'started') {
-      if (launchUi?.id === event.id) clearTimeout(launchUi.timer);
+      if (launchUi?.id === event.id) {
+        clearTimeout(launchUi.timer);
+        launchUi.started = true;
+        setSteamTask(null);
+        launchUi.status.textContent = 'Now playing';
+      }
+    } else if (event.type === 'steamTask') {
+      if (launchUi?.id === event.id && !launchUi.started) setSteamTask(event);
     } else if (event.type === 'detached') {
       if (launchUi?.id === event.id) { clearTimeout(launchUi.timer); launchUi.timer = setTimeout(closeLaunchUi, 25000); }
     } else if (event.type === 'exited') {

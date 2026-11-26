@@ -198,6 +198,31 @@ async function run(expression) {
   }
 }
 
+// ------------------------------------------------------- game launches
+
+/**
+ * What Steam is doing to start a game, step by step (syncing cloud saves, processing
+ * Vulkan shaders, ...): [{ id, appid, action, task, details, done, total }].
+ */
+async function gameActions() {
+  try {
+    const list = await evaluate('(async () => JSON.parse(JSON.stringify(await SteamClient.Apps.GetActiveGameActions())))()');
+    return { ok: true, actions: (Array.isArray(list) ? list : []).map((a) => ({
+      id: Number(a.nGameActionID), appid: String(a.gameid || ''), action: a.strActionName || '', task: a.strTaskName || '', details: a.strTaskDetails || '',
+      done: Number(a.numDone ?? a.strNumDone) || 0, total: Number(a.numTotal ?? a.strNumTotal) || 0,
+    })) };
+  } catch (err) {
+    return { ok: false, offline: Boolean(err.offline), error: err.message };
+  }
+}
+
+/** Press Steam's "Skip" on the shader-processing step of a launch (what its own button does). */
+function skipShaders(actionId) {
+  const id = Number(actionId);
+  if (!Number.isInteger(id) || id <= 0) return Promise.resolve({ ok: false, error: 'No launch to skip.' });
+  return run(`SteamClient.Apps.ContinueGameAction(${id}, "SkipShaders")`);
+}
+
 // ---------------------------------------------- the Home button and Steam
 
 // Steam's "Guide button focuses Steam" lives in its client settings
@@ -247,4 +272,4 @@ function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, boolSetting, PORT };
+module.exports = { enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, boolSetting, PORT };

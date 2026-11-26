@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('halcyon', {
     open: call('steam:open'),
     action: call('steam:action'),
     leaveBigPicture: call('steam:leaveBigPicture'),
+    skipShaders: call('steam:skipShaders'),
     setKey: call('steam:setKey'),
     addRoot: call('steam:addRoot'),
     removeRoot: call('steam:removeRoot'),

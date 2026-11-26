@@ -96,7 +96,8 @@ class Launcher {
       argv = steam.clientCommand(launch.kind, launch.root, launch.install ? `steam://install/${launch.appid}` : `steam://rungameid/${launch.appid}`);
       if (!argv) return { ok: false, error: 'Could not find a Steam client to launch this game with.' };
       if (launch.install) { await this.bigPicture(launch); return this.steamUrl(argv, { installing: true }); }
-      opts.bigPicture = await this.bigPicture(launch);
+      // Games start from the desktop Steam client: Halcyon follows the launch itself (and
+      // skips shader processing on request), so Big Picture is not needed and stays shut.
     } else if (launch.type === 'emulator') {
       const cmd = emulators.buildCommand(config, launch.system, launch.rom);
       if (cmd.error) return { ok: false, error: cmd.error };
@@ -114,7 +115,9 @@ class Launcher {
     // HALCYON_DRY_RUN=1 resolves real launches without starting anything (for UI testing).
     if (process.env.HALCYON_DRY_RUN && launch.type !== 'custom') {
       console.log('[dry-run] would launch:', JSON.stringify(argv));
-      return { ok: true, dryRun: true, bigPicture: Boolean(opts.bigPicture) };
+      // Against a stand-in Steam (tests), follow the launch steps for a while as for real.
+      if (launch.type === 'steam' && process.env.HALCYON_STEAM_CEF_PORT) { const stop = this.followSteamLaunch(game, launch.appid); setTimeout(stop, 20000).unref(); }
+      return { ok: true, dryRun: true, bigPicture: false, ...(launch.type === 'steam' ? { followsSteam: true } : {}) };
     }
 
     // Steam hands off to its own client, so its wrapper exiting quickly is normal;
@@ -142,15 +145,15 @@ class Launcher {
       result.tracked = true;
     } else if (result.ok) {
       // Steam keeps its own playtime, so nothing is banked here.
+      const stopFollowing = this.followSteamLaunch(game, launch.appid);
+      result.followsSteam = true;
       system.watchSteamApp(launch.appid, {
         onStart: () => {
+          stopFollowing();
           this.started(game);
-          // Big Picture was only there for what Steam shows before the game (shader
-          // processing, prompts). Once the game is up it would claim the Home button,
-          // so step out of it, quietly, behind the game.
-          if (this.bigPictureOpen) setTimeout(() => this.leaveBigPicture(launch).catch(() => {}), 1500);
         },
         onExit: async (ms) => {
+          stopFollowing();
           if (this.bigPictureOpen) {
             await this.leaveBigPicture(launch);
             if (!process.env.HALCYON_DRY_RUN) await new Promise((r) => setTimeout(r, 2000));
@@ -161,6 +164,43 @@ class Launcher {
     }
     if (result.ok) this.library.markPlayed(id);
     return result;
+  }
+
+  /**
+   * Follow Steam's steps for starting a game and report them to the dashboard, so the
+   * launch card can say what is happening. On "Processing Vulkan shaders" it shows the
+   * progress and lets A skip it (or skips straight away with the setting on).
+   * Returns a function that stops following.
+   */
+  followSteamLaunch(game, appid) {
+    let stopped = false;
+    let skipped = false;
+    let last = '';
+    const began = Date.now();
+    const tick = async () => {
+      if (stopped) return;
+      const res = await steamClient.gameActions();
+      if (stopped) return;
+      if (!res.ok) { if (res.offline) return; }
+      const a = (res.actions || []).find((x) => x.appid === String(appid) && x.action === 'LaunchApp');
+      const task = a ? a.task : '';
+      const shaders = task === 'ProcessingShaderCache';
+      const percent = shaders && a.total > 0 ? Math.min(100, Math.floor((a.done * 100) / a.total)) : null;
+      const sig = `${task}|${percent}`;
+      if (sig !== last) {
+        last = sig;
+        this.notify({ type: 'steamTask', id: game.id, task, percent, actionId: a ? a.id : 0 });
+      }
+      if (shaders && !skipped && this.library.config.settings.steamSkipShaders) {
+        skipped = true;
+        await steamClient.skipShaders(a.id);
+      }
+      if (Date.now() - began > 20 * 60 * 1000) stopped = true;
+    };
+    const timer = setInterval(() => tick().catch(() => {}), 700);
+    timer.unref();
+    tick().catch(() => {});
+    return () => { stopped = true; clearInterval(timer); };
   }
 
   /**

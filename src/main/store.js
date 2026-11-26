@@ -69,7 +69,8 @@ const DEFAULTS = {
     controllerOnly: false,
     theme: 'halcyon',
     showUninstalled: true,
-    steamBigPicture: false,
+    steamBigPicture: false,   // for the store and installs only
+    steamSkipShaders: false,  // skip Steam's "Processing Vulkan shaders" step without asking
     homeButtonGuide: true,   // Home opens Halcyon's Guide anywhere, and Steam is told to leave it alone
     soundPack: '',     // folder name under <config>/sounds, or '' for the built-in tones
   },

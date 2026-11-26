@@ -11,6 +11,7 @@ import { openPanel } from './dialog.js';
 import { toast } from './toast.js';
 import { volumeRow } from './volume.js';
 import { nowPlaying } from '../media/player.js';
+import { gamerscore } from './achievements.js';
 import { snapshot as downloadSnapshot, downloadCard, nameOf } from './downloads.js';
 
 let active = null;   // { panel, dead }
@@ -75,6 +76,8 @@ export async function openGuide({ select = null } = {}) {
   const time = h('span', { class: 'guide__time' });
   const pads = h('span', { class: 'guide__pads' });
   frame.append(h('div', { class: 'guide__status' }, pads, time));
+  // The profile picture between the title and the clock, as on the console.
+  if (state.lib.steamProfile?.avatar) frame.append(h('div', { class: 'guide__pic' }, h('img', { src: state.lib.steamProfile.avatar, alt: '' })));
   const paintStatus = () => {
     time.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     pads.replaceChildren(...(state.pads.length ? [icon('pad', 'guide__pad')] : []));
@@ -123,7 +126,6 @@ export async function openGuide({ select = null } = {}) {
         !overTask && { label: 'Halcyon Home', value: 'go:home', key: 'go:home', iconName: 'home' },
         !overTask && steamHere && { label: 'Downloads', value: 'downloads', key: 'downloads', iconName: 'download', hint: String(busy) },
         !overTask && { label: 'Storage', value: 'storage', key: 'storage', iconName: 'folder' },
-        !overTask && state.lib.steamAccount?.hasKey && { label: 'Achievements', value: 'achievements', key: 'achievements', iconName: 'star' },
         !overTask && { label: 'Search games', value: 'search', key: 'search', iconName: 'search' },
         !overTask && { label: 'TV & movies', value: 'go:tv', key: 'go:tv', iconName: 'film' },
         !overTask && { label: 'Music', value: 'go:music', key: 'go:music', iconName: 'music' },
@@ -134,6 +136,7 @@ export async function openGuide({ select = null } = {}) {
     if (blade === 'games') {
       const recent = sortGames(visibleGames().filter((g) => g.installed), 'recent').filter((g) => g.lastPlayed).slice(0, 4);
       return [
+        !overTask && gamerscore() > 0 && { label: 'Achievements', value: 'achievements', key: 'achievements', cls: 'row--gs', hint: gamerscore().toLocaleString() },
         ...recent.map((g) => ({ label: g.name, value: `play:${g.id}`, key: `play:${g.id}`, iconName: 'play', hint: fmt.ago(g.lastPlayed).replace(/^Played /, ''), verb: 'Play' })),
         { label: 'All games', value: 'go:games', key: 'go:games', iconName: 'grid', hint: String(visibleGames().length) },
         { label: 'Emulators & systems', value: 'go:systems', key: 'go:systems', iconName: 'chip' },

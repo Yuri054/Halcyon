@@ -1,9 +1,21 @@
 // Steam achievements: a game's list (unlocked first, newest first; then locked, the most
 // common first; hidden ones stay hidden until earned), and an overview of every game with
 // achievements. Opened from a game's options, the Guide's home tile and the profile corner.
+import { h } from '../core/dom.js';
 import { api, state, game as findGame, fmt } from '../core/state.js';
 import { openPanel } from './dialog.js';
 import { toast } from './toast.js';
+
+/** The console's header over a full-screen list: the profile picture in the middle, the clock right. */
+export function consoleHeader(panel) {
+  if (panel.el.querySelector('.xhead')) return;
+  const p = state.lib.steamProfile;
+  const clock = h('div', { class: 'xhead__clock' });
+  panel.el.append(h('div', { class: 'xhead' }, p?.avatar ? h('div', { class: 'xhead__pic' }, h('img', { src: p.avatar, alt: '' })) : '', clock));
+  const show = () => { clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
+  show();
+  const t = setInterval(() => { if (!clock.isConnected) clearInterval(t); else show(); }, 10000);
+}
 
 const day = (sec) => new Date(sec * 1000).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 const nameOf = (appid) => findGame(`steam:${appid}`)?.name || `Steam app ${appid}`;
@@ -31,6 +43,7 @@ export function gamerscore() {
 export async function openGameAchievements(appid, panelIn = null) {
   const panel = panelIn || openPanel();
   panel.el.classList.add('layer--achlist');
+  consoleHeader(panel);
   const r = await api.achievements.game(String(appid), { refresh: true });
   if (!r || !r.ok) {
     if (!panelIn) await panel.close();
@@ -82,6 +95,7 @@ export async function openAchievements() {
   const installedOnly = () => state.lib.settings.achievementsInstalled === true;
   const panel = openPanel();
   panel.el.classList.add('layer--achlist');
+  consoleHeader(panel);
   let selected = null;
   for (;;) {
     const ids = all.filter((id) => !installedOnly() || findGame(`steam:${id}`)?.installed)

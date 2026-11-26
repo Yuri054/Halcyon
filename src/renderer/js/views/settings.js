@@ -1,5 +1,6 @@
 // Settings: display, library, Steam and system options as Metro-style cards.
 import { h, icon } from '../core/dom.js';
+import * as focus from '../core/focus.js';
 import { api, state, ACCENTS, THEMES, fmt, noPadGames, X360_OPTIONS, x360Option } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { browse } from '../ui/browser.js';
@@ -13,7 +14,62 @@ const KIND = { native: 'Native install', flatpak: 'Flatpak', snap: 'Snap', custo
 
 export function createSettings() {
   const scroller = h('div', { class: 'blocks blocks--cards', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
-  const el = h('section', { class: 'view view--settings' }, scroller);
+  // The 360 theme shows settings like the console: a list on the left (first the categories,
+  // then a category's settings) and a "Current Setting" panel on the right.
+  const xsTitle = h('h2', { class: 'xsettings__title' });
+  const xsList = h('div', { class: 'xsettings__list', 'data-scroller': 'y', 'data-focus-group': true, 'data-focus-restore': true });
+  const xsHead = h('div', { class: 'xsettings__infohead' });
+  const xsValue = h('div', { class: 'xsettings__value' });
+  const xsText = h('div', { class: 'xsettings__text' });
+  const xs = h('div', { class: 'xsettings', hidden: true }, xsTitle, h('div', { class: 'xsettings__box' }, xsList, h('div', { class: 'xsettings__info' }, xsHead, xsValue, xsText)));
+  const el = h('section', { class: 'view view--settings' }, scroller, xs);
+  let openCat = null;
+  const CAT_TEXT = {
+    display: 'The screen, the theme, colours and sounds.',
+    library: 'Which games Halcyon finds and lists.',
+    artwork: 'Covers and backgrounds, and where they come from.',
+    steam: 'Steam, its downloads, installs and Big Picture.',
+    system: 'Controllers, the Home button, start-up, storage and power.',
+  };
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  function showInfo(target) {
+    if (!target) return;
+    const key = target.dataset.key || '';
+    if (key.startsWith('cat:')) {
+      const cat = key.slice(4);
+      xsHead.textContent = 'Includes';
+      xsValue.replaceChildren(...[...(scroller.querySelector(`[data-cat="${cat}"]`)?.querySelectorAll('.row__label') || [])].slice(0, 6).map((l) => h('div', null, l.textContent)));
+      xsText.textContent = CAT_TEXT[cat] || '';
+      return;
+    }
+    const sw = target.querySelector('.switch');
+    const value = sw ? (sw.classList.contains('is-on') ? 'On' : 'Off') : target.querySelector('.row__hint')?.textContent || '';
+    xsHead.textContent = value ? 'Current Setting' : '';
+    xsValue.replaceChildren(...(value ? [h('div', null, value)] : []));
+    xsText.textContent = help.get(key) || target.querySelector('.row__sub')?.textContent || '';
+  }
+  xs.addEventListener('nav-focus', (e) => showInfo(e.target.closest('.row') || e.target));
+  /** Lay the cards out as the console's settings (360 theme). */
+  function consoleLayout() {
+    const cards = [...scroller.querySelectorAll('.block--card')];
+    for (const c of cards) c.dataset.cat = c.querySelector('.block__title')?.textContent || '';
+    scroller.hidden = true;
+    xs.hidden = false;
+    if (!openCat || !cards.some((c) => c.dataset.cat === openCat)) {
+      openCat = null;
+      xsTitle.textContent = 'Settings';
+      xsList.replaceChildren(...cards.map((c) => {
+        const r = h('div', { class: 'row', 'data-focus': true, 'data-key': `cat:${c.dataset.cat}`, 'data-verb': 'Open' },
+          h('div', { class: 'row__text' }, h('div', { class: 'row__label' }, cap(c.dataset.cat))));
+        r.addEventListener('click', () => { openCat = c.dataset.cat; render(); const first = xsList.querySelector('[data-focus]'); if (first) focus.focus(first, { layer: focus.base() }); app.refreshChrome(); });
+        return r;
+      }));
+    } else {
+      xsTitle.textContent = cap(openCat);
+      xsList.replaceChildren(...cards.find((c) => c.dataset.cat === openCat).querySelectorAll('.card > .row'));
+    }
+    showInfo(focus.base().current && xs.contains(focus.base().current) ? focus.base().current : xsList.querySelector('[data-focus]'));
+  }
   let info = null;
   let autostart = false;
   let scrapeStatus = '';
@@ -164,6 +220,8 @@ export function createSettings() {
         row({ key: 'about', label: `Halcyon ${info?.version || ''}`, iconName: 'info', sub: info ? info.configFile : '' }),
         row({ key: 'power', label: 'Power', iconName: 'power', sub: 'Sleep, restart, shut down or exit', danger: true, onSelect: () => app.guide({ select: 'power:suspend' }) }),
       ]));
+    if (document.body.dataset.theme === 'x360') consoleLayout();
+    else { xs.hidden = true; scroller.hidden = false; }
   }
 
   async function editKey() {
@@ -293,8 +351,21 @@ export function createSettings() {
     label: 'settings',
     el,
     render,
-    defaultFocus: () => scroller.querySelector('[data-focus]'),
+    defaultFocus: () => (xs.hidden ? scroller : xsList).querySelector('[data-focus]'),
     onAction: () => false,
+    onBack() {
+      // In a category (360 layout), B goes back to the list of categories.
+      if (!xs.hidden && openCat) {
+        const was = openCat;
+        openCat = null;
+        render();
+        const row = focus.byKey(el, `cat:${was}`);
+        if (row) focus.focus(row, { layer: focus.base() });
+        app.refreshChrome();
+        return true;
+      }
+      return false;
+    },
     hints: (target) => [{ a: 'accept', label: target?.querySelector('.switch') ? 'Toggle' : 'Select' }],
     context(target) {
       const label = target?.querySelector('.row__label')?.textContent;

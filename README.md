@@ -163,6 +163,15 @@ its achievements unlocked. The Achievements list (the 360's layout, in the middl
 shows a total row, then each game with "n of m Achievements" and its score; X switches between
 installed games and all games.
 
+## 360 menus
+
+In the 360 theme, menus follow the console closely: a flat green selection on light grey bands
+with fine white rules; Achievements on a dark screen with the profile picture and clock in the
+header; the Guide with the picture between its title and clock and *Achievements (score G)* at the
+top of Games & Apps; and Settings as the console's settings screen: a list on the left (the
+categories, then a category's settings; B goes back) and a *Current Setting* panel on the right
+with the value and what it does.
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

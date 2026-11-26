@@ -1035,3 +1035,91 @@ body[data-theme='x360']:has(.layer--achlist:not(.is-closing)) #hints { left: cal
 .row--ach.is-locked .row__label, .row--ach.is-locked .row__hint { opacity: 0.6; }
 .row--ach.is-locked .row__thumb::after { content: ''; position: absolute; right: 0.15rem; bottom: 0.15rem; width: 0.9rem; height: 0.9rem; border-radius: 0.15rem; background: rgba(0, 0, 0, 0.65) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4'%3E%3Crect x='5' y='11' width='14' height='10' rx='1.5'/%3E%3Cpath d='M8 11V8a4 4 0 018 0v3'/%3E%3C/svg%3E") center / 70% no-repeat; }
 .row--ach.is-focused.is-locked .row__label, .row--ach.is-focused.is-locked .row__hint { opacity: 1; }
+
+/* =========================================== 360 menus, closer to the console
+   Flat green selection (no gradient), light grey bands with fine white rules between rows,
+   larger text, and the Guide and Achievements headers with the profile picture and clock. */
+[data-theme='x360'] { --x-bar-hi: #11a011; --x-bar: #109c10; --x-bar-lo: #0f970f; --x-flat: #109c10; }
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row:not(.row--card),
+[data-theme='x360'] .card .row {
+  background: linear-gradient(180deg, #f4f6f6 0%, #e6eaea 55%, #dde1e1 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.95); border-radius: 0; min-height: 3.6rem;
+}
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list, [data-theme='x360'] .card { background: #dde1e1; padding: 0; gap: 0; }
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row .row__label, [data-theme='x360'] .card .row .row__label { font-size: 1.3rem; letter-spacing: 0.01em; color: #2f2f2f; }
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row .row__sub, [data-theme='x360'] .card .row .row__sub { font-size: 0.92rem; color: #5c5c5c; }
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row .row__hint, [data-theme='x360'] .card .row .row__hint { font-size: 1.2rem; color: #3a3a3a; }
+[data-theme='x360'] .row.is-focused, [data-theme='x360'] .layer:not(.layer--guide) .panel__list .row.is-focused:not(.row--card), [data-theme='x360'] .card .row.is-focused,
+[data-theme='x360'] .key.is-focused, [data-theme='x360'] .layer--guide .row.is-focused {
+  background: var(--x-flat); box-shadow: none; transform: none;
+}
+[data-theme='x360'] .row.is-focused .row__label, [data-theme='x360'] .row.is-focused .row__sub, [data-theme='x360'] .row.is-focused .row__hint,
+[data-theme='x360'] .row.is-focused .row__icon { color: #fff; }
+[data-theme='x360'] .panel__heading { background: #d2d7d7; color: #555; padding: 0.45rem 0.9rem; border-bottom: 1px solid rgba(255, 255, 255, 0.9); }
+[data-theme='x360'] .row__meter i, [data-theme='x360'] .layer--downloads .row__meter i { background: var(--x-flat); }
+
+/* The header over Achievements and the Guide: picture in the middle, clock on the right. */
+.xhead { display: none; }
+[data-theme='x360'] .xhead { display: flex; position: absolute; z-index: 3; align-items: flex-end; justify-content: center; pointer-events: none; color: #fff; }
+[data-theme='x360'] .xhead__pic { width: 4.2rem; height: 4.2rem; overflow: hidden; background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 0 0.12rem rgba(255, 255, 255, 0.85); }
+[data-theme='x360'] .xhead__pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+[data-theme='x360'] .xhead__clock { position: absolute; right: 0; bottom: 0.2rem; font-size: 2rem; letter-spacing: 0.04em; }
+
+/* Achievements: a dark screen, the box in the middle, big rows like the console's. */
+[data-theme='x360'] .layer--achlist .layer__scrim { background: rgba(0, 0, 0, 0.86); backdrop-filter: none; }
+[data-theme='x360'] .layer--achlist:not(.layer--left) .panel { top: 9.2rem; left: calc(50% - 37rem); width: 74rem; max-height: calc(100vh - 16rem); }
+body[data-theme='x360']:has(.layer--achlist:not(.is-closing)) #hints { left: calc(50% - 35rem); }
+[data-theme='x360'] .layer--achlist .xhead { top: 3.4rem; left: calc(50% - 37rem); width: 74rem; height: 5.4rem; }
+[data-theme='x360'] .layer--achlist .panel__head { padding-bottom: 0.8rem; min-height: 0; }
+[data-theme='x360'] .layer--achlist .panel__title { font-size: 2.1rem; position: relative; top: -0.6rem; }
+[data-theme='x360'] .layer--achlist .panel__subtitle { display: none; }
+[data-theme='x360'] .layer--achlist .panel__list .row:not(.row--card) { min-height: 6.4rem; padding: 0.4rem 1.6rem 0.4rem 0.6rem; gap: 1rem; }
+[data-theme='x360'] .layer--achlist .row__thumb { width: 5.4rem; aspect-ratio: 1; border-radius: 0; }
+[data-theme='x360'] .layer--achlist .row .row__label { font-size: 1.85rem; letter-spacing: 0.02em; }
+[data-theme='x360'] .layer--achlist .row .row__sub { font-size: 1.35rem; letter-spacing: 0.02em; color: #3d3d3d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme='x360'] .layer--achlist .row .row__hint { font-size: 1.85rem; color: #2f2f2f; }
+[data-theme='x360'] .layer--achlist .row__hint::after { width: 1.55rem; height: 1.55rem; font-size: 0.95rem; border-width: 0.16rem; margin-left: 0.6rem; vertical-align: 0.15rem; }
+[data-theme='x360'] .layer--achlist .row.is-focused .row__sub, [data-theme='x360'] .layer--achlist .row.is-focused .row__hint { color: #fff; }
+[data-theme='x360'] .layer--achlist .panel__list::after { content: '⌃  ⌄'; display: block; position: sticky; bottom: 0; text-align: right; padding: 0.4rem 1.6rem 0.6rem; font-size: 1.4rem; color: #555; background: #dde1e1; }
+
+/* The Guide: flat green rows; the picture in the header. */
+[data-theme='x360'] .layer--guide .row.is-focused { background: var(--x-flat); }
+[data-theme='x360'] .guide__pic { position: absolute; left: calc(50% - 2.6rem); bottom: 0.9rem; width: 4.2rem; height: 4.2rem; overflow: hidden; box-shadow: 0 0 0 0.12rem rgba(255, 255, 255, 0.85); }
+[data-theme='x360'] .guide__pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.guide__pic { display: none; }
+[data-theme='x360'] .guide__pic { display: block; }
+[data-theme='x360'] .layer--guide .row--gs .row__hint::after, .row--gs .row__hint::after { content: 'G'; display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-left: 0.5rem; border-radius: 50%; border: 0.16rem solid currentColor; font-size: 0.95rem; font-weight: 700; vertical-align: 0.2rem; }
+
+/* Settings (360): the console's settings screen. */
+.xsettings[hidden] { display: none; }
+[data-theme='x360'] .view--settings { justify-content: flex-start; }
+[data-theme='x360'] .xsettings { display: flex; flex-direction: column; padding: 0.6rem var(--gutter) 0; flex: 1; min-height: 0; }
+[data-theme='x360'] .xsettings__title { font-size: 2.6rem; font-weight: 400; color: #fff; text-shadow: 0 0.1rem 0.35rem rgba(0, 0, 0, 0.3); margin: 0 0 1rem 7rem; }
+[data-theme='x360'] .xsettings__box { display: flex; margin-left: 7rem; max-width: 84rem; height: min(46rem, calc(100vh - 25rem)); box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.25); }
+[data-theme='x360'] .xsettings__list { flex: 0 0 52%; overflow-y: auto; background: #dde1e1; scrollbar-width: none; }
+[data-theme='x360'] .xsettings__list .row {
+  min-height: 4.4rem; padding: 0 1.6rem 0 2rem; border-radius: 0; gap: 1rem;
+  background: linear-gradient(180deg, #f4f6f6 0%, #e6eaea 55%, #dde1e1 100%); border-bottom: 1px solid rgba(255, 255, 255, 0.95);
+}
+[data-theme='x360'] .xsettings__list .row .row__label { font-size: 1.75rem; color: #2f2f2f; letter-spacing: 0.01em; }
+[data-theme='x360'] .xsettings__list .row .row__sub { display: none; }
+[data-theme='x360'] .xsettings__list .row .row__icon { display: none; }
+[data-theme='x360'] .xsettings__list .row .row__hint { font-size: 1.3rem; color: #555; }
+[data-theme='x360'] .xsettings__list .row.is-focused { background: var(--x-flat); }
+[data-theme='x360'] .xsettings__list .row.is-focused .row__label, [data-theme='x360'] .xsettings__list .row.is-focused .row__hint { color: #fff; }
+[data-theme='x360'] .xsettings__info { flex: 1; background: linear-gradient(180deg, #a8aeb0, #8f9698 55%, #868d8f); color: #fff; padding: 2.2rem 2.4rem; display: flex; flex-direction: column; gap: 0.4rem; }
+[data-theme='x360'] .xsettings__infohead { font-size: 2.1rem; letter-spacing: 0.02em; }
+[data-theme='x360'] .xsettings__value { font-size: 1.65rem; padding-left: 0.3rem; display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: 2rem; }
+[data-theme='x360'] .xsettings__text { font-size: 1.35rem; line-height: 1.45; color: rgba(255, 255, 255, 0.75); }
+[data-theme='x360'] .view--settings .subtabs { margin-left: 7rem; }
+/* Selected rows: white text, whatever list they're in. */
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row.is-focused .row__label,
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row.is-focused .row__sub,
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row.is-focused .row__hint,
+[data-theme='x360'] .layer:not(.layer--guide) .panel__list .row.is-focused .row__icon,
+[data-theme='x360'] .card .row.is-focused .row__label, [data-theme='x360'] .card .row.is-focused .row__sub, [data-theme='x360'] .card .row.is-focused .row__hint,
+[data-theme='x360'] .layer--achlist .panel__list .row.is-focused .row__sub, [data-theme='x360'] .layer--achlist .panel__list .row.is-focused .row__hint { color: #fff; }
+/* The Guide's picture sits in its header, between the title and the clock. */
+[data-theme='x360'] .guide__pic { top: 0.2rem; bottom: auto; }
+/* Achievements take the whole screen: the tabs and status behind fade right out. */
+body[data-theme='x360']:has(.layer--achlist:not(.is-closing)) #top { opacity: 0; transition: opacity 0.2s ease; }

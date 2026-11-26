@@ -3,6 +3,8 @@
 A console-style game launcher for Linux. Big tiles, horizontal rails, and a dashboard you can drive
 entirely from a controller. Steam, emulators and anything else you can start from a command.
 
+[![Watch the Halcyon trailer](docs/trailer.png)](docs/Halcyon-trailer.mp4)
+
 ![Home](docs/home.png)
 
 ## Install

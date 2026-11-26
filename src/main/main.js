@@ -777,7 +777,7 @@ if (!app.requestSingleInstanceLock()) {
     handle('jellyfin:connect', (server, user, password) => jellyfin.connect(server, user, password));
     handle('jellyfin:disconnect', () => jellyfin.disconnect());
     handle('jellyfin:home', jf((kind) => jellyfin.home(kind)));
-    handle('jellyfin:library', jf((id, start, genre) => jellyfin.library(id, start, genre)));
+    handle('jellyfin:library', jf((id, start, genre, sort, unwatched) => jellyfin.library(id, start, genre, sort, unwatched)));
     handle('jellyfin:genres', jf((id) => jellyfin.genres(id)));
     handle('jellyfin:markPlayed', jf((id, played) => jellyfin.markPlayed(id, played)));
     handle('jellyfin:hideFromResume', jf((id) => jellyfin.hideFromResume(id)));

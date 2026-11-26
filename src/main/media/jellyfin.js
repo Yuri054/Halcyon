@@ -189,9 +189,12 @@ class Jellyfin {
   }
 
   /** Everything in a library: movies, shows or albums, A to Z. */
-  async library(id, start = 0, genreId = '') {
+  /** sort: name | added | year | rating; unwatched: only what hasn't been watched. */
+  async library(id, start = 0, genreId = '', sort = 'name', unwatched = false) {
     const genre = genreId ? `&GenreIds=${encodeURIComponent(genreId)}` : '';
-    const r = await this.request(`/Users/${this.uid}/Items?ParentId=${encodeURIComponent(id)}&Recursive=true&IncludeItemTypes=Movie,Series,MusicAlbum,Video&SortBy=SortName&SortOrder=Ascending&StartIndex=${start}&Limit=300${genre}&${Jellyfin.fields}`);
+    const order = { name: 'SortBy=SortName&SortOrder=Ascending', added: 'SortBy=DateCreated,SortName&SortOrder=Descending', year: 'SortBy=ProductionYear,SortName&SortOrder=Descending', rating: 'SortBy=CommunityRating,SortName&SortOrder=Descending' }[sort] || 'SortBy=SortName&SortOrder=Ascending';
+    const filter = unwatched ? '&Filters=IsUnplayed' : '';
+    const r = await this.request(`/Users/${this.uid}/Items?ParentId=${encodeURIComponent(id)}&Recursive=true&IncludeItemTypes=Movie,Series,MusicAlbum,Video&${order}&StartIndex=${start}&Limit=300${genre}${filter}&${Jellyfin.fields}`);
     return { items: (r?.Items || []).map(Jellyfin.item), total: r?.TotalRecordCount || 0 };
   }
 

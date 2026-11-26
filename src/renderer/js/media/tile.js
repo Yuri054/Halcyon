@@ -43,19 +43,23 @@ export function mediaHero(item, eyebrow, index = 0) {
 }
 
 /** variant: 'cover' (poster) or 'wide' (thumb). */
-export function mediaTile(item, variant = 'cover', index = 0) {
+/** tag: a small label in the corner ("Continue", "Next up", "New"). */
+export function mediaTile(item, variant = 'cover', index = 0, tag = '') {
   const portrait = variant === 'cover';
   const square = ['MusicAlbum', 'Audio', 'MusicArtist', 'Playlist'].includes(item.type);
   const urls = portrait
     ? [img(item.images.primaryOf, 'Primary', 400)]
     : [img(item.images.thumbOf, 'Thumb', 640), img(item.images.backdropOf, 'Backdrop', 640), img(item.id, 'Primary', 640)];
-  const title = item.type === 'Episode' ? `${item.series} · ${episodeCode(item) || item.name}` : item.name;
+  // Episodes: the show and S1 E2 (or the episode's own name, without the show's name repeated).
+  const own = item.series && item.name.toLowerCase().startsWith(item.series.toLowerCase()) ? item.name.slice(item.series.length).replace(/^[\s:·–-]+/, '') : item.name;
+  const title = item.type === 'Episode' ? `${item.series} · ${episodeCode(item) || own || item.name}` : item.name;
   const body = h('div', { class: 'tile__body' }, fallback(item), artImg(urls, 'tile__img', { lazy: true }));
   if (!portrait) body.append(h('div', { class: 'tile__shade' }), h('div', { class: 'tile__caption' }, h('div', { class: 'tile__title' }, title)));
   else body.append(h('div', { class: 'tile__strip' }, item.name));
   if (item.progress > 0 && item.progress < 100) {
     body.append(h('div', { class: 'tile__progress media__progress' }, h('div', { class: 'tile__progress-track' }, h('i', { style: { width: `${item.progress}%` } }))));
   }
+  if (tag) body.append(h('div', { class: 'media__tag' }, tag));
   if (item.played && !square) body.append(h('div', { class: 'tile__badges' }, h('span', { class: 'badge badge--played' }, '✓')));
   return h('div', {
     class: `tile tile--${variant}${square ? ' tile--square-art' : ''}`,

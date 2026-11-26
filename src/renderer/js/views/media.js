@@ -83,42 +83,49 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
       return;
     }
     if (music) { renderMusicFront(); return; }
-    // ---- the front page: libraries, a feature, and what to watch next, then the rails
+    // ---- the front page. Left: the libraries and search. Middle: the one thing to watch now
+    // (labelled: continue watching / next up / new). Right: what's next after it, then what's
+    // new, each tile labelled. Then rows with clear names: continue watching, next up, and
+    // recently added in each library.
     const resume = remember(home.resume);
     const nextUp = remember(home.nextUp).filter((n) => !resume.some((r) => r.id === n.id));
     const libs = remember(home.libraries);
-    const feature = resume[0] || nextUp[0] || home.latest[0]?.items[0];
+    const latest = home.latest.map((l) => ({ ...l, items: remember(l.items) }));
+    const fresh = latest.flatMap((l) => l.items).filter((x) => !resume.some((r) => r.id === x.id));
+    const feature = resume[0] || nextUp[0] || fresh[0];
+    const featureTag = resume[0] === feature ? 'continue watching' : nextUp[0] === feature ? 'next up' : 'recently added';
     const used = new Set(feature ? [feature.id] : []);
-    const pick = (list, n) => list.filter((x) => !used.has(x.id)).slice(0, n).map((x) => { used.add(x.id); return x; });
-    const under = pick(resume, 2);
-    const side = pick(nextUp.length ? nextUp : resume, 3);
-    const at = (el, area) => { el.style.gridArea = area; return el; };
-    const libTile = (lib, area) => at(actionTile({ key: `mx:lib:${lib.id}`, label: lib.name, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) }), area);
-    const searchTile = (area) => at(actionTile({ key: 'mx:search', label: 'Search', iconName: 'search', tone: 'accent', index: i++, onSelect: search }), area);
-
+    const take = (list, n) => list.filter((x) => !used.has(x.id)).slice(0, n).map((x) => { used.add(x.id); return x; });
+    // Five slots beside the feature: what to watch next first, then what's new.
+    const slots = [
+      ...take(resume, 5).map((x) => [x, 'Continue']),
+    ];
+    slots.push(...take(nextUp, 5 - slots.length).map((x) => [x, 'Next up']));
+    slots.push(...take(fresh, 5 - slots.length).map((x) => [x, 'New']));
+    const at = (node, area) => { node.style.gridArea = area; return node; };
+    const libTile = (lib, area) => at(actionTile({ key: `mx:lib:${lib.id}`, label: lib.collection === 'tvshows' ? 'TV shows' : lib.name, sub: lib.collection === 'movies' ? 'Every movie' : lib.collection === 'tvshows' ? 'Every show' : null, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) }), area);
+    const searchTile = (area) => at(actionTile({ key: 'mx:search', label: 'Search', sub: 'Movies and shows', iconName: 'search', tone: 'accent', index: i++, onSelect: search }), area);
+    const sideAreas = ['d1', 'd2', 'd3', 'b3', 'c3'];
     const front = h('div', { class: 'media__front' },
       libs[0] ? libTile(libs[0], 'a1') : searchTile('a1'),
       libs[1] ? libTile(libs[1], 'a2') : (libs[0] ? searchTile('a2') : null),
       libs[2] ? libTile(libs[2], 'a3') : (libs[1] ? searchTile('a3') : null),
-      feature && at(mediaHero(feature, resume[0] === feature ? 'continue watching' : nextUp[0] === feature ? 'next up' : 'new', i++), 'hero'),
-      under[0] && at(mediaTile(under[0], 'wide', i++), 'b3'),
-      under[1] && at(mediaTile(under[1], 'wide', i++), 'c3'),
-      side[0] && at(mediaTile(side[0], 'wide', i++), 'd1'),
-      side[1] && at(mediaTile(side[1], 'wide', i++), 'd2'),
-      side[2] && at(mediaTile(side[2], 'wide', i++), 'd3'));
-    const blocks = [h('div', { class: 'block block--front' }, h('h3', { class: 'block__title' }, side.length && nextUp.length ? 'watch next' : 'jellyfin'), front)];
+      feature && at(mediaHero(feature, featureTag, i++), 'hero'),
+      ...slots.map(([x, tag], n) => at(mediaTile(x, 'wide', i++, tag), sideAreas[n])));
+    const blocks = [h('div', { class: 'block block--front' }, h('h3', { class: 'block__title' }, 'watch'), front)];
 
     const moreResume = resume.filter((x) => !used.has(x.id));
     const moreNext = nextUp.filter((x) => !used.has(x.id));
-    if (moreResume.length) blocks.push(block('continue watching', 'block--wide media__rail', moreResume.map((it) => mediaTile(it, 'wide', i++))));
-    if (moreNext.length) blocks.push(block('next up', 'block--wide media__rail', moreNext.map((it) => mediaTile(it, 'wide', i++))));
-    for (const l of home.latest) {
-      blocks.push(block(`new in ${l.library.name.toLowerCase()}`, 'block--covers media__latest', remember(l.items).slice(0, 12).map((it) => mediaTile(it, 'cover', i++))));
+    if (moreResume.length) blocks.push(block('Continue watching', 'block--wide media__rail', moreResume.map((it) => mediaTile(it, 'wide', i++))));
+    if (moreNext.length) blocks.push(block('Next up', 'block--wide media__rail', moreNext.map((it) => mediaTile(it, 'wide', i++))));
+    for (const l of latest) {
+      const lib = l.library.collection === 'tvshows' ? 'TV shows' : l.library.name;
+      blocks.push(block(`Recently added · ${lib}`, 'block--covers media__latest', l.items.slice(0, 12).map((it) => mediaTile(it, 'cover', i++))));
     }
-    blocks.push(block(status.serverName || 'jellyfin', 'block--quick', [
+    blocks.push(block('More', 'block--quick', [
       ...libs.slice(3).map((lib) => actionTile({ key: `mx:lib:${lib.id}`, label: lib.name, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) })),
       libs.length >= 3 && actionTile({ key: 'mx:search2', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
-      actionTile({ key: 'mx:server', label: 'Server', sub: status.userName, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
+      actionTile({ key: 'mx:server', label: status.serverName || 'Server', sub: `Signed in as ${status.userName}`, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
     ].filter(Boolean)));
     if (!feature && !home.libraries.length) {
       blocks.unshift(block('media', 'block--hero', [actionTile({ key: 'mx:empty', size: 'hero', iconName: 'film', tone: 'glass', label: 'Nothing here yet', sub: 'Your Jellyfin user has no movie or TV libraries Halcyon can show.' })]));
@@ -164,13 +171,30 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
   // ---- a library as a wall of posters
   const isMusic = (lib) => lib?.collection === 'music';
   /** A library's wall: for music, mode picks albums, artists or playlists. */
+  // How a movie / show library is sorted, and whether it shows only what's unwatched (kept per session).
+  const SORTS_MEDIA = [['name', 'A – Z'], ['added', 'Recently added'], ['year', 'Newest first'], ['rating', 'Highest rated']];
+  let wallSort = 'name';
+  let wallUnwatched = false;
   function fetchWall(lib, genre, mode) {
     if (isMusic(lib) && mode === 'artists') return api.jellyfin.artists(lib.id);
     if (isMusic(lib) && mode === 'playlists') return api.jellyfin.playlists('Audio');
-    return api.jellyfin.library(lib.id, 0, genre);
+    return isMusic(lib) ? api.jellyfin.library(lib.id, 0, genre) : api.jellyfin.library(lib.id, 0, genre, wallSort, wallUnwatched);
+  }
+  async function pickSort() {
+    const pick = await menu({ title: 'Sort', subtitle: library.lib.name, selected: wallSort, items: SORTS_MEDIA.map(([v, label]) => ({ label, value: v, checked: v === wallSort })) });
+    if (!pick || pick === wallSort) return;
+    wallSort = pick;
+    await openLibrary(library.lib, library.genre);
+    focus.focus(focus.byKey(el, 'mv:sort') || wall.querySelector('[data-focus]'), { layer: focus.base() });
+  }
+  async function toggleUnwatched() {
+    wallUnwatched = !wallUnwatched;
+    await openLibrary(library.lib, library.genre);
+    focus.focus(focus.byKey(el, 'mv:unwatched') || wall.querySelector('[data-focus]'), { layer: focus.base() });
   }
   async function openLibrary(lib, genre = '', mode = null) {
     const same = library?.lib?.id === lib.id;
+    if (!same) { wallSort = 'name'; wallUnwatched = false; }
     mode = isMusic(lib) ? (mode || (same && library.mode) || 'albums') : null;
     if (genre) mode = isMusic(lib) ? 'albums' : null;
     const [res, g] = await Promise.all([fetchWall(lib, genre, mode), same ? Promise.resolve({ ok: true, data: library.genres }) : api.jellyfin.genres(lib.id)]);
@@ -197,11 +221,17 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     };
     const music = isMusic(library.lib);
     const showGenres = library.genres.length && (!music || library.mode === 'albums');
+    const video = !music && library.lib.id !== 'search';
+    const tool = (key, label, iconName, on, fn) => { const c = h('div', { class: `chip chip--mode${on ? ' is-active' : ''}`, 'data-focus': true, 'data-key': key }, icon(iconName), h('span', null, label)); c.addEventListener('click', fn); return c; };
     const chips = h('div', { class: 'chips', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true },
+      ...(video ? [tool('mv:sort', `Sort: ${SORTS_MEDIA.find(([v]) => v === wallSort)[1]}`, 'clock', wallSort !== 'name', pickSort),
+        tool('mv:unwatched', 'Unwatched only', 'eyeOff', wallUnwatched, toggleUnwatched), h('span', { class: 'chips__rule' })] : []),
       ...(music ? MUSIC_MODES.map(modeChip) : []),
       ...(music && showGenres ? [h('span', { class: 'chips__rule' })] : []),
-      ...(showGenres ? [chip('', 'All'), ...library.genres.map((g) => chip(g.id, g.name))] : []));
-    wallHead.replaceChildren(h('div', { class: 'media__crumb' }, icon(LIB_ICON[library.lib.collection] || 'layers'), h('span', null, library.lib.name), h('small', null, `${library.total}`)), chips);
+      ...(showGenres ? [chip('', 'All genres'), ...library.genres.map((g) => chip(g.id, g.name))] : []));
+    const libName = library.lib.collection === 'tvshows' ? 'TV shows' : library.lib.name;
+    wallHead.replaceChildren(h('div', { class: 'media__crumb' }, icon(LIB_ICON[library.lib.collection] || 'layers'), h('span', null, libName),
+      h('small', null, `${library.total}${wallUnwatched ? ' unwatched' : ''}`)), chips);
     wall.classList.toggle('wall--square', music || library.items.some((it) => it.type === 'MusicAlbum'));
     wall.replaceChildren(...(library.items.length ? library.items.map((it, n) => mediaTile(it, 'cover', n))
       : [actionTile({ key: 'mx:none', iconName: LIB_ICON[library.lib.collection] || 'layers', tone: 'glass', label: library.mode === 'playlists' ? 'No playlists yet' : 'Nothing here', sub: library.mode === 'playlists' ? 'Make one in Jellyfin and it shows up here.' : null })]));
@@ -497,8 +527,9 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
       return false;
     },
     hints(target) {
-      if (target?.dataset.quickplay && ['Movie', 'Episode', 'Video'].includes(items.get(target.dataset.media)?.type)) return [{ a: 'accept', label: 'Resume' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
-      if (target?.dataset.media) return [{ a: 'accept', label: 'Open' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
+      const it = target?.dataset.media && items.get(target.dataset.media);
+      if (target?.dataset.quickplay && it && ['Movie', 'Episode', 'Video'].includes(it.type)) return [{ a: 'accept', label: it.progress > 0 && it.progress < 100 ? 'Resume' : 'Play' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
+      if (target?.dataset.media) return [{ a: 'accept', label: it && ['MusicAlbum', 'MusicArtist', 'Playlist', 'Audio'].includes(it.type) ? 'Open' : 'Details' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Search' }];
       if (target?.dataset.mode) return [{ a: 'accept', label: 'Show' }, { a: 'lt', b: 'rt', label: 'Albums / artists / playlists' }];
       if (target?.dataset.genre != null) return [{ a: 'accept', label: 'Show' }, { a: 'lt', b: 'rt', label: 'Genre' }];
       return [{ a: 'accept', label: 'Select' }];

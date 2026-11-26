@@ -10,6 +10,7 @@ import { setBackdrop, artImg, fallbackArt } from './ui/art.js';
 import { toast } from './ui/toast.js';
 import { patchProgress } from './ui/tile.js';
 import { createStore } from './views/store.js';
+import { createMedia } from './views/media.js';
 import { openDownloads } from './ui/downloads.js';
 import { createIntro } from './ui/intro.js';
 import { openGuide, closeGuide, isOpen as guideOpen } from './ui/guide.js';
@@ -20,7 +21,7 @@ import { createSystems } from './views/systems.js';
 import { createSettings } from './views/settings.js';
 
 const $ = (id) => document.getElementById(id);
-const ORDER = ['home', 'games', 'store', 'collections', 'systems', 'settings'];
+const ORDER = ['home', 'games', 'media', 'store', 'collections', 'systems', 'settings'];
 const views = {};
 // Switching sections faster than this is ignored, so the transition (and its sound) can land.
 const SECTION_COOLDOWN_MS = 500;
@@ -402,7 +403,7 @@ async function boot() {
   state.lib = await api.library.get();
   applySettings();
 
-  for (const v of [createHome(), createGames(), createStore(), createCollections(), createSystems(), createSettings()]) {
+  for (const v of [createHome(), createGames(), createMedia(), createStore(), createCollections(), createSystems(), createSettings()]) {
     views[v.id] = v;
     v.el.hidden = true;
     $('stage').append(v.el);

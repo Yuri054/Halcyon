@@ -321,3 +321,40 @@ body.is-booting .boot__mark { animation-name: fade2; }
 .intro__platform { margin-top: 0.8rem; font-size: 1.15rem; color: rgba(255, 255, 255, 0.7); letter-spacing: 0.06em; }
 .intro__bar { margin-top: 2.2rem; }
 .intro__status { margin-top: 1rem; }
+
+/* ------------------------------------------------------------- media */
+.view--media .media__library { display: flex; flex-direction: column; height: 100%; }
+.media__head { gap: 1rem; }
+.media__crumb { display: flex; align-items: center; gap: 0.8rem; font-size: 1.6rem; font-weight: 300; }
+.media__crumb small { font-size: 1rem; color: var(--ink-dim); }
+.media__crumb .icon { width: 1.8rem; height: 1.8rem; color: var(--accent); }
+.wall--square { grid-template-rows: repeat(2, 15rem); grid-auto-columns: 15rem; }
+.tile--square-art .tile__img { object-fit: cover; }
+.media__progress { padding: 0 0.8rem 0.7rem; background: none; }
+.badge--played { font-size: 0.9rem; font-weight: 700; color: var(--accent); }
+.media__latest .block__tiles { grid-template-rows: 33.1rem; }
+
+/* ------------------------------------------------------------- player */
+.layer--player { background: #000; animation: fade 0.3s ease both; cursor: none; }
+.layer--player.is-closing { animation: fadeOut 0.3s ease both; }
+.player__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: transparent; }
+.player__video::cue { font-family: inherit; font-size: 2.2rem; background: rgba(0, 0, 0, 0.55); }
+.player__poster { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(0.4rem) brightness(0.45); opacity: 0; transition: opacity 0.5s ease; }
+.layer--player.is-loading .player__poster, .layer--player.is-audio .player__poster { opacity: 1; }
+.layer--player.is-audio .player__poster { filter: blur(2.4rem) brightness(0.4) saturate(1.2); }
+.player__spinner { position: absolute; left: calc(50% - 2rem); top: calc(50% - 2rem); width: 4rem; height: 4rem; border-radius: 50%; border: 0.3rem solid rgba(255, 255, 255, 0.15); border-top-color: var(--accent); animation: spin 0.9s linear infinite; opacity: 0; }
+.layer--player.is-loading .player__spinner { opacity: 1; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.player__osd { position: absolute; left: 0; right: 0; bottom: 0; padding: 6rem var(--gutter) 6.4rem; background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.82)); opacity: 0; transform: translateY(1rem); transition: opacity 0.3s ease, transform 0.3s var(--ease); }
+.layer--player.is-osd .player__osd, .layer--player.is-audio .player__osd { opacity: 1; transform: none; }
+.player__title { font-size: 2.6rem; font-weight: 300; color: #fff; }
+.player__sub { margin-top: 0.3rem; font-size: 1.15rem; color: rgba(255, 255, 255, 0.75); }
+.player__row { display: flex; align-items: center; gap: 1.2rem; margin-top: 1.4rem; }
+.player__state .icon { width: 1.6rem; height: 1.6rem; color: #fff; }
+.player__time { font-size: 1rem; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; min-width: 4.4rem; }
+.player__time:last-child { text-align: right; }
+.player__bar { position: relative; flex: 1; height: 0.4rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+.player__bar b, .player__bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 1rem; }
+.player__bar b { background: rgba(255, 255, 255, 0.25); }
+.player__bar i { background: var(--accent); }
+body:has(.layer--player:not(.is-closing)) #hints { z-index: 80; }

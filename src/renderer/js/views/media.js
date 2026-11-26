@@ -1,0 +1,285 @@
+// Media: a Jellyfin server's movies, shows and music, browsed and played from the couch.
+// Home shows continue watching, next up and what is new in each library; a library
+// opens as a wall of posters; shows open season by season.
+import { h, icon, flash } from '../core/dom.js';
+import * as focus from '../core/focus.js';
+import { api, state } from '../core/state.js';
+import { app } from '../core/bus.js';
+import { actionTile } from '../ui/tile.js';
+import { openPanel, menu } from '../ui/dialog.js';
+import { keyboard } from '../ui/osk.js';
+import { toast } from '../ui/toast.js';
+import { artImg } from '../ui/art.js';
+import { mediaTile, img } from '../media/tile.js';
+import { openPlayer } from '../media/player.js';
+
+const TICKS = 10000000;
+const LIB_ICON = { movies: 'film', tvshows: 'tv', music: 'music' };
+
+export function createMedia() {
+  const scroller = h('div', { class: 'blocks', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
+  const wall = h('div', { class: 'wall', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
+  const wallHead = h('div', { class: 'toolbar media__head' });
+  const wallView = h('div', { class: 'media__library', hidden: true }, wallHead, wall);
+  const el = h('section', { class: 'view view--media' }, scroller, wallView);
+
+  let status = null;        // { connected, serverName, userName }
+  let home = null;          // the overview from Jellyfin
+  let loading = false;
+  let error = null;
+  let library = null;       // { lib, items } while a library is open
+  const items = new Map();  // id -> item, for context and backdrops
+
+  const block = (title, cls, tiles) => h('div', { class: `block ${cls}` }, h('h3', { class: 'block__title' }, title), h('div', { class: 'block__tiles' }, tiles));
+  const remember = (list) => { for (const it of list) items.set(it.id, it); return list; };
+
+  async function load() {
+    loading = true;
+    status = await api.jellyfin.status().catch(() => ({ connected: false }));
+    if (status.connected) {
+      const res = await api.jellyfin.home();
+      if (res.ok) { home = res.data; error = null; } else { error = res.error; if (res.auth) status.connected = false; }
+    }
+    loading = false;
+    if (state.section !== 'media') return;
+    const key = focus.base().current?.dataset.key;
+    render();
+    const again = focus.byKey(el, key) || el.querySelector('[data-focus]');
+    if (again) focus.focus(again, { layer: focus.base(), scroll: false });
+    app.refreshChrome();
+  }
+
+  function render() {
+    if (library) { renderLibrary(); return; }
+    wallView.hidden = true;
+    scroller.hidden = false;
+    if (!status && !loading) { load(); }
+    let i = 0;
+    if (!status || loading && !home) {
+      scroller.replaceChildren(block('media', 'block--hero', [actionTile({ key: 'mx:loading', size: 'hero', iconName: 'film', tone: 'glass', label: 'Loading', sub: 'Asking your Jellyfin server' })]));
+      return;
+    }
+    if (!status.connected) {
+      scroller.replaceChildren(block('media', 'block--hero', [actionTile({
+        key: 'mx:connect', size: 'hero', iconName: 'film', tone: 'accent', label: 'Connect to Jellyfin',
+        sub: 'Watch your movies and shows and play your music from your own Jellyfin server.', onSelect: connect,
+      })]));
+      return;
+    }
+    if (error && !home) {
+      scroller.replaceChildren(block('media', 'block--hero', [actionTile({ key: 'mx:retry', size: 'hero', iconName: 'warn', tone: 'glass', label: 'Jellyfin is not answering', sub: error, onSelect: () => { status = null; render(); } })]),
+        block('server', 'block--quick', [actionTile({ key: 'mx:server', label: 'Server', sub: status.serverName, iconName: 'gear', tone: 'glass', onSelect: serverMenu })]));
+      return;
+    }
+    const blocks = [];
+    if (home.resume.length) blocks.push(block('continue watching', 'block--wide', remember(home.resume).map((it) => mediaTile(it, 'wide', i++))));
+    if (home.nextUp.length) blocks.push(block('next up', 'block--wide', remember(home.nextUp).map((it) => mediaTile(it, 'wide', i++))));
+    for (const l of home.latest) {
+      blocks.push(block(`new in ${l.library.name.toLowerCase()}`, 'block--covers media__latest', remember(l.items).slice(0, 10).map((it) => mediaTile(it, 'cover', i++))));
+    }
+    blocks.push(block(status.serverName || 'jellyfin', 'block--quick', [
+      ...remember(home.libraries).map((lib) => actionTile({ key: `mx:lib:${lib.id}`, label: lib.name, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) })),
+      actionTile({ key: 'mx:search', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
+      actionTile({ key: 'mx:server', label: 'Server', sub: status.userName, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
+    ]));
+    if (!home.resume.length && !home.nextUp.length && !home.latest.length && !home.libraries.length) {
+      blocks.unshift(block('media', 'block--hero', [actionTile({ key: 'mx:empty', size: 'hero', iconName: 'film', tone: 'glass', label: 'Nothing here yet', sub: 'Your Jellyfin user has no libraries Halcyon can show.' })]));
+    }
+    scroller.replaceChildren(...blocks);
+  }
+
+  // ---- a library as a wall of posters
+  async function openLibrary(lib) {
+    const res = await api.jellyfin.library(lib.id, 0);
+    if (!res.ok) { toast(res.error, { type: 'error', title: lib.name }); return; }
+    library = { lib, items: remember(res.data.items), total: res.data.total };
+    renderLibrary();
+    flash(el, 'is-swapping');
+    const first = wall.querySelector('[data-focus]');
+    if (first) focus.focus(first, { layer: focus.base(), scroll: 'instant' });
+    app.refreshChrome();
+  }
+  function renderLibrary() {
+    scroller.hidden = true;
+    wallView.hidden = false;
+    wallHead.replaceChildren(h('div', { class: 'media__crumb' }, icon(LIB_ICON[library.lib.collection] || 'layers'), h('span', null, library.lib.name), h('small', null, `${library.total}`)));
+    wall.classList.toggle('wall--square', library.lib.collection === 'music');
+    wall.replaceChildren(...library.items.map((it, n) => mediaTile(it, 'cover', n)));
+  }
+  function closeLibrary() {
+    const id = library.lib.id;
+    library = null;
+    render();
+    const back = focus.byKey(el, `mx:lib:${id}`) || el.querySelector('[data-focus]');
+    focus.focus(back, { layer: focus.base(), scroll: 'instant' });
+    app.refreshChrome();
+  }
+
+  // ---- signing in
+  async function connect() {
+    const server = await keyboard({ title: 'Jellyfin server address', placeholder: '192.168.1.20:8096', value: status?.server || '' });
+    if (!server || !server.trim()) return;
+    const user = await keyboard({ title: 'Jellyfin user name', placeholder: 'User name' });
+    if (user == null) return;
+    const password = await keyboard({ title: `Password for ${user}`, placeholder: 'Leave empty if there is none', secret: true });
+    if (password == null) return;
+    const res = await api.jellyfin.connect(server, user, password);
+    if (!res.ok) { toast(res.error, { type: 'error', title: 'Couldn’t connect' }); return; }
+    toast(`Signed in as ${res.userName}`, { title: res.serverName, iconName: 'film' });
+    status = null; home = null;
+    render();
+  }
+  async function serverMenu() {
+    const pick = await menu({ title: status.serverName || 'Jellyfin', subtitle: `${status.server} · signed in as ${status.userName}`, items: [
+      { label: 'Refresh', value: 'refresh', iconName: 'refresh' },
+      { label: 'Sign out', value: 'out', iconName: 'exit', danger: true },
+    ] });
+    if (pick === 'refresh') { status = null; home = null; render(); }
+    if (pick === 'out') { await api.jellyfin.disconnect(); status = null; home = null; render(); }
+  }
+  async function search() {
+    const term = await keyboard({ title: 'Search Jellyfin', placeholder: 'Movie, show or album' });
+    if (!term || !term.trim()) return;
+    const res = await api.jellyfin.search(term.trim());
+    if (!res.ok) { toast(res.error, { type: 'error' }); return; }
+    if (!res.data.length) { toast(`Nothing matches “${term.trim()}”`, { title: 'Search' }); return; }
+    library = { lib: { id: 'search', name: `“${term.trim()}”`, collection: '' }, items: remember(res.data), total: res.data.length };
+    renderLibrary();
+    focus.focus(wall.querySelector('[data-focus]'), { layer: focus.base(), scroll: 'instant' });
+    app.refreshChrome();
+  }
+
+  // ---- what an item opens
+  async function open(id) {
+    const it = items.get(id);
+    if (!it) return;
+    if (it.type === 'Series') return showSeries(it);
+    if (it.type === 'Season') return showSeries({ ...it, id: it.seriesId, name: it.series }, it.id);
+    if (it.type === 'MusicAlbum') return showAlbum(it);
+    return showItem(it);
+  }
+
+  const art = (it) => h('div', { class: 'panel__art' }, artImg([img(it.images.primaryOf, 'Primary', 400)], 'panel__art-img', { lazy: false }));
+  const facts = (it) => [it.year, it.runtimeMin && `${it.runtimeMin} min`, it.rating, it.community && `★ ${it.community.toFixed(1)}`, it.genres.join(', ')].filter(Boolean).join('  ·  ');
+
+  async function showItem(it, panelIn = null, queue = null) {
+    const panel = panelIn || openPanel();
+    const resumeAt = it.resumeTicks / TICKS;
+    const pick = await panel.ask({
+      title: it.type === 'Episode' ? `${it.index ?? ''}. ${it.name}` : it.name,
+      subtitle: it.type === 'Episode' ? `${it.series} · Season ${it.season ?? '?'}  ·  ${facts(it)}` : facts(it),
+      art: art(it),
+      selected: resumeAt > 0 ? 'resume' : 'play',
+      items: [
+        resumeAt > 0 && { label: `Resume from ${Math.floor(resumeAt / 60)} min`, value: 'resume', iconName: 'play' },
+        { label: resumeAt > 0 ? 'Play from the start' : 'Play', value: 'play', iconName: resumeAt > 0 ? 'restart' : 'play' },
+        it.overview && { heading: 'About' },
+        it.overview && { label: it.overview, disabled: true },
+      ],
+    });
+    if (!panelIn) await panel.close();
+    if (pick === 'resume' || pick === 'play') {
+      const q = queue || [it.id];
+      await openPlayer({ queue: q, start: Math.max(0, q.indexOf(it.id)), fromStart: pick === 'play' });
+      refreshSoon();
+    }
+    return pick;
+  }
+
+  async function showSeries(series, seasonId = null) {
+    const panel = openPanel();
+    const sRes = await api.jellyfin.seasons(series.id);
+    if (!sRes.ok) { await panel.close(); toast(sRes.error, { type: 'error' }); return; }
+    const seasons = remember(sRes.data);
+    let season = seasonId ? seasons.find((s) => s.id === seasonId) : (seasons.find((s) => !s.played) || seasons[0]);
+    for (;;) {
+      if (!season) break;
+      const eRes = await api.jellyfin.episodes(series.id, season.id);
+      if (!eRes.ok) { toast(eRes.error, { type: 'error' }); break; }
+      const eps = remember(eRes.data);
+      const nextEp = eps.find((e) => e.progress > 0 && e.progress < 100) || eps.find((e) => !e.played) || eps[0];
+      const pick = await panel.ask({
+        title: series.name, subtitle: `${season.name}  ·  ${eps.length} episodes`, art: art(series),
+        selected: nextEp ? nextEp.id : null,
+        items: [
+          seasons.length > 1 && { label: 'Seasons', value: '@seasons', iconName: 'layers', hint: season.name },
+          { heading: season.name },
+          ...eps.map((e) => ({ label: `${e.index ?? ''}. ${e.name}`, value: e.id, iconName: e.played ? 'check' : 'play', sub: e.runtimeMin ? `${e.runtimeMin} min${e.progress > 0 && e.progress < 100 ? ` · ${e.progress}% watched` : ''}` : null, meter: e.progress > 0 && e.progress < 100 ? e.progress : null, verb: 'Play' })),
+        ],
+      });
+      if (pick == null) break;
+      if (pick === '@seasons') {
+        const s = await panel.ask({ title: series.name, subtitle: 'Seasons', art: art(series), selected: season.id,
+          items: seasons.map((x) => ({ label: x.name, value: x.id, iconName: x.played ? 'check' : 'tv', checked: x.id === season.id, sub: x.unplayed ? `${x.unplayed} unwatched` : null })) });
+        if (s) season = seasons.find((x) => x.id === s) || season;
+        continue;
+      }
+      const ep = eps.find((e) => e.id === pick);
+      if (ep) await showItem(ep, panel, eps.map((e) => e.id));
+    }
+    await panel.close();
+  }
+
+  async function showAlbum(album) {
+    const panel = openPanel();
+    const res = await api.jellyfin.tracks(album.id);
+    if (!res.ok) { await panel.close(); toast(res.error, { type: 'error' }); return; }
+    const tracks = remember(res.data);
+    const pick = await panel.ask({
+      title: album.name, subtitle: [album.albumArtist, album.year, `${tracks.length} tracks`].filter(Boolean).join('  ·  '), art: art(album),
+      items: [
+        { label: 'Play album', value: '@all', iconName: 'play' },
+        { heading: 'Tracks' },
+        ...tracks.map((t) => ({ label: `${t.index ?? ''}. ${t.name}`, value: t.id, iconName: 'music', hint: t.runtimeMin ? `${t.runtimeMin} min` : null, verb: 'Play' })),
+      ],
+    });
+    await panel.close();
+    if (pick == null) return;
+    const q = tracks.map((t) => t.id);
+    await openPlayer({ queue: q, start: pick === '@all' ? 0 : Math.max(0, q.indexOf(pick)), fromStart: true });
+  }
+
+  // After watching, Jellyfin's resume points and "next up" change.
+  function refreshSoon() { setTimeout(() => { home = null; status = null; if (state.section === 'media' && !library) render(); }, 600); }
+
+  el.addEventListener('click', (e) => {
+    const tile = e.target.closest('[data-media]');
+    if (tile) open(tile.dataset.media);
+  });
+
+  return {
+    id: 'media',
+    label: 'media',
+    el,
+    render,
+    defaultFocus: () => (library ? wall : scroller).querySelector('[data-focus]'),
+    onAction(action, target) {
+      if (action === 'start') { if (status?.connected) search(); return true; }
+      if (action === 'y' && target?.dataset.media) { open(target.dataset.media); return true; }
+      if ((action === 'lt' || action === 'rt') && library && target && wall.contains(target)) { focus.page(action === 'lt' ? 'left' : 'right', 5); return true; }
+      return false;
+    },
+    onBack() {
+      if (library) { closeLibrary(); return true; }
+      return false;
+    },
+    hints(target) {
+      if (target?.dataset.media) return [{ a: 'accept', label: 'Open' }, { a: 'start', label: 'Search' }];
+      return [{ a: 'accept', label: 'Select' }];
+    },
+    context(target) {
+      const it = target?.dataset.media && items.get(target.dataset.media);
+      if (it) {
+        return { title: it.type === 'Episode' ? `${it.series}: ${it.name}` : it.name,
+          meta: [it.type === 'Episode' ? `Season ${it.season} · Episode ${it.index}` : it.type === 'Series' ? 'Series' : it.type === 'MusicAlbum' ? (it.albumArtist || 'Album') : 'Movie',
+            it.year, it.runtimeMin && `${it.runtimeMin} min`, it.progress > 0 && it.progress < 100 && `${it.progress}% watched`, it.played && 'Watched'].filter(Boolean).map(String) };
+      }
+      const label = target?.querySelector('.tile__label');
+      return label ? { title: label.firstChild?.textContent || '', meta: [status?.serverName || 'Jellyfin'].filter(Boolean) } : null;
+    },
+    backdrop(target) {
+      const it = target?.dataset.media && items.get(target.dataset.media);
+      return it ? [img(it.images.backdropOf, 'Backdrop', 1600)] : [];
+    },
+  };
+}

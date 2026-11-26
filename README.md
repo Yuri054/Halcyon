@@ -87,6 +87,22 @@ program on this computer can control Steam, including the store**; it does not a
 from other computers. These are undocumented Steam internals: if a Steam update changes them, the
 controls report an error and the manager falls back to showing progress only.
 
+## Media (Jellyfin)
+
+The **media** section plays movies, shows and music from your own Jellyfin server. Select *Connect
+to Jellyfin* and enter the server address, user name and password on the on-screen keyboard; the
+password is used once to sign in and is not stored, and the session token stays in the main
+process (images and streams reach the page through a `jf://` protocol that adds it).
+
+- **Home:** continue watching, next up, what's new in each library, and tiles for each library,
+  search and the server (refresh, sign out).
+- **Browsing:** a library opens as a wall of posters (B goes back); a show opens season by season
+  with the next unwatched episode selected; an album lists its tracks.
+- **Player:** A pause/play, left/right skip back 10 s / forward 30 s (hold for bigger jumps),
+  up/down show the bar, X subtitles, LB/RB previous/next, B stop. Files Chromium can play are
+  played as they are; anything else Jellyfin transcodes to HLS, played with hls.js. Jellyfin is told
+  where you are, so resume points and "next up" stay in step with its other apps.
+
 ## Launch scene
 
 While a game starts, Halcyon plays a short intro, like the studio cards games open with: dawn over a
@@ -197,6 +213,7 @@ src/main/                 Electron main process
   padwatch.js             Home button while a game is running
   files.js                directory listing for the file picker
   scraper.js              SteamGridDB artwork
+  media/jellyfin.js       Jellyfin sign-in, browsing, playback info, progress reports
   steam/                  VDF parser, install/library/artwork discovery, downloads, download
                           controls (client.js),
                           controller support, storefront, owned games (Web API)
@@ -204,7 +221,8 @@ src/main/                 Electron main process
 src/renderer/
   js/core/                focus engine, gamepad/keyboard input, sounds, state
   js/ui/                  tiles, blade menu, guide, on-screen keyboard, file picker, toasts
-  js/views/               home, games, store, collections, systems, settings
+  js/views/               home, games, media, store, collections, systems, settings
+  js/media/               Jellyfin tiles and the player
   styles/
 ```
 

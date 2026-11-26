@@ -15,6 +15,7 @@ const steamClient = require('./steam/client');
 const { PadWatch } = require('./padwatch');
 const sounds = require('./sounds');
 const diary = require('./log');
+const { Jellyfin } = require('./media/jellyfin');
 const { IMAGE_EXT, expandHome, isDir } = require('./util');
 
 const windowed = process.argv.includes('--windowed');
@@ -27,6 +28,8 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'media', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // Jellyfin images and streams, fetched here with the session token (which the page never sees).
+  { scheme: 'jf', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
 ]);
 
 if (!app.requestSingleInstanceLock()) {
@@ -37,6 +40,7 @@ if (!app.requestSingleInstanceLock()) {
   let store = null;
   let library = null;
   let launcher = null;
+  let jellyfin = null;
   let ready = Promise.resolve();
 
   const send = (channel, payload) => {
@@ -495,6 +499,23 @@ if (!app.requestSingleInstanceLock()) {
     handle('sounds:load', (id) => sounds.load(soundsDir(), id));
     handle('sounds:import', (dir) => sounds.importPack(soundsDir(), expandHome(String(dir || ''))));
 
+    // ---- Jellyfin
+    const jf = (fn) => async (...args) => {
+      try { return { ok: true, data: await fn(...args) }; } catch (err) { return { ok: false, auth: Boolean(err.auth), error: err.message }; }
+    };
+    handle('jellyfin:status', () => ({ ok: true, ...jellyfin.status() }));
+    handle('jellyfin:connect', (server, user, password) => jellyfin.connect(server, user, password));
+    handle('jellyfin:disconnect', () => jellyfin.disconnect());
+    handle('jellyfin:home', jf(() => jellyfin.home()));
+    handle('jellyfin:library', jf((id, start) => jellyfin.library(id, start)));
+    handle('jellyfin:details', jf((id) => jellyfin.details(id)));
+    handle('jellyfin:seasons', jf((id) => jellyfin.seasons(id)));
+    handle('jellyfin:episodes', jf((series, season) => jellyfin.episodes(series, season)));
+    handle('jellyfin:tracks', jf((id) => jellyfin.tracks(id)));
+    handle('jellyfin:search', jf((term) => jellyfin.search(term)));
+    handle('jellyfin:playback', jf((id, opts) => jellyfin.playback(id, opts || {})));
+    handle('jellyfin:report', (event, p) => jellyfin.report(event, p || {}));
+
     handle('files:list', (dir, mode) => files.list(dir, mode));
 
     handle('app:quit', () => { app.quit(); });
@@ -591,6 +612,29 @@ if (!app.requestSingleInstanceLock()) {
     Menu.setApplicationMenu(null);
 
     // media://local/<encoded absolute path> — serves local artwork, images only.
+    // jf://image/<itemId>/<Primary|Backdrop|Thumb>?w=<px>  and  jf://stream/<server path>
+    protocol.handle('jf', async (request) => {
+      try {
+        const u = new URL(request.url);
+        let target = null;
+        if (u.host === 'image') {
+          const [, id, type] = u.pathname.split('/');
+          if (!/^[0-9a-f-]{32,36}$/i.test(id || '') || !['Primary', 'Backdrop', 'Thumb', 'Logo'].includes(type)) return new Response('Bad request', { status: 400 });
+          const w = Math.min(1920, Math.max(64, Number(u.searchParams.get('w')) || 400));
+          target = jellyfin.resolve(`/Items/${id}/Images/${type}?fillWidth=${w}&quality=88`);
+        } else if (u.host === 'stream') {
+          target = jellyfin.resolve(`${u.pathname}${u.search}`);
+        }
+        if (!target) return new Response('Not connected', { status: 404 });
+        const headers = {};
+        const range = request.headers.get('range');
+        if (range) headers.Range = range;
+        return net.fetch(target, { headers });
+      } catch {
+        return new Response('Bad request', { status: 400 });
+      }
+    });
+
     protocol.handle('media', (request) => {
       try {
         const file = decodeURIComponent(new URL(request.url).pathname.slice(1));
@@ -611,6 +655,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!store.data.shaderSkipDefaulted) { store.data.settings.steamSkipShaders = true; store.data.shaderSkipDefaulted = true; store.save(); }
     if (!store.data.fullscreenRepaired) { store.data.settings.fullscreen = true; store.data.fullscreenRepaired = true; store.save(); }
     library = new Library(store);
+    jellyfin = new Jellyfin(store);
     launcher = new Launcher(library, (event) => {
       diary.log('launch event:', event);
       send('launch:event', event);

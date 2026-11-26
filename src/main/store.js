@@ -84,7 +84,8 @@ const DEFAULTS = {
   steamMeta: {},   // appid -> { controller: 'full' | 'partial' | 'none' | 'unknown' }
   installed: {},   // emulator id -> { file, tag, repo } for builds Halcyon downloaded
   scraped: {},     // gameId -> { cover, background } downloaded artwork
-  secrets: { sgdbKey: '', steamKey: '' },
+  secrets: { sgdbKey: '', steamKey: '', jellyfinToken: '' },
+  jellyfin: { server: '', userId: '', userName: '', serverName: '', deviceId: '' },
   steamOverlayOff: false,   // likewise for Steam's in-game overlay
   steamGuideFocusOff: false, // Halcyon turned off Steam's "Guide button focuses Steam" and owes it back
   steamOwned: { at: 0, games: [] }, // what the Steam Web API last said the account owns

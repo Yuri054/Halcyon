@@ -154,6 +154,8 @@ export function rumble(ms = 120, strength = 0.5) {
 
 /** Glyph text for an action in the current input mode. */
 export function glyph(action) {
+  const arrows = { left: '◀', right: '▶', up: '▲', down: '▼' };
+  if (arrows[action]) return arrows[action];
   const pad = { accept: 'A', back: 'B', x: 'X', y: 'Y', lb: 'LB', rb: 'RB', lt: 'LT', rt: 'RT', start: '☰', select: '⧉', guide: '⌂' };
   const keys = { accept: 'Enter', back: 'Esc', x: 'F', y: 'Tab', lb: 'Q', rb: 'E', lt: 'PgUp', rt: 'PgDn', start: '/', select: 'Home', guide: 'G' };
   return (mode === 'pad' ? pad : keys)[action] || action;

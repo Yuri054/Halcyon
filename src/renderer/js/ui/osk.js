@@ -9,7 +9,8 @@ import { wait } from '../core/bus.js';
 const LETTERS = ['1234567890', 'qwertyuiop', "asdfghjkl'", 'zxcvbnm,.-'];
 const SYMBOLS = ['!@#$%^&*()', '~`_=+[]{}|', '\\/:;"<>?%€', '£¥°•…—–·¿¡'];
 
-export function keyboard({ title, value = '', placeholder = '' }) {
+/** secret: show dots instead of the text (passwords). */
+export function keyboard({ title, value = '', placeholder = '', secret = false }) {
   return new Promise((resolve) => {
     let text = value;
     let shift = false;
@@ -24,7 +25,7 @@ export function keyboard({ title, value = '', placeholder = '' }) {
 
     const paint = () => {
       field.replaceChildren(
-        text ? h('span', null, text) : h('span', { class: 'osk__placeholder' }, placeholder),
+        text ? h('span', null, secret ? '•'.repeat(text.length) : text) : h('span', { class: 'osk__placeholder' }, placeholder),
         h('span', { class: 'osk__caret' }));
     };
 

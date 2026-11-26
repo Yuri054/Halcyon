@@ -1,0 +1,257 @@
+'use strict';
+// Jellyfin: sign in, browse libraries, and get something playable for an item.
+// All requests go from here (the main process) with the session token, so the token
+// never reaches the page; images and streams reach the page through the jf:// protocol.
+const crypto = require('crypto');
+
+const CLIENT = 'Halcyon';
+const VERSION = '1.0.0';
+const TICKS = 10000000;   // Jellyfin counts time in 100 ns ticks
+
+class Jellyfin {
+  /** store: the JSON store; settings live in data.jellyfin, the token in data.secrets. */
+  constructor(store) {
+    this.store = store;
+    const j = this.cfg;
+    if (!j.deviceId) { j.deviceId = crypto.randomUUID(); store.save(); }
+  }
+
+  get cfg() {
+    const d = this.store.data;
+    d.jellyfin = d.jellyfin || { server: '', userId: '', userName: '', serverName: '', deviceId: '' };
+    return d.jellyfin;
+  }
+
+  get token() { return this.store.data.secrets.jellyfinToken || ''; }
+  get connected() { return Boolean(this.cfg.server && this.cfg.userId && this.token); }
+
+  authHeader(token = this.token) {
+    const parts = [`Client="${CLIENT}"`, `Device="Halcyon"`, `DeviceId="${this.cfg.deviceId}"`, `Version="${VERSION}"`];
+    if (token) parts.push(`Token="${token}"`);
+    return `MediaBrowser ${parts.join(', ')}`;
+  }
+
+  async request(path, { method = 'GET', body, server = this.cfg.server, token = this.token, timeout = 15000 } = {}) {
+    let res;
+    try {
+      res = await fetch(`${server}${path}`, {
+        method,
+        headers: { Authorization: this.authHeader(token), 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(timeout),
+      });
+    } catch (err) {
+      throw new Error(`Could not reach the Jellyfin server (${err.name === 'TimeoutError' ? 'timed out' : err.cause?.code || err.message}).`);
+    }
+    if (res.status === 401) throw Object.assign(new Error('Jellyfin did not accept the sign-in. Sign in again under Media.'), { auth: true });
+    if (!res.ok) throw new Error(`Jellyfin answered with an error (HTTP ${res.status}).`);
+    if (res.status === 204) return null;
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  }
+
+  static normalise(server) {
+    let s = String(server || '').trim().replace(/\/+$/, '');
+    if (s && !/^https?:\/\//i.test(s)) s = `http://${s}`;
+    return s;
+  }
+
+  /** Check the server and sign in. The password is used once and never stored. */
+  async connect(server, username, password) {
+    const base = Jellyfin.normalise(server);
+    if (!base) return { ok: false, error: 'Enter the server address, such as 192.168.1.20:8096.' };
+    try {
+      const info = await this.request('/System/Info/Public', { server: base, token: '' });
+      const auth = await this.request('/Users/AuthenticateByName', { method: 'POST', server: base, token: '', body: { Username: String(username || ''), Pw: String(password || '') } });
+      if (!auth || !auth.AccessToken) return { ok: false, error: 'Jellyfin did not return a session.' };
+      Object.assign(this.cfg, { server: base, userId: auth.User.Id, userName: auth.User.Name, serverName: info?.ServerName || '' });
+      this.store.data.secrets.jellyfinToken = auth.AccessToken;
+      this.store.save();
+      return { ok: true, userName: auth.User.Name, serverName: info?.ServerName || base };
+    } catch (err) {
+      return { ok: false, error: err.auth ? 'Wrong user name or password.' : err.message };
+    }
+  }
+
+  async disconnect() {
+    if (this.connected) await this.request('/Sessions/Logout', { method: 'POST' }).catch(() => {});
+    Object.assign(this.cfg, { userId: '', userName: '' });
+    this.store.data.secrets.jellyfinToken = '';
+    this.store.save();
+    return { ok: true };
+  }
+
+  status() {
+    return { connected: this.connected, server: this.cfg.server, serverName: this.cfg.serverName, userName: this.cfg.userName };
+  }
+
+  // ------------------------------------------------------------- browsing
+
+  /** A compact item the page can show. */
+  static item(i) {
+    const ud = i.UserData || {};
+    const progress = ud.PlayedPercentage != null ? Math.round(ud.PlayedPercentage) : 0;
+    return {
+      id: i.Id,
+      type: i.Type,                                 // Movie, Series, Season, Episode, MusicAlbum, Audio, CollectionFolder...
+      name: i.Name,
+      series: i.SeriesName || '',
+      seriesId: i.SeriesId || '',
+      seasonId: i.SeasonId || '',
+      index: i.IndexNumber ?? null,
+      season: i.ParentIndexNumber ?? null,
+      year: i.ProductionYear || null,
+      overview: i.Overview || '',
+      runtimeMin: i.RunTimeTicks ? Math.round(i.RunTimeTicks / TICKS / 60) : null,
+      rating: i.OfficialRating || '',
+      community: i.CommunityRating || null,
+      genres: (i.Genres || []).slice(0, 3),
+      collection: i.CollectionType || '',
+      albumArtist: i.AlbumArtist || (i.Artists || [])[0] || '',
+      played: Boolean(ud.Played),
+      progress,
+      resumeTicks: ud.PlaybackPositionTicks || 0,
+      unplayed: ud.UnplayedItemCount || 0,
+      images: {
+        primary: Boolean(i.ImageTags && i.ImageTags.Primary),
+        backdrop: Boolean(i.BackdropImageTags && i.BackdropImageTags.length) || Boolean(i.ParentBackdropItemId),
+        thumb: Boolean(i.ImageTags && i.ImageTags.Thumb) || Boolean(i.ParentThumbItemId),
+        // Episodes borrow their series' art for posters and backdrops.
+        primaryOf: i.ImageTags && i.ImageTags.Primary ? i.Id : (i.SeriesId || i.AlbumId || i.Id),
+        backdropOf: i.BackdropImageTags && i.BackdropImageTags.length ? i.Id : (i.ParentBackdropItemId || i.SeriesId || i.Id),
+        thumbOf: i.ImageTags && i.ImageTags.Thumb ? i.Id : (i.ParentThumbItemId || i.SeriesId || i.Id),
+        seriesPrimary: i.SeriesId || null,
+      },
+    };
+  }
+
+  get uid() { return this.cfg.userId; }
+  static fields = 'Fields=Overview,Genres,ProductionYear,PrimaryImageAspectRatio,CommunityRating,OfficialRating&EnableImageTypes=Primary,Backdrop,Thumb&ImageTypeLimit=1';
+
+  async home() {
+    const views = await this.request(`/Users/${this.uid}/Views`);
+    const libraries = (views?.Items || []).filter((v) => ['movies', 'tvshows', 'music', 'homevideos', 'musicvideos', 'mixed', ''].includes(v.CollectionType || ''))
+      .map(Jellyfin.item);
+    const [resume, nextUp] = await Promise.all([
+      this.request(`/Users/${this.uid}/Items/Resume?Limit=12&MediaTypes=Video&${Jellyfin.fields}`),
+      this.request(`/Shows/NextUp?UserId=${this.uid}&Limit=12&${Jellyfin.fields}`).catch(() => ({ Items: [] })),
+    ]);
+    const latest = await Promise.all(libraries.slice(0, 4).map(async (lib) => {
+      const items = await this.request(`/Users/${this.uid}/Items/Latest?ParentId=${lib.id}&Limit=16&${Jellyfin.fields}`).catch(() => []);
+      return { library: lib, items: (items || []).map(Jellyfin.item) };
+    }));
+    return {
+      libraries,
+      resume: (resume?.Items || []).map(Jellyfin.item),
+      nextUp: (nextUp?.Items || []).map(Jellyfin.item),
+      latest: latest.filter((l) => l.items.length),
+    };
+  }
+
+  /** Everything in a library: movies, shows or albums, A to Z. */
+  async library(id, start = 0) {
+    const r = await this.request(`/Users/${this.uid}/Items?ParentId=${encodeURIComponent(id)}&Recursive=true&IncludeItemTypes=Movie,Series,MusicAlbum,Video&SortBy=SortName&SortOrder=Ascending&StartIndex=${start}&Limit=200&${Jellyfin.fields}`);
+    return { items: (r?.Items || []).map(Jellyfin.item), total: r?.TotalRecordCount || 0 };
+  }
+
+  async details(id) {
+    return Jellyfin.item(await this.request(`/Users/${this.uid}/Items/${encodeURIComponent(id)}?${Jellyfin.fields}`));
+  }
+
+  async seasons(seriesId) {
+    const r = await this.request(`/Shows/${encodeURIComponent(seriesId)}/Seasons?UserId=${this.uid}&${Jellyfin.fields}`);
+    return (r?.Items || []).map(Jellyfin.item);
+  }
+
+  async episodes(seriesId, seasonId) {
+    const r = await this.request(`/Shows/${encodeURIComponent(seriesId)}/Episodes?UserId=${this.uid}&SeasonId=${encodeURIComponent(seasonId)}&${Jellyfin.fields}`);
+    return (r?.Items || []).map(Jellyfin.item);
+  }
+
+  async tracks(albumId) {
+    const r = await this.request(`/Users/${this.uid}/Items?ParentId=${encodeURIComponent(albumId)}&SortBy=ParentIndexNumber,IndexNumber,SortName&${Jellyfin.fields}`);
+    return (r?.Items || []).map(Jellyfin.item);
+  }
+
+  async search(term) {
+    const r = await this.request(`/Users/${this.uid}/Items?SearchTerm=${encodeURIComponent(term)}&Recursive=true&IncludeItemTypes=Movie,Series,Episode,MusicAlbum&Limit=40&${Jellyfin.fields}`);
+    return (r?.Items || []).map(Jellyfin.item);
+  }
+
+  // -------------------------------------------------------------- playback
+
+  /** What this player can play as it is (Chromium); anything else Jellyfin transcodes to HLS. */
+  static profile() {
+    return {
+      MaxStreamingBitrate: 120000000,
+      MaxStaticBitrate: 120000000,
+      DirectPlayProfiles: [
+        { Container: 'mp4,m4v', Type: 'Video', VideoCodec: 'h264,vp9,av1', AudioCodec: 'aac,mp3,opus,flac' },
+        { Container: 'webm', Type: 'Video', VideoCodec: 'vp8,vp9,av1', AudioCodec: 'opus,vorbis' },
+        { Container: 'mp3', Type: 'Audio' }, { Container: 'flac', Type: 'Audio' }, { Container: 'ogg,oga,opus', Type: 'Audio', AudioCodec: 'opus,vorbis' },
+        { Container: 'm4a,aac,mp4', Type: 'Audio', AudioCodec: 'aac' }, { Container: 'webm', Type: 'Audio', AudioCodec: 'opus,vorbis' },
+      ],
+      TranscodingProfiles: [
+        { Container: 'ts', Type: 'Video', VideoCodec: 'h264', AudioCodec: 'aac', Context: 'Streaming', Protocol: 'hls', MaxAudioChannels: '2', MinSegments: 1, BreakOnNonKeyFrames: true },
+        { Container: 'mp3', Type: 'Audio', AudioCodec: 'mp3', Context: 'Streaming', Protocol: 'http', MaxAudioChannels: '2' },
+      ],
+      ContainerProfiles: [],
+      CodecProfiles: [],
+      SubtitleProfiles: [{ Format: 'vtt', Method: 'External' }, { Format: 'srt', Method: 'External' }, { Format: 'ass', Method: 'External' }],
+    };
+  }
+
+  /**
+   * How to play an item: { url (jf:// path), hls, playSessionId, mediaSourceId, method, startTicks, subtitles }.
+   * fromStart ignores the saved position.
+   */
+  async playback(id, { fromStart = false } = {}) {
+    const item = await this.details(id);
+    const startTicks = fromStart ? 0 : item.resumeTicks || 0;
+    const info = await this.request(`/Items/${encodeURIComponent(id)}/PlaybackInfo?UserId=${this.uid}&StartTimeTicks=${startTicks}&IsPlayback=true&AutoOpenLiveStream=true&MaxStreamingBitrate=120000000`, {
+      method: 'POST', body: { DeviceProfile: Jellyfin.profile() },
+    });
+    const src = info?.MediaSources?.[0];
+    if (!src) throw new Error(info?.ErrorCode ? `Jellyfin cannot play this (${info.ErrorCode}).` : 'Jellyfin has nothing playable for this.');
+    const audio = item.type === 'Audio';
+    let path;
+    let method;
+    if (src.SupportsDirectPlay || (src.SupportsDirectStream && !src.TranscodingUrl)) {
+      method = src.SupportsDirectPlay ? 'DirectPlay' : 'DirectStream';
+      path = `/${audio ? 'Audio' : 'Videos'}/${id}/stream?static=true&mediaSourceId=${encodeURIComponent(src.Id)}&deviceId=${encodeURIComponent(this.cfg.deviceId)}&playSessionId=${encodeURIComponent(info.PlaySessionId || '')}`;
+    } else if (src.TranscodingUrl) {
+      method = 'Transcode';
+      path = src.TranscodingUrl;
+    } else {
+      throw new Error('Jellyfin cannot stream this to Halcyon.');
+    }
+    const subtitles = (src.MediaStreams || []).filter((s) => s.Type === 'Subtitle' && (s.IsExternal || s.SupportsExternalStream || s.DeliveryMethod === 'External'))
+      .map((s) => ({ index: s.Index, label: s.DisplayTitle || s.Language || `Subtitle ${s.Index}`, lang: s.Language || '', isDefault: Boolean(s.IsDefault),
+        path: `/Videos/${id}/${encodeURIComponent(src.Id)}/Subtitles/${s.Index}/0/Stream.vtt` }));
+    return {
+      ok: true, item, method, startTicks, audio,
+      url: `jf://stream${path.startsWith('/') ? '' : '/'}${path}`,
+      hls: method === 'Transcode' && /\.m3u8/i.test(path),
+      playSessionId: info.PlaySessionId || '', mediaSourceId: src.Id, subtitles,
+    };
+  }
+
+  /** Tell Jellyfin where playback is: event = start | progress | stop. */
+  async report(event, p) {
+    const body = {
+      ItemId: p.itemId, MediaSourceId: p.mediaSourceId, PlaySessionId: p.playSessionId, PlayMethod: p.method || 'DirectPlay',
+      PositionTicks: Math.max(0, Math.round((p.position || 0) * TICKS)), IsPaused: Boolean(p.paused), CanSeek: true,
+    };
+    const path = event === 'start' ? '/Sessions/Playing' : event === 'stop' ? '/Sessions/Playing/Stopped' : '/Sessions/Playing/Progress';
+    try { await this.request(path, { method: 'POST', body }); return { ok: true }; } catch (err) { return { ok: false, error: err.message }; }
+  }
+
+  /** For the jf:// protocol: the real URL of a path on the server, signed with the token. */
+  resolve(path) {
+    if (!this.connected) return null;
+    const sep = path.includes('?') ? '&' : '?';
+    return `${this.cfg.server}${path}${/[?&]api_key=/.test(path) ? '' : `${sep}api_key=${encodeURIComponent(this.token)}`}`;
+  }
+}
+
+module.exports = { Jellyfin, TICKS };

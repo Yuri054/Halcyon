@@ -15,7 +15,58 @@ export function createHome() {
     h('h3', { class: 'block__title' }, title),
     h('div', { class: 'block__tiles' }, tiles));
 
+  /**
+   * The 360 home, laid out like the console's: a search tab peeking in from the left; a
+   * column with the game to play (a picture) over two green tiles; a big feature in the
+   * middle with two pictures under it; a column of three pictures; then the green tiles.
+   */
+  function renderMetro(games) {
+    const recent = sortGames(games, 'recent');
+    const favorites = games.filter((g) => g.favorite);
+    let i = 0;
+    const at = (el, area) => { el.style.gridArea = area; return el; };
+    const pic = (g, area, caption) => {
+      if (!g) return null;
+      const t = at(gameTile(g, 'wide', i++), area);
+      if (caption) { const title = t.querySelector('.tile__title'); if (title) title.textContent = caption; }
+      return t;
+    };
+    const used = new Set();
+    const take = (list) => { const g = list.find((x) => !used.has(x.id)); if (g) used.add(g.id); return g; };
+    const play = take(recent);
+    const feature = take(recent);
+    const under = [take(recent), take(recent)];
+    const side = [take(favorites) || take(recent), take(favorites) || take(recent), take(recent)];
+
+    const grid = h('div', { class: 'metro' },
+      pic(play, 'a1', play ? `Play ${play.name}` : null)
+        || at(actionTile({ key: 'm:browse', label: 'Find a game', iconName: 'grid', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'all', enter: true }) }), 'a1'),
+      at(actionTile({ key: 'm:pins', label: 'Favorites', iconName: 'star', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'favorites', enter: true }) }), 'a2'),
+      at(actionTile({ key: 'm:recent', label: 'Recent', iconName: 'clock', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'recent', enter: true }) }), 'a3'),
+      feature ? at(gameTile(feature, 'hero', i++), 'hero')
+        : at(actionTile({ key: 'm:store', size: 'hero', label: 'Steam store', iconName: 'cloud', tone: 'accent', index: i++, onSelect: () => app.go('store', { enter: true }) }), 'hero'),
+      pic(under[0], 'b3'), pic(under[1], 'c3'),
+      pic(side[0], 'd1'), pic(side[1], 'd2'), pic(side[2], 'd3'));
+    const search = actionTile({ key: 'm:search', label: '', iconName: 'search', tone: 'slate', index: i++, onSelect: () => app.search() });
+    search.classList.add('tile--peek');
+
+    const quick = h('div', { class: 'metro metro--quick' },
+      actionTile({ key: 'q:all', label: 'All games', count: games.length, iconName: 'grid', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'all', enter: true }) }),
+      actionTile({ key: 'q:store', label: 'Store', iconName: 'cloud', tone: 'accent', index: i++, onSelect: () => app.go('store', { enter: true }) }),
+      actionTile({ key: 'q:steam', label: 'Steam', count: games.filter((g) => g.source === 'steam').length, iconName: 'download', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'steam', enter: true }) }),
+      actionTile({ key: 'q:emu', label: 'Emulated', count: games.filter((g) => g.source === 'emulator').length, iconName: 'chip', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'emulated', enter: true }) }),
+      actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'accent', index: i++, onSelect: async () => { const id = await editCustomGame(); if (id) app.go('games', { filter: 'custom', enter: true, focusKey: `g:${id}` }); } }),
+      actionTile({ key: 'q:settings', label: 'Settings', iconName: 'gear', tone: 'accent', index: i++, onSelect: () => app.go('settings', { enter: true }) }),
+      actionTile({ key: 'q:power', label: 'Power', iconName: 'power', tone: 'accent', index: i++, onSelect: () => app.guide({ select: 'power:suspend' }) }));
+
+    scroller.replaceChildren(
+      h('div', { class: 'block block--peek' }, search),
+      h('div', { class: 'block block--metro' }, grid),
+      h('div', { class: 'block block--metro' }, quick));
+  }
+
   function render() {
+    if (document.body.dataset.theme === 'x360') { renderMetro(visibleGames().filter((g) => g.installed)); return; }
     const all = visibleGames();
     // The dashboard is for what can be played right now; uninstalled games live under Games.
     const games = all.filter((g) => g.installed);

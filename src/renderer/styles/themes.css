@@ -843,3 +843,22 @@ body[data-theme='x360'][data-input='pad']:has(.layer--guide:not(.is-closing)) .g
 [data-theme='x360'] .layer--guide .panel__list { flex: 1 1 auto; }
 /* Every theme: the Guide's frame is see-through; only the blades and the list are solid. */
 [data-theme] .layer--guide .panel { background: transparent; box-shadow: none; backdrop-filter: none; }
+
+/* 360 home: the console's layout (see renderMetro in views/home.js). */
+[data-theme='x360'] .metro {
+  display: grid; gap: 0.4rem;
+  grid-template-columns: 17.6rem 25rem 25rem 17.6rem;
+  grid-template-rows: repeat(3, 13.2rem);
+  grid-template-areas: 'a1 hero hero d1' 'a2 hero hero d2' 'a3 b3 c3 d3';
+}
+[data-theme='x360'] .metro--quick { grid-template-columns: none; grid-template-areas: none; grid-auto-flow: column; grid-auto-columns: 13.2rem; }
+[data-theme='x360'] .metro > .tile { width: auto; height: auto; min-width: 0; }
+[data-theme='x360'] .metro .tile--hero .tile__caption { padding: 0.55rem 1rem 0.6rem; }
+[data-theme='x360'] .block--metro + .block--metro { margin-left: 0.4rem; }
+/* The search tab peeking in from the left edge, as on the console. */
+[data-theme='x360'] .block--peek { align-self: center; margin-left: calc(-1 * var(--gutter) - 0.4rem); margin-right: 0.4rem; }
+[data-theme='x360'] .tile--peek { width: calc(var(--gutter) - 2rem); height: 4.4rem; margin-top: 13.6rem; }
+[data-theme='x360'] .tile--peek .tile__body { background: #6a6e70; }
+[data-theme='x360'] .tile--peek .tile__icon { top: 50%; left: auto; right: 0.9rem; transform: translateY(-50%); width: 2rem; height: 2rem; }
+[data-theme='x360'] .tile--peek.is-focused .tile__body { transform: scale(1.08); }
+[data-theme='x360'] .view--home .block--quick { order: 0; }

@@ -64,6 +64,7 @@ const DEFAULTS = {
     showHidden: false,
     sort: 'recent',
     bootAnimation: true,
+    launchScene: true,       // the Halcyon intro scene while a game starts
     dimWhenIdle: true,
     controllerOnly: false,
     theme: 'halcyon',

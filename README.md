@@ -87,6 +87,15 @@ program on this computer can control Steam, including the store**; it does not a
 from other computers. These are undocumented Steam internals: if a Steam update changes them, the
 controls report an error and the manager falls back to showing progress only.
 
+## Launch scene
+
+While a game starts, Halcyon plays a short intro, like the studio cards games open with: dawn over a
+calm sea, a kingfisher (the halcyon of the name) skimming across and touching the water, the
+HALCYON wordmark, then the game's own title card with its art, which holds until the game's window
+takes over. Steam's launch steps show under the title. It is drawn live (canvas and inline SVG, no
+video files) and follows your accent colour. Settings › display › *Launch scene* switches back to the
+plain loading card.
+
 ## Steam launches, shaders and Big Picture
 
 Steam games start from the desktop Steam client while Halcyon stays fullscreen behind them. With

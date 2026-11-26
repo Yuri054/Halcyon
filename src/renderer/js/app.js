@@ -11,6 +11,7 @@ import { toast } from './ui/toast.js';
 import { patchProgress } from './ui/tile.js';
 import { createStore } from './views/store.js';
 import { openDownloads } from './ui/downloads.js';
+import { createIntro } from './ui/intro.js';
 import { openGuide, closeGuide, isOpen as guideOpen } from './ui/guide.js';
 import { createHome } from './views/home.js';
 import { createGames } from './views/games.js';
@@ -179,6 +180,7 @@ function closeLaunchUi() {
   clearTimeout(ui.timer);
   focus.popLayer(ui.layer);
   ui.el.classList.add('is-closing');
+  if (ui.dispose) setTimeout(ui.dispose, 500);
   setTimeout(() => ui.el.remove(), 400);
 }
 
@@ -195,8 +197,10 @@ async function launch(id) {
   if (!g || launchUi) return;
   if (!g.installed) { installGame(g); return; }
 
-  const status = h('div', { class: 'launch__status' }, 'Starting');
-  const el = h('div', { class: 'layer layer--launch' },
+  // The launch scene (an intro card, like the ones games open with), or the plain card.
+  const intro = state.lib.settings.launchScene !== false ? createIntro(g) : null;
+  const status = intro ? intro.status : h('div', { class: 'launch__status' }, 'Starting');
+  const el = intro ? intro.el : h('div', { class: 'layer layer--launch' },
     h('div', { class: 'launch__cover' }, fallbackArt(g), artImg(g.art.cover, 'launch__img', { lazy: false })),
     h('div', { class: 'launch__text' },
       status,
@@ -220,7 +224,7 @@ async function launch(id) {
     ].filter(Boolean),
   });
   const bar = el.querySelector('.launch__bar');
-  launchUi = { el, layer, status, bar, id, dismissable: false, blurred: false, timer: null, shaderAction: 0, task: null };
+  launchUi = { el, layer, status, bar, id, dispose: intro ? intro.dispose : null, dismissable: false, blurred: false, timer: null, shaderAction: 0, task: null };
   sfx.launch();
   refreshChrome();
 

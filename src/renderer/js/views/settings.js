@@ -100,6 +100,7 @@ export function createSettings() {
           onSelect: () => set({ homeButtonGuide: s.homeButtonGuide === false }),
           tip: 'Opens Halcyon’s Guide over any game or the desktop. While Halcyon runs it turns off Steam’s “Guide button focuses Steam”, and turns it back on when Halcyon closes.' }),
         row({ key: 'autostart', label: 'Start Halcyon on login', iconName: 'login', toggle: autostart, onSelect: toggleAutostart, tip: 'Boots straight into the dashboard when you sign in to your desktop' }),
+        row({ key: 'launchScene', label: 'Launch scene', iconName: 'spark', toggle: s.launchScene !== false, onSelect: () => set({ launchScene: s.launchScene === false }), sub: 'A Halcyon intro while a game starts', tip: 'Dawn over the sea, a kingfisher, the Halcyon card, then the game’s title until it opens. Off shows the simple loading card.' }),
         row({ key: 'bootAnimation', label: 'Start-up animation', iconName: 'spark', toggle: s.bootAnimation !== false, onSelect: () => set({ bootAnimation: s.bootAnimation === false }) }),
         row({ key: 'about', label: `Halcyon ${info?.version || ''}`, iconName: 'info', sub: info ? info.configFile : '' }),
         row({ key: 'power', label: 'Power', iconName: 'power', sub: 'Sleep, restart, shut down or exit', danger: true, onSelect: () => app.guide({ select: 'power:suspend' }) }),

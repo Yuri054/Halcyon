@@ -125,12 +125,12 @@ slides the whole page across.
 ## Sections
 
 The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,
-*general* and *systems* (emulators and ROM folders); LT/RT switch between them. The store and
+*general* and *systems* (emulators and ROM folders); LT/RT switch between them. LB/RB (and left/right on the tabs) wrap round: past settings is home, and before home is settings. The store and
 collections pages are switched off: nothing in the tabs, Guide or home screen leads to them.
 
 In the 360 theme the games tab is the console's *My Games* list: every game (installed ones in
 colour, the rest greyed out, ready to install), with **Show** (all, favorites, recent, Steam, each
-system, installed, not installed, ...), **Search** and **Sort** buttons. LT/RT step through the
+system, installed, not installed, full / partial controller support, ...), **Search** and **Sort** buttons. LT/RT step through the
 Show choices from the buttons. It always opens on all games.
 
 ## Launch scene

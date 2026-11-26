@@ -391,12 +391,24 @@ function bump(el, dir) {
 function baseAction(action, target, repeat) {
   if (action === 'lb' || action === 'rb') {
     if (repeat || sectionCoolingDown()) return true;
-    const i = ORDER.indexOf(tabOf(state.section)) + (action === 'rb' ? 1 : -1);
-    if (i < 0 || i >= ORDER.length) { sfx.edge(); return true; }
+    // Past either end the tabs wrap round: settings to home, home to settings.
+    const i = (ORDER.indexOf(tabOf(state.section)) + (action === 'rb' ? 1 : -1) + ORDER.length) % ORDER.length;
     go(ORDER[i], { enter: true });
     return true;
   }
-  if (target && $('tabs').contains(target)) return false;
+  if (target && $('tabs').contains(target)) {
+    // Left of the first tab is the last one, and right of the last is the first.
+    const tabs = [...$('tabs').children];
+    const at = tabs.indexOf(target);
+    if ((action === 'left' && at === 0) || (action === 'right' && at === tabs.length - 1)) {
+      if (repeat) return true;
+      const next = tabs[action === 'left' ? tabs.length - 1 : 0];
+      focus.focus(next, { layer: focus.base() });
+      sfx.move();
+      return true;
+    }
+    return false;
+  }
   if (views[state.section].onAction(action, target, repeat)) return true;
   // LT / RT step through a tab's sub-tabs (settings: general, systems).
   const subs = subGroup(state.section);

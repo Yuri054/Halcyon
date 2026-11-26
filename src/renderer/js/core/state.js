@@ -38,6 +38,9 @@ export function visibleGames() {
   return list;
 }
 
+/** How well a game works with a controller: full, partial, none or unknown (emulated games: full). */
+export const padSupport = (g) => (g.source === 'emulator' ? 'full' : g.controller || 'unknown');
+
 export function filterGames(filter, list = visibleGames()) {
   if (filter === 'all') return list;
   if (filter === 'favorites') return list.filter((g) => g.favorite);
@@ -50,13 +53,15 @@ export function filterGames(filter, list = visibleGames()) {
   if (filter === 'custom') return list.filter((g) => g.source === 'custom');
   if (filter === 'hidden') return state.lib.games.filter((g) => g.hidden);
   if (filter === 'nopad') return noPadGames();
+  if (filter.startsWith('pad:')) return list.filter((g) => padSupport(g) === filter.slice(4));
   if (filter.startsWith('sys:')) return list.filter((g) => g.system === filter.slice(4));
   if (filter.startsWith('col:')) return list.filter((g) => g.collections.includes(filter));
   return list;
 }
 
 export function filterLabel(filter) {
-  const fixed = { all: 'All games', favorites: 'Favorites', recent: 'Recent', steam: 'Steam', emulated: 'Emulated', custom: 'Custom', hidden: 'Hidden', nopad: 'No controller', installed: 'Installed', uninstalled: 'Not installed', downloads: 'Downloading' };
+  const fixed = { all: 'All games', favorites: 'Favorites', recent: 'Recent', steam: 'Steam', emulated: 'Emulated', custom: 'Custom', hidden: 'Hidden', nopad: 'No controller', installed: 'Installed', uninstalled: 'Not installed', downloads: 'Downloading',
+    'pad:full': 'Full controller support', 'pad:partial': 'Partial controller support', 'pad:none': 'No controller support', 'pad:unknown': 'Controller support unknown' };
   if (fixed[filter]) return fixed[filter];
   if (filter.startsWith('sys:')) return state.lib.systems.find((s) => s.id === filter.slice(4))?.short || 'Platform';
   if (filter.startsWith('col:')) return state.lib.collections.find((c) => c.id === filter)?.name || 'Collection';

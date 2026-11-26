@@ -5,7 +5,7 @@ import { h, icon, flash } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import {
   api, state, SORTS, visibleGames, filterGames, filterLabel, sortGames, search,
-  game as findGame, gameContext, fmt,
+  game as findGame, gameContext, fmt, padSupport,
 } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { gameTile } from '../ui/tile.js';
@@ -28,6 +28,7 @@ export function createGames() {
     if (games.some((g) => g.source === 'custom')) list.push('custom');
     if (games.some((g) => g.download)) list.push('downloads');
     if (games.some((g) => !g.installed)) list.push('installed', 'uninstalled');
+    for (const p of ['full', 'partial', 'none', 'unknown']) if (games.some((g) => padSupport(g) === p)) list.push(`pad:${p}`);
     for (const c of state.lib.collections) list.push(c.id);
     if (state.lib.games.some((g) => g.hidden)) list.push('hidden');
     if (state.lib.settings.controllerOnly && state.lib.games.some((g) => g.controller === 'none')) list.push('nopad');

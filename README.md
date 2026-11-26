@@ -253,6 +253,10 @@ colour, the rest greyed out, ready to install), with **Show** (all, favorites, r
 installed, not installed, favorites, recently played; then *Where it's from*, *Controller support* and *More*, each opening its own short list), **Search** and **Sort** buttons. LT/RT step through the
 Show choices from the buttons. It always opens on all games.
 
+**View** (or Select) switches how games are shown: *Covers* (two rows), *Shelf* (one row of big
+covers with the selected game's details under it), *Tiles* (wide art in three rows) or *List*
+(a list with cover, platform, last played and hours). The choice is remembered.
+
 ## Launch scene
 
 While a game starts, Halcyon plays a short intro, like the studio cards games open with: dawn over a

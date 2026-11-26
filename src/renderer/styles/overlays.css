@@ -479,3 +479,36 @@ body.player-quiet #hints { opacity: 0; }
 .artpick__tile::before, .artpick__grid.is-wide .artpick__tile::before { display: none; }
 .artpick__tile { flex: none; width: 12.6rem; height: 18.9rem; }
 .artpick__grid.is-wide .artpick__tile { width: 27rem; height: 8.72rem; }
+
+/* ------------------------------------------------------------ games: view modes */
+/* Shelf: one row of big covers; the selected game's details underneath. */
+[data-theme] .wall.wall--shelf { grid-template-rows: min(30rem, calc(100vh - 30rem)); grid-auto-columns: calc(min(30rem, calc(100vh - 30rem)) * 2 / 3); gap: 1.2rem; }
+.wall--shelf .tile--cover { width: auto; height: auto; }
+.games__detail { padding: 0.6rem var(--gutter) 0; color: var(--ink); min-height: 5rem; }
+.games__detail[hidden] { display: none; }
+.games__detail-name { font-size: 2.2rem; font-weight: 300; line-height: 1.15; }
+.games__detail-meta { font-size: 1.05rem; opacity: 0.75; margin-top: 0.3rem; }
+[data-theme='x360'] .games__detail { color: #fff; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.3); }
+/* Tiles: wide art in three rows, the name on each. */
+[data-theme] .wall.wall--tiles { grid-template-rows: repeat(3, min(11.4rem, calc((100vh - 27rem) / 3))); grid-auto-columns: calc(min(11.4rem, calc((100vh - 27rem) / 3)) * 1.9); }
+.wall--tiles .tile--wide { width: auto; height: auto; }
+/* List: a vertical list like the console's menus. */
+[data-theme] .wall.wall--list { display: flex; flex-direction: column; gap: 0; overflow-x: hidden; overflow-y: auto; max-width: 78rem; margin: 0 var(--gutter); padding: 0.4rem 0; -webkit-mask-image: none; mask-image: none; scrollbar-width: none; }
+.glist__row { display: flex; align-items: center; gap: 1.2rem; padding: 0.45rem 1.2rem 0.45rem 0.5rem; min-height: 5.4rem; flex: none; cursor: pointer; background: rgba(255, 255, 255, 0.06); border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-radius: 0.2rem; }
+.glist__art { width: 3.2rem; height: 4.6rem; flex: none; overflow: hidden; background: rgba(255, 255, 255, 0.08); }
+.glist__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.glist__text { flex: 1; min-width: 0; }
+.glist__name { font-size: 1.35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.glist__meta { font-size: 0.92rem; opacity: 0.7; margin-top: 0.15rem; }
+.glist__side { display: flex; align-items: center; gap: 0.4rem; font-size: 1rem; opacity: 0.8; flex: none; }
+.glist__side .icon { width: 1.1rem; height: 1.1rem; }
+.glist__row.is-focused { background: var(--accent); color: var(--on-accent); }
+.glist__row.tile--uninstalled .glist__art { filter: grayscale(1); opacity: 0.7; }
+[data-theme='x360'] .glist__row { background: linear-gradient(180deg, #f4f6f6 0%, #e6eaea 55%, #dde1e1 100%); color: #2f2f2f; border-radius: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.95); }
+[data-theme='x360'] .glist__row.is-focused { background: var(--x-flat); color: #fff; }
+[data-theme='x360'] .glist__row.is-focused .glist__meta, [data-theme='x360'] .glist__row.is-focused .glist__side { opacity: 1; }
+[data-theme='x360'] .wall.wall--list { box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.25); padding: 0; background: #dde1e1; flex: 0 1 auto; max-height: calc(100vh - 24rem); }
+/* The list keeps its own spacing: no cover gaps, no edge fade, and the toolbar keeps its room. */
+.view--games .toolbar { flex: none; }
+body[data-theme] .view--games .wall.wall--list { gap: 0; -webkit-mask-image: none; mask-image: none; margin-bottom: 0; padding-top: 0; padding-bottom: 0; flex: 0 1 auto; min-height: 0; margin-top: 1.2rem; }
+body[data-theme] .view--games .wall.wall--list.wall--list { padding-top: 0; padding-bottom: 0; margin-bottom: 0; gap: 0; }

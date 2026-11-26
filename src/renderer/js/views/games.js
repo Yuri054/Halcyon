@@ -12,6 +12,8 @@ import { gameTile } from '../ui/tile.js';
 import { gameMenu } from '../ui/gamemenu.js';
 import { keyboard } from '../ui/osk.js';
 import { menu } from '../ui/dialog.js';
+import { artImg } from '../ui/art.js';
+import { toast } from '../ui/toast.js';
 
 export function createGames() {
   const chips = h('div', { class: 'chips', 'data-scroller': 'x', 'data-focus-group': true, 'data-focus-restore': true });
@@ -20,12 +22,57 @@ export function createGames() {
   const title = h('div', { class: 'games__title' }, h('span', null, 'my games'), h('small', null, ''));
   // Where you are in the list ("12 / 236"), for the 360 theme's position option.
   const pos = h('div', { class: 'games__pos' });
+  // The shelf view's details: the selected game's name and facts under the row of covers.
+  const detail = h('div', { class: 'games__detail', hidden: true });
   grid.addEventListener('nav-focus', (e) => {
     const tiles = [...grid.children];
-    const i = tiles.indexOf(e.target.closest('.tile'));
+    const tile = e.target.closest('.tile');
+    const i = tiles.indexOf(tile);
     pos.textContent = i >= 0 ? `${i + 1} / ${tiles.length}` : '';
+    if (view() === 'shelf') showDetail(tile?.dataset.game);
   });
-  const el = h('section', { class: 'view view--games' }, h('div', { class: 'toolbar' }, title, chips, pos, tools), grid);
+  function showDetail(id) {
+    const g = id && findGame(id);
+    if (!g) { detail.replaceChildren(); return; }
+    detail.replaceChildren(
+      h('div', { class: 'games__detail-name' }, g.name),
+      h('div', { class: 'games__detail-meta' }, [g.platform, g.installed ? fmt.ago(g.lastPlayed) : 'Not installed', fmt.playtime(g.playtimeMin), g.installed && fmt.size(g.sizeBytes)].filter(Boolean).join('  ·  ')));
+  }
+
+  // How the games are shown: two rows of covers, a shelf of big covers with details, wide
+  // tiles, or a list. Remembered; Select (or the View button) switches.
+  const VIEWS = [['covers', 'Covers', 'grid'], ['shelf', 'Shelf', 'image'], ['tiles', 'Tiles', 'layers'], ['list', 'List', 'file']];
+  const view = () => (VIEWS.some(([v]) => v === state.lib.settings.gamesView) ? state.lib.settings.gamesView : 'covers');
+  function listRow(g, i) {
+    return h('div', { class: `tile glist__row${g.installed ? '' : ' tile--uninstalled'}`, 'data-focus': true, 'data-key': `g:${g.id}`, 'data-game': g.id, style: { '--i': Math.min(i, 22) } },
+      h('div', { class: 'glist__art' }, artImg(g.art.cover, 'glist__img', { lazy: true }) || ''),
+      h('div', { class: 'glist__text' }, h('div', { class: 'glist__name' }, g.name),
+        h('div', { class: 'glist__meta' }, [g.platform, g.installed ? fmt.ago(g.lastPlayed) : null, fmt.playtime(g.playtimeMin)].filter(Boolean).join('  ·  '))),
+      h('div', { class: 'glist__side' }, g.installed ? (fmt.size(g.sizeBytes) || '') : [icon('download'), 'Not installed']));
+  }
+  function tileFor(g, i) {
+    const v = view();
+    if (v === 'list') return listRow(g, i);
+    return gameTile(g, v === 'tiles' ? 'wide' : 'cover', i);
+  }
+  async function pickView(step = null) {
+    let next;
+    if (step != null) {
+      const i = VIEWS.findIndex(([v]) => v === view());
+      next = VIEWS[(i + step + VIEWS.length) % VIEWS.length][0];
+    } else {
+      next = await menu({ title: 'View', subtitle: 'How the games are shown', selected: view(), items: VIEWS.map(([v, label, iconName]) => ({ label, value: v, iconName, checked: v === view() })) });
+      if (!next || next === view()) return;
+    }
+    const key = focus.base().current?.dataset.key;
+    await api.settings.set({ gamesView: next });
+    setTimeout(() => {
+      const again = focus.byKey(grid, key) || grid.querySelector('[data-focus]');
+      if (again) focus.focus(again, { layer: focus.base(), scroll: 'instant' });
+      toast(VIEWS.find(([v]) => v === next)[1], { title: 'View', iconName: VIEWS.find(([v]) => v === next)[2], ms: 1200 });
+    }, 120);
+  }
+  const el = h('section', { class: 'view view--games' }, h('div', { class: 'toolbar' }, title, chips, pos, tools), grid, detail);
   let shown = [];
 
   // The filters, grouped: the everyday ones first (also the chip row and LT/RT), then where a
@@ -71,7 +118,11 @@ export function createGames() {
 
   function render({ resetScroll = false } = {}) {
     const sort = state.lib.settings.sort || 'recent';
-    const keepScroll = grid.scrollLeft;
+    const v = view();
+    const keepScroll = v === 'list' ? grid.scrollTop : grid.scrollLeft;
+    grid.className = `wall wall--${v}`;
+    grid.dataset.scroller = v === 'list' ? 'y' : 'x';
+    detail.hidden = v !== 'shelf';
 
     chips.replaceChildren(...filters().map((f) => chip(`f:${f}`, filterLabel(f), {
       active: f === state.filter,
@@ -84,6 +135,7 @@ export function createGames() {
       // 360: what's shown is picked from a menu (the chip row is hidden there).
       Object.assign(chip('t:filter', `Show: ${filterLabel(state.filter)}`, { iconName: 'layers', active: state.filter !== 'all', onSelect: doFilter }), { className: `chip games__filter${state.filter !== 'all' ? ' is-active' : ''}` }),
       chip('t:search', state.query ? `“${state.query}”` : 'Search', { iconName: 'search', active: Boolean(state.query), onSelect: doSearch }),
+      chip('t:view', `${document.body.dataset.theme === 'x360' ? 'View: ' : ''}${VIEWS.find(([x]) => x === v)[1]}`, { iconName: VIEWS.find(([x]) => x === v)[2], onSelect: () => pickView() }),
       chip('t:sort', `${document.body.dataset.theme === 'x360' ? 'Sort: ' : ''}${SORTS.find(([id]) => id === sort)?.[1] || 'Sort'}`, { iconName: 'clock', onSelect: doSort }));
 
     const base = filterGames(state.filter);
@@ -97,9 +149,9 @@ export function createGames() {
           : state.filter === 'favorites' ? 'Press X on any game to mark it as a favorite.'
             : 'Games appear here automatically once they are installed or added.')));
     } else {
-      grid.replaceChildren(...shown.map((g, i) => gameTile(g, 'cover', i)));
+      grid.replaceChildren(...shown.map((g, i) => tileFor(g, i)));
     }
-    grid.scrollLeft = resetScroll ? 0 : keepScroll;
+    if (v === 'list') grid.scrollTop = resetScroll ? 0 : keepScroll; else grid.scrollLeft = resetScroll ? 0 : keepScroll;
   }
 
   function setFilter(f) {
@@ -193,10 +245,10 @@ export function createGames() {
     defaultFocus: () => grid.querySelector('[data-focus]') || focus.byKey(chips, `f:${state.filter}`) || focus.byKey(tools, 't:filter'),
     onAction(action, target) {
       if (action === 'start') { doSearch(); return true; }
-      if (action === 'select') { doSort(); return true; }
+      if (action === 'select') { pickView(1); return true; }
       const inGrid = target && grid.contains(target);
       if (action === 'lt' || action === 'rt') {
-        if (inGrid) focus.page(action === 'lt' ? 'left' : 'right', 5);
+        if (inGrid) focus.page(view() === 'list' ? (action === 'lt' ? 'up' : 'down') : (action === 'lt' ? 'left' : 'right'), view() === 'list' ? 6 : 5);
         else cycleFilter(action === 'lt' ? -1 : 1);
         return true;
       }

@@ -25,6 +25,7 @@ export function createGames() {
     const games = visibleGames();
     const list = ['all', 'favorites', 'recent', 'steam'];
     for (const s of state.lib.systems) if (games.some((g) => g.system === s.id)) list.push(`sys:${s.id}`);
+    if (games.some((g) => g.source === 'port')) list.push('ports');
     if (games.some((g) => g.source === 'custom')) list.push('custom');
     if (games.some((g) => g.download)) list.push('downloads');
     if (games.some((g) => !g.installed)) list.push('installed', 'uninstalled');

@@ -147,6 +147,11 @@ class Launcher {
       const cmd = emulators.buildCommand(config, launch.system, launch.rom);
       if (cmd.error) return { ok: false, error: cmd.error };
       argv = cmd.argv;
+    } else if (launch.type === 'port') {
+      // A PC port or recomp (from Quiver Launcher): its AppImage, started in its own folder.
+      if (!launch.exe) return { ok: false, error: 'This game isn’t installed yet. Install it in Quiver Launcher.' };
+      argv = [launch.exe];
+      opts = { cwd: isDir(launch.cwd) ? launch.cwd : HOME };
     } else if (launch.type === 'custom') {
       if (!launch.command) return { ok: false, error: 'This game has no launch command. Edit it to add one.' };
       const cwd = launch.cwd ? expandHome(launch.cwd) : HOME;

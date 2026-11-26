@@ -51,11 +51,13 @@ if (!app.requestSingleInstanceLock()) {
   const pushLibrary = () => send('library:changed', library.snapshot());
   const notice = (message, opts = {}) => send('app:notice', { message, ...opts });
   let rescanning = false;
+  let autoArt = null;   // set up with the IPC: fetch covers for newly found ports and added games
   const rescan = async () => {
     rescanning = true;
     try { await library.scan(); } finally { rescanning = false; }
     pushLibrary();
     checkControllers();
+    if (autoArt) autoArt();
   };
 
   // ---- Steam downloads: follow the manifests while Steam works on them
@@ -478,6 +480,40 @@ if (!app.requestSingleInstanceLock()) {
       return { ok: true };
     });
     let scraping = false;
+    // New PC ports and hand-added games get SteamGridDB art by themselves (once each).
+    autoArt = async () => {
+      const key = cfg().secrets.sgdbKey;
+      if (!key || scraping) return;
+      const tried = cfg().artTried || (cfg().artTried = []);
+      const want = library.missingArt().filter((g) => (g.source === 'port' || g.source === 'custom') && g.installed !== false && !tried.includes(g.id));
+      if (!want.length) return;
+      tried.push(...want.map((g) => g.id));
+      store.save();
+      scraping = true;
+      try {
+        const overrides = cfg().games;
+        await scraper.scrapeMany(key, want.map((g) => ({ id: g.id, source: g.source, appid: null, name: (overrides[g.id] && overrides[g.id].name) || g.name })), path.join(app.getPath('userData'), 'art'), {
+          onResult: (game, art) => { library.setScraped(game.id, art); pushLibrary(); },
+        });
+        diary.log('auto art for', want.map((g) => g.name).join(', '));
+      } catch (err) { diary.log('auto art failed:', err.message); } finally { scraping = false; }
+    };
+    // "Add a game": installed apps that call themselves games, not already in the library.
+    handle('apps:openQuiver', async () => {
+      const home = require('./ports').quiverHomes()[0] || path.join(require('os').homedir(), 'AppImages');
+      const fs = require('fs');
+      const exe = (() => { try { return fs.readdirSync(home).filter((f) => /^quiver.*\.appimage$/i.test(f)).map((f) => path.join(home, f))[0]; } catch { return null; } })();
+      if (!exe) return { ok: false, error: 'Quiver Launcher wasn’t found (looked in ~/AppImages).' };
+      if (process.env.HALCYON_DRY_RUN) { console.log('[dry-run] would open', exe); return { ok: true }; }
+      require('child_process').spawn(exe, [], { detached: true, stdio: 'ignore' }).unref();
+      return { ok: true };
+    });
+    handle('apps:games', () => {
+      const snap = library.snapshot();
+      const known = snap.games.filter((g) => g.source === 'custom').map((g) => g.detail).filter(Boolean);
+      const names = (library.raw.ports || []).flatMap((p) => [p.name, (p.platform || '').split(' · ')[0]]);
+      return require('./ports').gameApps(known, names);
+    });
     handle('scraper:run', async (ids) => {
       const key = cfg().secrets.sgdbKey;
       if (!key) return { ok: false, error: 'Add your SteamGridDB API key under Settings first.' };
@@ -887,6 +923,7 @@ if (!app.requestSingleInstanceLock()) {
     createWindow();
     await ready;
     checkControllers();
+    if (autoArt) setTimeout(() => autoArt(), 3000);
     refreshOwned().catch(() => {});
     syncPadWatch();
     claimHomeButton().catch(() => {});

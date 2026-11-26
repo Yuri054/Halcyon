@@ -54,6 +54,7 @@ export function filterGames(filter, list = visibleGames()) {
   if (filter === 'downloads') return list.filter((g) => g.download);
   if (filter === 'emulated') return list.filter((g) => g.source === 'emulator');
   if (filter === 'custom') return list.filter((g) => g.source === 'custom');
+  if (filter === 'ports') return list.filter((g) => g.source === 'port');
   if (filter === 'hidden') return state.lib.games.filter((g) => g.hidden);
   if (filter === 'nopad') return noPadGames();
   if (filter.startsWith('pad:')) return list.filter((g) => padSupport(g) === filter.slice(4));
@@ -63,7 +64,7 @@ export function filterGames(filter, list = visibleGames()) {
 }
 
 export function filterLabel(filter) {
-  const fixed = { all: 'All games', favorites: 'Favorites', recent: 'Recent', steam: 'Steam', emulated: 'Emulated', custom: 'Custom', hidden: 'Hidden', nopad: 'No controller', installed: 'Installed', uninstalled: 'Not installed', downloads: 'Downloading',
+  const fixed = { all: 'All games', favorites: 'Favorites', recent: 'Recent', steam: 'Steam', emulated: 'Emulated', custom: 'Custom', ports: 'PC ports', hidden: 'Hidden', nopad: 'No controller', installed: 'Installed', uninstalled: 'Not installed', downloads: 'Downloading',
     'pad:full': 'Full controller support', 'pad:partial': 'Partial controller support', 'pad:none': 'No controller support', 'pad:unknown': 'Controller support unknown' };
   if (fixed[filter]) return fixed[filter];
   if (filter.startsWith('sys:')) return state.lib.systems.find((s) => s.id === filter.slice(4))?.short || 'Platform';

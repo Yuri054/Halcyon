@@ -3,7 +3,7 @@ import { h } from '../core/dom.js';
 import { state, visibleGames, sortGames, game as findGame, gameContext, fmt, isPlaying } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { gameTile, actionTile } from '../ui/tile.js';
-import { gameMenu, editCustomGame } from '../ui/gamemenu.js';
+import { gameMenu, editCustomGame, addGame } from '../ui/gamemenu.js';
 import { api } from '../core/state.js';
 import { toast } from '../ui/toast.js';
 
@@ -59,7 +59,7 @@ export function createHome() {
       actionTile({ key: 'q:music', label: 'Music', iconName: 'music', tone: 'accent', index: i++, onSelect: () => app.go('music', { enter: true }) }),
       actionTile({ key: 'q:steam', label: 'Steam', count: games.filter((g) => g.source === 'steam').length, iconName: 'download', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'steam', enter: true }) }),
       actionTile({ key: 'q:emu', label: 'Emulated', count: games.filter((g) => g.source === 'emulator').length, iconName: 'chip', tone: 'accent', index: i++, onSelect: () => app.go('games', { filter: 'emulated', enter: true }) }),
-      actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'accent', index: i++, onSelect: async () => { const id = await editCustomGame(); if (id) app.go('games', { filter: 'custom', enter: true, focusKey: `g:${id}` }); } }),
+      actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'accent', index: i++, onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } }),
       actionTile({ key: 'q:settings', label: 'Settings', iconName: 'gear', tone: 'accent', index: i++, onSelect: () => app.go('settings', { enter: true }) }),
       actionTile({ key: 'q:power', label: 'Power', iconName: 'power', tone: 'accent', index: i++, onSelect: () => app.guide({ select: 'power:suspend' }) }));
 
@@ -101,7 +101,7 @@ export function createHome() {
       actionTile({ key: 'q:steam', label: 'Steam', count: steam, iconName: 'cloud', tone: 'slate', index: i++, onSelect: () => app.go('games', { filter: 'steam', enter: true }) }),
       actionTile({ key: 'q:fav', label: 'Favorites', count: games.filter((g) => g.favorite).length, iconName: 'star', tone: 'gold', index: i++, onSelect: () => app.go('games', { filter: 'favorites', enter: true }) }),
       actionTile({ key: 'q:emu', label: 'Emulated', count: emulated, iconName: 'chip', tone: 'violet', index: i++, onSelect: () => app.go('games', { filter: 'emulated', enter: true }) }),
-      actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'glass', index: i++, onSelect: async () => { const id = await editCustomGame(); if (id) app.go('games', { filter: 'custom', enter: true, focusKey: `g:${id}` }); } }),
+      actionTile({ key: 'q:add', label: 'Add a game', iconName: 'plus', tone: 'glass', index: i++, onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } }),
       actionTile({ key: 'q:settings', label: 'Settings', iconName: 'gear', tone: 'glass', index: i++, onSelect: () => app.go('settings', { enter: true }) }),
       actionTile({ key: 'q:steamui', label: 'Open Steam', iconName: 'screen', tone: 'glass', index: i++, onSelect: async () => { const r = await api.steam.open(); if (r && r.ok === false) toast(r.error, { type: 'error' }); } }),
       actionTile({ key: 'q:power', label: 'Power', iconName: 'power', tone: 'danger', index: i++, onSelect: () => app.guide({ select: 'power:suspend' }) }),

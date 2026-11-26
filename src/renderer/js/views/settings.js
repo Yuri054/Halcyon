@@ -6,7 +6,7 @@ import { browse } from '../ui/browser.js';
 import { menu } from '../ui/dialog.js';
 import { keyboard } from '../ui/osk.js';
 import { toast } from '../ui/toast.js';
-import { editCustomGame, report } from '../ui/gamemenu.js';
+import { editCustomGame, addGame, report } from '../ui/gamemenu.js';
 import { enableControls, disableControls } from '../ui/downloads.js';
 
 const KIND = { native: 'Native install', flatpak: 'Flatpak', snap: 'Snap', custom: 'Added folder' };
@@ -100,7 +100,7 @@ export function createSettings() {
       ]),
       card('library', [
         row({ key: 'rescan', label: 'Rescan library', iconName: 'refresh', sub: `${fmt.count(state.lib.games.length, 'game')} found`, onSelect: () => report(api.library.rescan(), 'Library rescanned') }),
-        row({ key: 'add', label: 'Add a game', iconName: 'plus', sub: 'Any program or command', onSelect: async () => { const id = await editCustomGame(); if (id) app.go('games', { filter: 'custom', enter: true, focusKey: `g:${id}` }); } }),
+        row({ key: 'add', label: 'Add a game', iconName: 'plus', sub: 'Any program or command', onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } }),
         row({ key: 'controllerOnly', label: 'Hide games without controller support', iconName: 'pad', toggle: s.controllerOnly,
           sub: s.controllerOnly ? `${fmt.count(noPadGames().length, 'game')} hidden` : null,
           onSelect: () => set({ controllerOnly: !s.controllerOnly }),

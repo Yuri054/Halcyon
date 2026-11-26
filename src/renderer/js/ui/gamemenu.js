@@ -165,6 +165,45 @@ export async function collectionsPicker(id, panel) {
 }
 
 /** Create (id = null) or edit a manually added game. Returns the saved id or null. */
+/**
+ * "Add a game": pick one of the computer's installed games (one step), learn about ports and
+ * recomps (Quiver Launcher's games show up by themselves), or enter a program by hand.
+ * Resolves the new game's id, or null.
+ */
+export async function addGame() {
+  const panel = openPanel();
+  const apps = await api.apps.games().catch(() => []);
+  let added = null;
+  for (;;) {
+    const pick = await panel.ask({
+      title: 'Add a game',
+      subtitle: apps.length ? 'Pick one of your installed games, or add a program by hand' : 'Add any program, script or launcher',
+      items: [
+        apps.length > 0 && { heading: 'Installed on this computer' },
+        ...apps.map((a, n) => ({ label: a.name, value: `app:${n}`, iconName: 'pad', sub: a.comment || a.command, verb: 'Add' })),
+        { heading: 'Ports and recomps' },
+        { label: 'Open Quiver Launcher', value: 'quiver', iconName: 'download', sub: 'Games you install with it appear in Halcyon by themselves' },
+        { heading: ' ' },
+        { label: 'Add a program by hand', value: 'manual', iconName: 'terminal', sub: 'Any executable, script, AppImage or command' },
+      ].filter(Boolean),
+    });
+    if (pick == null) break;
+    if (pick === 'manual') { added = await editCustomGame(null, panel); if (added) break; continue; }
+    if (pick === 'quiver') {
+      const r = await api.apps.openQuiver();
+      if (r && r.ok === false) toast(r.error, { type: 'error', title: 'Quiver Launcher' });
+      else toast('Install a port there; it appears under Games › PC ports when you come back.', { title: 'Quiver Launcher', iconName: 'download', ms: 6000 });
+      break;
+    }
+    const a = apps[Number(pick.slice(4))];
+    if (!a) continue;
+    const res = await report(api.custom.save({ name: a.name, command: a.command, cwd: '', cover: '', background: '' }), `${a.name} added to your library`);
+    if (res && res.ok) { added = res.id; break; }
+  }
+  await panel.close();
+  return added;
+}
+
 export async function editCustomGame(id = null, existingPanel = null) {
   const panel = existingPanel || openPanel();
   const existing = id ? findGame(id)?.custom : null;

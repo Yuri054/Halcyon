@@ -122,6 +122,17 @@ The 360 theme's home is laid out like the console's dashboard: the page of big a
 the search tab peeking in at the left, and the next page waiting at the right edge; moving onto it
 slides the whole page across.
 
+## PC ports and recomps
+
+Games installed with **Quiver Launcher** (decomp ports and recomps, such as Dusklight) appear
+in Halcyon by themselves, under Games › *PC ports*: Halcyon reads Quiver's list (`apps.json`
+beside its AppImage, by default `~/AppImages`) and starts each game straight from its AppImage.
+Their artwork comes from SteamGridDB automatically, as for games added by hand.
+
+**Add a game** (home or Settings) now lists the computer's installed games (desktop entries in
+the Game category that Halcyon doesn't already have) to add in one step, opens Quiver Launcher,
+or takes any program by hand.
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

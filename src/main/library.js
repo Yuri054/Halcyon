@@ -7,12 +7,13 @@ const steam = require('./steam/steam');
 const steamStore = require('./steam/store');
 const steamApi = require('./steam/webapi');
 const emulators = require('./emulators/emulators');
+const ports = require('./ports');
 const { mediaUrl, expandHome, exists, splitArgs, which } = require('./util');
 
 class Library {
   constructor(store) {
     this.store = store;
-    this.raw = { steam: { installs: [], games: [] }, emu: { games: [], systems: [], emulators: [], romRoots: [] } };
+    this.raw = { steam: { installs: [], games: [] }, emu: { games: [], systems: [], emulators: [], romRoots: [] }, ports: [] };
     this.index = new Map();
     this.ignoredManifests = new Set(); // tools and runtimes that never become library entries
   }
@@ -35,6 +36,12 @@ class Library {
     } catch (err) {
       console.error('[library] emulator scan failed:', err);
       this.raw.emu = { games: [], systems: [], emulators: [], romRoots: [], error: err.message };
+    }
+    try {
+      this.raw.ports = ports.quiverGames((cfg.ports && cfg.ports.quiverHomes) || []);
+    } catch (err) {
+      console.error('[library] PC port scan failed:', err);
+      this.raw.ports = [];
     }
     return this.snapshot();
   }
@@ -107,7 +114,7 @@ class Library {
   snapshot() {
     const cfg = this.config;
     const validCollections = new Set(cfg.collections.map((c) => c.id));
-    const all = [...this.raw.steam.games, ...this.raw.emu.games, ...this.customGames()];
+    const all = [...this.raw.steam.games, ...this.raw.emu.games, ...(this.raw.ports || []), ...this.customGames()];
     this.index = new Map(all.map((g) => [g.id, g]));
 
     const games = all.map((g) => {

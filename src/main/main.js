@@ -125,6 +125,8 @@ if (!app.requestSingleInstanceLock()) {
 
   function makeGuideWindow(waitForOpen) {
     const w = new BrowserWindow({
+      // Mapped at once, already dark: the desktop never shows while the page loads.
+      show: !waitForOpen,
       fullscreen: true,
       frame: false,
       // Opaque: a see-through window over a fullscreen game is not composited above it on
@@ -132,7 +134,6 @@ if (!app.requestSingleInstanceLock()) {
       transparent: false,
       backgroundColor: '#05070a',
       skipTaskbar: true,
-      show: false,
       title: 'Halcyon Guide',
       alwaysOnTop: true,
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
@@ -146,6 +147,9 @@ if (!app.requestSingleInstanceLock()) {
 
   /** Keep a Guide window loaded and hidden while a game runs: shown on Home with no gap. */
   function prewarmGuide() {
+    // Disabled: on COSMIC a window shown again later is not brought in front or focused, so
+    // the Guide is always a newly opened window (those are). Kept for desktops where it helps.
+    if (!process.env.HALCYON_GUIDE_SPARE) return;
     if (spare && !spare.isDestroyed()) return;
     if (store.data.settings.homeButtonGuide === false || !launcher.nowPlaying().length) return;
     spare = makeGuideWindow(true);
@@ -182,7 +186,11 @@ if (!app.requestSingleInstanceLock()) {
       if (ready) menu.webContents.send('guide:open');
       diary.log(`guide-over-game: shown (${ready ? 'ready' : 'fresh'}), focused =`, menu.isFocused());
     };
-    if (ready) show(); else menu.once('ready-to-show', show);
+    if (ready) show(); else { shownAt = Date.now(); menu.focus(); diary.log('guide-over-game: opened (fresh)'); }
+    // Never leave an unseen Guide holding Home: if it has not got the screen soon, drop it.
+    setTimeout(() => {
+      if (!menu.isDestroyed() && gameMenu === menu && !menu.isFocused()) { diary.log('guide-over-game: never got the screen, closing'); closeGameMenu(); }
+    }, 1200);
     menu.on('focus', () => diary.log('guide-over-game: focus'));
     // If the game takes the screen back, close the Guide straight away: left open behind a
     // game it would keep the focus, and the game would stop taking input.

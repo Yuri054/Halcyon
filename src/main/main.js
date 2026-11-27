@@ -406,11 +406,16 @@ if (!app.requestSingleInstanceLock()) {
     const d = await dashboardDisplay().catch(() => null);
     const port = d && portOf(d.label);
     if (!port) return;
+    const steamApp = /^steam:\d+$/.test(String(id)) ? `steam_app_${String(id).slice(6)}` : '';
     following = await cosmicWindows.followNewWindows(port, {
-      ms: 90000,
+      // Long enough for Steam's shader processing and slow first starts.
+      ms: 240000,
       skipTitles: [DASHBOARD_TITLE, 'Halcyon game menu', GUIDE_TITLE],
-      onMove: (m) => diary.log(`game window "${m.title}" moved from ${m.from.join(', ') || '?'} to ${m.to}${m.ok ? '' : ' (not confirmed)'}`),
+      onMove: (m) => diary.log(`game window "${m.title}" moved from ${m.from.join(', ') || '?'} to ${m.to}${m.why === 'went back' ? ' again (it went back)' : ''}${m.ok ? '' : ' (not confirmed)'}`),
       onNew: (w) => { if (w.identifier) gameWindows.add(w.identifier); },
+      // Give the game (not Steam's own windows) the keyboard and controller.
+      focusIf: (w) => (steamApp ? w.appId === steamApp : !/^(steam|steamwebhelper)$/i.test(w.appId || '')),
+      log: (line) => diary.log(line),
     });
     diary.log(`launch ${id}: new windows follow Halcyon to ${port}`);
   }

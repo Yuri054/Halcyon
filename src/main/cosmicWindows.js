@@ -275,16 +275,27 @@ async function windowOutputs(title, appId = null) {
  * windows on the screen the pointer is on, which isn't Halcyon's after Halcyon has moved.
  * Fullscreen windows stay fullscreen there. Returns { stop }; it also stops by itself after ms.
  */
-async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = () => {}, onNew = () => {} } = {}) {
+async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = () => {}, onNew = () => {}, focusIf = () => false, log = () => {} } = {}) {
   if (!available() || !port) return { stop() {} };
   let c;
   try { c = await connect(); } catch { return { stop() {} }; }
   const out = c.outputs().find((o) => o.name === port);
   if (!out) { c.close(); return { stop() {} }; }
   const known = new Set(c.toplevels().map((t) => t.id));
+  // Windows already moved, checked again for a while: a game going fullscreen (or setting
+  // its own position) can put itself back on the screen it started on.
+  const watched = new Map();   // toplevel id -> { t, until }
   let stopped = false;
+  let errors = 0;
   const stop = () => { if (!stopped) { stopped = true; c.close(); } };
   const end = Date.now() + ms;
+  const bring = async (t, why) => {
+    const now = await c.where(t);
+    if (now.outputs.length === 1 && now.outputs[0] === port) return now;
+    const moved = await c.moveTo(t, out.id, { fullscreen: now.fullscreen, wait: 1500 });
+    onMove({ title: t.title, from: now.outputs, to: port, ok: moved, why });
+    return now;
+  };
   (async () => {
     while (!stopped && Date.now() < end) {
       await sleep(400);
@@ -293,15 +304,28 @@ async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = ()
         await c.refresh();
         for (const t of c.toplevels()) {
           if (known.has(t.id) || !t.title) continue;
-          if (skipTitles.includes(t.title)) { known.add(t.id); continue; }
           known.add(t.id);
-          onNew({ identifier: t.identifier, title: t.title, appId: t.appId });
-          const now = await c.where(t);
-          if (now.outputs.length === 1 && now.outputs[0] === port) continue;
-          const moved = await c.moveTo(t, out.id, { fullscreen: now.fullscreen, wait: 1500 });
-          onMove({ title: t.title, from: now.outputs, to: port, ok: moved });
+          if (skipTitles.includes(t.title)) continue;
+          const info = { identifier: t.identifier, title: t.title, appId: t.appId };
+          onNew(info);
+          const now = await bring(t, 'opened');
+          log(`new window "${t.title}" (${t.appId || 'no app id'}) opened on ${now.outputs.join(', ') || '?'}${now.fullscreen ? ', fullscreen' : ''}`);
+          watched.set(t.id, { t, until: Date.now() + 20000 });
+          // The game itself gets the keyboard and controller, so it can be played straight away.
+          if (focusIf(info)) { await sleep(300); await c.activate(t); }
         }
-      } catch { stop(); }
+        for (const [id, w] of watched) {
+          if (!c.toplevels().includes(w.t) || Date.now() > w.until) { watched.delete(id); continue; }
+          const before = await c.where(w.t);
+          if (before.outputs.length === 1 && before.outputs[0] === port) continue;
+          await bring(w.t, 'went back');
+          if (focusIf({ identifier: w.t.identifier, title: w.t.title, appId: w.t.appId })) await c.activate(w.t);
+        }
+        errors = 0;
+      } catch (err) {
+        log(`window follow: ${err.message}`);
+        if (++errors >= 5) stop();
+      }
     }
     stop();
   })();

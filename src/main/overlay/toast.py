@@ -1,166 +1,295 @@
 #!/usr/bin/env python3
-# Halcyon's achievement toast, drawn as a Wayland layer-shell overlay (the layer the desktop's
-# own panel and notifications use), so it shows over fullscreen games and never takes focus.
-# One JSON argument: { "title", "line", "icon" (a PNG path or ""), "rare", "x", "y", "w", "h"
-# (the monitor, in logical pixels, to pick it), "sound" (a WAV path or ""), "ms" }.
-# Looks like the Xbox 360's: a round badge, then a dark pill sliding out with two lines.
-import json, math, subprocess, sys, time
-import gi
-gi.require_version('Gtk', '3.0')
-gi.require_version('GtkLayerShell', '0.1')
-from gi.repository import Gtk, Gdk, GdkPixbuf, GLib, GtkLayerShell
+# Halcyon's achievement toast, in the Xbox 360's style: a round badge (black ring with notch
+# marks and a green arc around a silver sphere) at the left end of a dark grey pill with two
+# lines of text. It slides up from below the bottom edge of the screen to the bottom centre,
+# stays, then slides back down.
+#
+# Drawn as a Wayland layer-shell overlay (the layer the desktop's panel and notifications use),
+# so it shows over fullscreen games and never takes focus.
+#
+#   toast.py '<json>'                       show it: { title, line, icon, rare, x, y, sound, ms }
+#   toast.py --render <dir> '<json>' [bg]  write preview frames (PNG) instead, for checking
+import json, math, os, subprocess, sys, time
 import cairo
 
-a = json.loads(sys.argv[1])
-W, H = 620, 116          # the window (the pill sits inside, with room for its shadow)
-R = 46                   # badge radius
-SHOW = a.get('ms', 6500) / 1000.0
+PILL_H = 92          # pill height (the badge is a little larger)
+BADGE_R = 50         # badge radius
+WIDTH = 680          # whole toast width
+MARGIN = 70          # distance from the bottom edge when shown
+SLIDE = 0.45         # seconds to slide in or out
+FONT = 'Open Sans'
 
-win = Gtk.Window()
-win.set_app_paintable(True)
-visual = win.get_screen().get_rgba_visual()
-if visual is not None:
-    win.set_visual(visual)
-win.set_default_size(W, H)
 
-GtkLayerShell.init_for_window(win)
-GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
-GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.NONE)
-GtkLayerShell.set_namespace(win, 'halcyon-toast')
-GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.BOTTOM, True)
-GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, 90)
-
-# The monitor Halcyon is on (matched by position).
-display = Gdk.Display.get_default()
-for i in range(display.get_n_monitors()):
-    m = display.get_monitor(i)
-    g = m.get_geometry()
-    if abs(g.x - a.get('x', 0)) < 4 and abs(g.y - a.get('y', 0)) < 4:
-        GtkLayerShell.set_monitor(win, m)
-        break
-
-icon = None
-if a.get('icon'):
-    try:
-        icon = GdkPixbuf.Pixbuf.new_from_file_at_scale(a['icon'], 2 * R - 18, 2 * R - 18, True)
-    except Exception:
-        icon = None
-
-start = time.monotonic()
-
-def ease(t):
+def ease_out(t):
     t = max(0.0, min(1.0, t))
     return 1 - (1 - t) ** 3
 
-def rounded(cr, x, y, w, h, r):
-    r = min(r, h / 2, w / 2)
+
+def ease_in(t):
+    t = max(0.0, min(1.0, t))
+    return t ** 3
+
+
+def pill_path(cr, x, y, w, h):
+    r = h / 2
     cr.new_sub_path()
-    cr.arc(x + w - r, y + r, r, -math.pi / 2, 0)
-    cr.arc(x + w - r, y + h - r, r, 0, math.pi / 2)
-    cr.arc(x + r, y + h - r, r, math.pi / 2, math.pi)
-    cr.arc(x + r, y + r, r, math.pi, 3 * math.pi / 2)
+    cr.arc(x + w - r, y + r, r, -math.pi / 2, math.pi / 2)
+    cr.arc(x + r, y + r, r, math.pi / 2, 3 * math.pi / 2)
     cr.close_path()
 
-def draw(_w, cr):
-    t = time.monotonic() - start
+
+def draw_trophy(cr, cx, cy, size, color):
+    """A simple cup: bowl, handles, stem and base, in the arc's colour with a dark edge."""
+    w = size
+    cr.save()
+    cr.set_line_join(cairo.LINE_JOIN_ROUND)
+    # handles (behind the bowl)
+    cr.set_line_width(max(1.5, w * 0.13))
+    cr.set_source_rgb(*[c * 0.8 for c in color])
+    for sgn in (-1, 1):
+        cr.new_path()
+        cr.arc(cx + sgn * w * 0.52, cy - w * 0.40, w * 0.24, 0, 2 * math.pi)
+        cr.stroke()
+    cr.new_path()
+    cr.move_to(cx - w * 0.55, cy - w * 0.72)
+    cr.line_to(cx + w * 0.55, cy - w * 0.72)
+    cr.curve_to(cx + w * 0.55, cy - w * 0.05, cx + w * 0.30, cy + w * 0.18, cx + w * 0.11, cy + w * 0.22)
+    cr.line_to(cx + w * 0.11, cy + w * 0.46)
+    cr.line_to(cx + w * 0.38, cy + w * 0.52)
+    cr.line_to(cx + w * 0.38, cy + w * 0.70)
+    cr.line_to(cx - w * 0.38, cy + w * 0.70)
+    cr.line_to(cx - w * 0.38, cy + w * 0.52)
+    cr.line_to(cx - w * 0.11, cy + w * 0.46)
+    cr.line_to(cx - w * 0.11, cy + w * 0.22)
+    cr.curve_to(cx - w * 0.30, cy + w * 0.18, cx - w * 0.55, cy - w * 0.05, cx - w * 0.55, cy - w * 0.72)
+    cr.close_path()
+    gr = cairo.LinearGradient(cx - w, 0, cx + w, 0)
+    gr.add_color_stop_rgb(0, color[0] * 0.7, color[1] * 0.7, color[2] * 0.7)
+    gr.add_color_stop_rgb(0.4, min(1, color[0] * 1.2), min(1, color[1] * 1.2), min(1, color[2] * 1.2))
+    gr.add_color_stop_rgb(1, color[0] * 0.55, color[1] * 0.55, color[2] * 0.55)
+    cr.set_source(gr)
+    cr.fill_preserve()
+    cr.set_source_rgba(0.08, 0.12, 0.04, 0.9)
+    cr.set_line_width(max(1.2, w * 0.07))
+    cr.stroke()
+    cr.restore()
+
+
+def draw_badge(cr, cx, cy, R, rare, icon_surface):
+    # Outer black ring with a soft shadow.
+    cr.set_source_rgba(0, 0, 0, 0.55)
+    cr.arc(cx, cy + 2, R + 3, 0, 2 * math.pi)
+    cr.fill()
+    cr.set_source_rgb(0.06, 0.06, 0.06)
+    cr.arc(cx, cy, R, 0, 2 * math.pi)
+    cr.fill()
+    ring_in = R * 0.80
+    # The arc in the upper-left quarter: green (gold when rare).
+    arc = (0.98, 0.76, 0.18) if rare else (0.47, 0.80, 0.16)
+    cr.set_source_rgb(*arc)
+    cr.set_line_width((R - ring_in) * 0.62)
+    cr.new_path()
+    cr.arc(cx, cy, (R + ring_in) / 2, math.pi + 0.22, 1.5 * math.pi - 0.22)
+    cr.stroke()
+    # The four light notch marks (top, right, bottom, left).
+    cr.set_source_rgb(0.62, 0.63, 0.64)
+    for k in range(4):
+        cr.save()
+        cr.translate(cx, cy)
+        cr.rotate(k * math.pi / 2)
+        cr.rectangle(ring_in - 1, -R * 0.07, (R - ring_in) + 1, R * 0.14)
+        cr.fill()
+        cr.restore()
+    # The silver sphere.
+    s = ring_in - 2
+    g = cairo.RadialGradient(cx - s * 0.35, cy - s * 0.45, s * 0.05, cx, cy, s)
+    g.add_color_stop_rgb(0, 0.98, 0.98, 0.98)
+    g.add_color_stop_rgb(0.45, 0.78, 0.79, 0.80)
+    g.add_color_stop_rgb(1, 0.36, 0.37, 0.38)
+    cr.set_source(g)
+    cr.arc(cx, cy, s, 0, 2 * math.pi)
+    cr.fill()
+    cr.save()
+    cr.arc(cx, cy, s, 0, 2 * math.pi)
+    cr.clip()
+    # Like the console, the badge is always the same (the game's own icon isn't shown here).
+    draw_trophy(cr, cx, cy + s * 0.06, s * 0.78, arc)
+    cr.restore()
+    # A glossy highlight over the top of the sphere.
+    cr.save()
+    hl = cairo.LinearGradient(0, cy - s, 0, cy - s * 0.1)
+    hl.add_color_stop_rgba(0, 1, 1, 1, 0.38)
+    hl.add_color_stop_rgba(1, 1, 1, 1, 0)
+    cr.set_source(hl)
+    cr.translate(cx, cy - s * 0.58)
+    cr.scale(s * 0.66, s * 0.34)
+    cr.arc(0, 0, 1, 0, 2 * math.pi)
+    cr.restore()
+    cr.fill()
+
+
+def frame(cr, W, H, t, a, icon_surface, show):
+    """Draw the toast at time t (seconds) on a W x H surface whose bottom is the screen edge."""
     cr.set_operator(cairo.OPERATOR_SOURCE)
     cr.set_source_rgba(0, 0, 0, 0)
     cr.paint()
     cr.set_operator(cairo.OPERATOR_OVER)
-    # Timeline: badge pops in (0–0.35 s), pill slides out (0.35–0.8 s), holds, then all fades.
-    pop = ease(t / 0.35)
-    slide = ease((t - 0.35) / 0.45)
-    fade = 1.0 - ease((t - (SHOW - 0.5)) / 0.5)
-    alpha = max(0.0, min(1.0, fade)) * min(1.0, t / 0.15)
-    cx, cy = 14 + R, H / 2
-    full = W - 24
-    pw = (2 * R) + (full - 2 * R) * slide
-    # Shadow and pill.
-    cr.save()
-    cr.set_source_rgba(0, 0, 0, 0.35 * alpha)
-    rounded(cr, 14, cy - R + 6, pw, 2 * R, R)
-    cr.fill()
-    grad = cairo.LinearGradient(0, cy - R, 0, cy + R)
-    grad.add_color_stop_rgba(0, 0.24, 0.24, 0.25, 0.96 * alpha)
-    grad.add_color_stop_rgba(1, 0.09, 0.09, 0.10, 0.96 * alpha)
-    cr.set_source(grad)
-    rounded(cr, 14, cy - R, pw, 2 * R, R)
-    cr.fill()
-    cr.restore()
-    # Text, revealed as the pill opens.
-    if slide > 0.05:
-        cr.save()
-        rounded(cr, 14, cy - R, pw, 2 * R, R)
-        cr.clip()
-        cr.select_font_face('Segoe UI', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-        tx = cx + R + 18
-        cr.set_source_rgba(0.75, 0.75, 0.75, alpha * slide)
-        cr.set_font_size(20)
-        cr.move_to(tx, cy - 6)
-        cr.show_text(a.get('title', 'Achievement unlocked'))
-        cr.set_source_rgba(1, 1, 1, alpha * slide)
-        cr.set_font_size(25)
-        cr.move_to(tx, cy + 26)
-        line = a.get('line', '')
-        while line and cr.text_extents(line).x_advance > full - (tx - 14) - 30:
-            line = line[:-2] + '…' if not line.endswith('…') else line[:-2] + '…'
-        cr.show_text(line)
-        cr.restore()
-    # Badge: a bright ring (green, or gold when rare) around the achievement's icon.
-    r = R * (0.6 + 0.4 * pop)
-    ring = (1.0, 0.78, 0.2) if a.get('rare') else (0.55, 0.85, 0.25)
-    cr.set_source_rgba(0, 0, 0, 0.4 * alpha)
-    cr.arc(cx, cy + 3, r, 0, 2 * math.pi)
-    cr.fill()
-    g = cairo.RadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.1, cx, cy, r)
-    g.add_color_stop_rgba(0, min(1, ring[0] + 0.25), min(1, ring[1] + 0.15), min(1, ring[2] + 0.2), alpha)
-    g.add_color_stop_rgba(1, ring[0] * 0.55, ring[1] * 0.55, ring[2] * 0.4, alpha)
-    cr.set_source(g)
-    cr.arc(cx, cy, r, 0, 2 * math.pi)
-    cr.fill()
-    inner = r - 7
-    cr.save()
-    cr.arc(cx, cy, inner, 0, 2 * math.pi)
-    cr.clip()
-    if icon is not None:
-        s = (2 * inner) / max(icon.get_width(), icon.get_height())
-        cr.translate(cx - inner, cy - inner)
-        cr.scale(s, s)
-        Gdk.cairo_set_source_pixbuf(cr, icon, 0, 0)
-        cr.paint_with_alpha(alpha)
+    # Slide up, stay, slide down.
+    if t < SLIDE:
+        k = ease_out(t / SLIDE)
+    elif t > show - SLIDE:
+        k = 1 - ease_in((t - (show - SLIDE)) / SLIDE)
     else:
-        cr.set_source_rgba(0.1, 0.1, 0.1, alpha)
-        cr.paint()
-        cr.set_source_rgba(1, 1, 1, alpha)
-        cr.select_font_face('Segoe UI', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(inner * 1.1)
-        e = cr.text_extents('G')
-        cr.move_to(cx - e.width / 2 - e.x_bearing, cy - e.height / 2 - e.y_bearing)
-        cr.show_text('G')
-    cr.restore()
-    return False
+        k = 1.0
+    total = 2 * BADGE_R + 8
+    top_shown = H - MARGIN - total
+    top = top_shown + (H - top_shown + 6) * (1 - k)
+    x0 = (W - WIDTH) / 2
+    cy = top + total / 2
+    cx = x0 + BADGE_R + 4
+    # The pill, from the badge's centre to the right end.
+    px, pw, ph = cx, WIDTH - (cx - x0) - 4, PILL_H
+    py = cy - ph / 2
+    cr.set_source_rgba(0, 0, 0, 0.45)
+    pill_path(cr, px - 2, py + 5, pw + 4, ph)
+    cr.fill()
+    cr.set_source_rgb(0.02, 0.02, 0.02)
+    pill_path(cr, px - 3, py - 3, pw + 6, ph + 6)
+    cr.fill()
+    body = cairo.LinearGradient(0, py, 0, py + ph)
+    body.add_color_stop_rgb(0, 0.27, 0.28, 0.29)
+    body.add_color_stop_rgb(0.5, 0.21, 0.22, 0.23)
+    body.add_color_stop_rgb(1, 0.17, 0.18, 0.19)
+    cr.set_source(body)
+    pill_path(cr, px, py, pw, ph)
+    cr.fill()
+    cr.set_source_rgba(0.80, 0.81, 0.82, 0.55)
+    cr.set_line_width(1.6)
+    pill_path(cr, px + 1.5, py + 1.5, pw - 3, ph - 3)
+    cr.stroke()
+    # Text: two lines (or one, centred).
+    tx = cx + BADGE_R + 16
+    room = px + pw - tx - ph / 2
+    cr.select_font_face(FONT, cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+    cr.set_font_size(29)
+    lines = [x for x in [a.get('title', 'Achievement unlocked'), a.get('line', '')] if x]
+    ys = [cy - 6, cy + 28] if len(lines) == 2 else [cy + 10]
+    for text, y in zip(lines, ys):
+        while text and cr.text_extents(text).x_advance > room:
+            text = text[:-2].rstrip() + '…'
+        cr.set_source_rgba(0, 0, 0, 0.5)
+        cr.move_to(tx + 1, y + 1.5)
+        cr.show_text(text)
+        cr.set_source_rgb(0.93, 0.93, 0.93)
+        cr.move_to(tx, y)
+        cr.show_text(text)
+    draw_badge(cr, cx, cy, BADGE_R, a.get('rare'), icon_surface)
 
-area = Gtk.DrawingArea()
-area.set_size_request(W, H)
-area.connect('draw', draw)
-win.add(area)
-if __import__('os').environ.get('HALCYON_TOAST_DEBUG'):
-    print('backend', type(display).__name__, 'monitors', [(display.get_monitor(i).get_model(), display.get_monitor(i).get_geometry().x) for i in range(display.get_n_monitors())], 'layer ok', GtkLayerShell.is_supported(), flush=True)
-win.show_all()
-# The overlay ignores the pointer, so a click goes to the game underneath.
-win.input_shape_combine_region(cairo.Region())
 
-def tick():
-    area.queue_draw()
-    if time.monotonic() - start > SHOW:
-        Gtk.main_quit()
-        return False
-    return True
-
-GLib.timeout_add(16, tick)
-if a.get('sound'):
+def load_icon(path):
+    if not path:
+        return None
     try:
-        subprocess.Popen(['paplay', a['sound']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if path.lower().endswith('.png'):
+            return cairo.ImageSurface.create_from_png(path)
+        import gi
+        gi.require_version('GdkPixbuf', '2.0')
+        gi.require_version('Gdk', '3.0')
+        from gi.repository import GdkPixbuf, Gdk
+        pb = GdkPixbuf.Pixbuf.new_from_file(path)
+        surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, pb.get_width(), pb.get_height())
+        c = cairo.Context(surf)
+        Gdk.cairo_set_source_pixbuf(c, pb, 0, 0)
+        c.paint()
+        return surf
     except Exception:
-        pass
-Gtk.main()
+        return None
+
+
+def render(out_dir, a, bg=None):
+    """Preview frames over a background picture (or plain dark), 1280 x 720 at 30 fps."""
+    os.makedirs(out_dir, exist_ok=True)
+    W, H = 1280, 720
+    show = a.get('ms', 5500) / 1000.0
+    icon = load_icon(a.get('icon'))
+    back = None
+    if bg:
+        try:
+            back = cairo.ImageSurface.create_from_png(bg)
+        except Exception:
+            back = None
+    fps = 30
+    for i in range(int(show * fps) + 1):
+        layer = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
+        frame(cairo.Context(layer), W, H, i / fps, a, icon, show)
+        surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
+        cr = cairo.Context(surf)
+        if back is not None:
+            cr.scale(W / back.get_width(), H / back.get_height())
+            cr.set_source_surface(back, 0, 0)
+            cr.paint()
+            cr.identity_matrix()
+        else:
+            cr.set_source_rgb(0.08, 0.09, 0.1)
+            cr.paint()
+        cr.set_source_surface(layer, 0, 0)
+        cr.paint()
+        surf.write_to_png(os.path.join(out_dir, f'f_{i:04d}.png'))
+
+
+def show_overlay(a):
+    import gi
+    gi.require_version('Gtk', '3.0')
+    gi.require_version('GtkLayerShell', '0.1')
+    from gi.repository import Gtk, Gdk, GLib, GtkLayerShell
+    W, H = WIDTH + 40, MARGIN + 2 * BADGE_R + 30
+    show = a.get('ms', 5500) / 1000.0
+    win = Gtk.Window()
+    win.set_app_paintable(True)
+    visual = win.get_screen().get_rgba_visual()
+    if visual is not None:
+        win.set_visual(visual)
+    GtkLayerShell.init_for_window(win)
+    GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
+    GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.NONE)
+    GtkLayerShell.set_namespace(win, 'halcyon-toast')
+    GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.BOTTOM, True)
+    GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, 0)
+    GtkLayerShell.set_exclusive_zone(win, -1)
+    display = Gdk.Display.get_default()
+    for i in range(display.get_n_monitors()):
+        m = display.get_monitor(i)
+        g = m.get_geometry()
+        if abs(g.x - a.get('x', 0)) < 4 and abs(g.y - a.get('y', 0)) < 4:
+            GtkLayerShell.set_monitor(win, m)
+            break
+    icon = load_icon(a.get('icon'))
+    start = time.monotonic()
+    area = Gtk.DrawingArea()
+    area.set_size_request(W, H)
+    area.connect('draw', lambda _w, cr: frame(cr, W, H, time.monotonic() - start, a, icon, show) or False)
+    win.add(area)
+    win.show_all()
+    win.input_shape_combine_region(cairo.Region())   # clicks go to the game underneath
+
+    def tick():
+        area.queue_draw()
+        if time.monotonic() - start > show:
+            Gtk.main_quit()
+            return False
+        return True
+
+    GLib.timeout_add(16, tick)
+    if a.get('sound'):
+        try:
+            subprocess.Popen(['paplay', a['sound']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+    Gtk.main()
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 2 and sys.argv[1] == '--render':
+        render(sys.argv[2], json.loads(sys.argv[3]), sys.argv[4] if len(sys.argv) > 4 else None)
+    else:
+        show_overlay(json.loads(sys.argv[1]))

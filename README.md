@@ -222,8 +222,8 @@ wide and narrow tile shapes update as you go. A saves, Y returns to automatic, B
 
 ## Achievement notifications
 
-When you unlock an achievement, an Xbox 360-style *Achievement unlocked* slides in at the bottom of
-the screen, over the game, with your sound pack's achievement sound (a gold one, with the rare
+When you unlock an achievement, an Xbox 360-style *Achievement unlocked* ("100G - True Dedication",
+with the ringed trophy badge) slides up from the bottom edge to the bottom centre, over the game, with your sound pack's achievement sound (a gold one, with the rare
 sound, for achievements under 10% of players have). Steam ones appear the moment Steam records
 them (through Halcyon's listener inside Steam, so Download controls must be on); RetroAchievements
 within a minute while an emulated game runs. It's drawn as a Wayland layer-shell overlay

@@ -88,13 +88,13 @@ class AchievementToasts {
     const a = this.queue.shift();
     if (!a) { this.showing = false; return; }
     this.showing = true;
-    const line = a.points ? `${a.points} G - ${a.name}` : a.name;
+    const line = a.points ? `${a.points}G - ${a.name}` : a.name;   // "100G - True Dedication", as on the console
     diary.log('achievement toast:', line);
     const icon = await this.iconFile(a.icon).catch(() => '');
     const at = await this.displayBounds().catch(() => ({ x: 0, y: 0 }));
     const sounds = this.store.data.settings.sounds !== false;
     const sound = sounds ? (a.rare && this.soundFor('rareAchievement')) || this.soundFor('achievement') || '' : '';
-    const args = { title: a.rare ? 'Rare achievement unlocked' : 'Achievement unlocked', line, icon, rare: Boolean(a.rare), x: at.x, y: at.y, sound, ms: 6500 };
+    const args = { title: a.rare ? 'Rare achievement unlocked' : 'Achievement unlocked', line, icon, rare: Boolean(a.rare), x: at.x, y: at.y, sound, ms: 5000 };
     const done = () => setTimeout(() => this.next(), 400);
     if (await this.layerAvailable()) {
       const p = spawn('python3', [HELPER, JSON.stringify(args)], { stdio: 'ignore' });

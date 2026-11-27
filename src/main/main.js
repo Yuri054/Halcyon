@@ -20,6 +20,7 @@ const cosmicWindows = require('./cosmicWindows');
 const { Jellyfin } = require('./media/jellyfin');
 const { Achievements } = require('./steam/achievements');
 const { Retro } = require('./retro');
+const { AchievementToasts } = require('./achievementToasts');
 const { IMAGE_EXT, expandHome, isDir } = require('./util');
 
 const windowed = process.argv.includes('--windowed');
@@ -47,6 +48,7 @@ if (!app.requestSingleInstanceLock()) {
   let jellyfin = null;
   let achievements = null;
   let retro = null;
+  let achievementToasts = null;
   let ready = Promise.resolve();
 
   const send = (channel, payload) => {
@@ -505,6 +507,8 @@ if (!app.requestSingleInstanceLock()) {
     // "Add a game": installed apps that call themselves games, not already in the library.
     handle('achievements:game', (appid, opts) => achievements.game(appid, opts || {}));
     handle('achievements:totals', () => ({ ok: true, ...achievements.totals() }));
+    // A sample notification (Settings › system › Achievement notifications › Try it).
+    handle('achievements:testToast', () => { achievementToasts.show({ name: 'Timber!!', points: 7, icon: 'https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/105600/0fbb33098c9da39d1d4771d8209afface9c46e81.jpg', rare: false }); return { ok: true }; });
     handle('retro:status', () => ({ ok: true, ...retro.status() }));
     handle('retro:signIn', (user, key) => retro.signIn(user, key));
     handle('retro:signOut', () => retro.signOut());
@@ -947,6 +951,16 @@ if (!app.requestSingleInstanceLock()) {
     jellyfin = new Jellyfin(store);
     achievements = new Achievements(store, library, { dir: path.join(app.getPath('userData'), 'achievements'), onChange: () => pushLibrary() });
     retro = new Retro(store, { dir: path.join(app.getPath('userData'), 'retroachievements'), onChange: () => pushLibrary() });
+    achievementToasts = new AchievementToasts({
+      store, steamClient, achievements, retro, launcher: null, cacheDir: path.join(app.getPath('userData'), 'achievement-icons'),
+      installs: () => steam.findInstalls(store.data.steam.extraRoots),
+      displayBounds: async () => { const d = (await dashboardDisplay().catch(() => null)) || screen.getPrimaryDisplay(); return { x: d.bounds.x, y: d.bounds.y }; },
+      soundFor: (event) => {
+        const id = store.data.settings.soundPack;
+        if (!id) return null;
+        try { return sounds.resolve(path.join(app.getPath('userData'), 'sounds', id))[event] || null; } catch { return null; }
+      },
+    });
     launcher = new Launcher(library, (event) => {
       diary.log('launch event:', event);
       if (event.type === 'exited' || event.type === 'failed') stopFollowing();
@@ -964,6 +978,7 @@ if (!app.requestSingleInstanceLock()) {
       // (Automated runs keep their one window: the test script is attached to it.)
       if (!process.env.HALCYON_DEV_SCRIPT) setTimeout(() => bringToFront().catch(() => {}), 400);
       if (event.source === 'steam') rescan().catch(() => {}); else pushLibrary();
+    if (achievementToasts) { achievementToasts.launcher = launcher; if (!process.env.HALCYON_DRY_RUN) achievementToasts.start(); }
     });
     registerIpc();
 

@@ -72,7 +72,10 @@
       ],
       "recommends": [
         "pulseaudio-utils",
-        "alsa-utils"
+        "alsa-utils",
+        "python3-gi",
+        "gir1.2-gtklayershell-0.1",
+        "libnotify-bin"
       ],
       "packageCategory": "games"
     },

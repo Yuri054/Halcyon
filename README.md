@@ -220,6 +220,17 @@ emulated game.
 screen's tiles: the d-pad or stick picks the part that stays in view, LT/RT zoom, and the feature,
 wide and narrow tile shapes update as you go. A saves, Y returns to automatic, B cancels.
 
+## Achievement notifications
+
+When you unlock an achievement, an Xbox 360-style *Achievement unlocked* slides in at the bottom of
+the screen, over the game, with your sound pack's achievement sound (a gold one, with the rare
+sound, for achievements under 10% of players have). Steam ones appear the moment Steam records
+them (through Halcyon's listener inside Steam, so Download controls must be on); RetroAchievements
+within a minute while an emulated game runs. It's drawn as a Wayland layer-shell overlay
+(`src/main/overlay/toast.py`, needing `python3-gi` and `gir1.2-gtklayershell-0.1`), so it never
+takes focus from the game; without those, the desktop's own notification is used. Settings ›
+system turns it off or plays a sample.
+
 ## Monitor
 
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over

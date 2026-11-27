@@ -114,6 +114,18 @@ class Retro {
     }
   }
 
+  /** Achievements unlocked in the last few minutes: [{ id, name, points, icon, date, game }]. */
+  async recent(minutes = 3) {
+    const acct = this.account();
+    if (!acct) return [];
+    const r = await call('API_GetUserRecentAchievements.php', { u: acct.user, m: minutes }, acct.key);
+    if (!r.ok || !Array.isArray(r.json)) return [];
+    return r.json.map((a) => ({
+      id: String(a.AchievementID), name: a.Title || 'Achievement', points: Number(a.Points) || 0, date: a.Date || '',
+      icon: a.BadgeURL ? media(a.BadgeURL) : a.BadgeName ? `${MEDIA}/Badge/${a.BadgeName}.png` : '', game: a.GameTitle || '',
+    }));
+  }
+
   /** One game's achievements, in the same shape as Steam's: { ok, list, total, unlocked, points, earned }. */
   async game(id, { refresh = false } = {}) {
     const acct = this.account();

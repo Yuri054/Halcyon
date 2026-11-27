@@ -30,7 +30,11 @@ const DECK = {
   toggleOn: ['deck_ui_switch_toggle_on.wav'],
   toggleOff: ['deck_ui_switch_toggle_off.wav'],
   boot: [],
+  // Played by the achievement overlay (not the page); also found by plain file name.
+  achievement: ['deck_ui_achievement_toast.wav'],
+  rareAchievement: [],
 };
+const BY_NAME = { achievement: ['Achievement.wav', 'achievement.wav'], rareAchievement: ['RareAchievementStart.wav', 'RareAchievement.wav', 'rare_achievement.wav'] };
 const EVENTS = Object.keys(DECK);
 
 const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
@@ -62,6 +66,10 @@ function resolve(dir) {
     for (const deckName of DECK[event]) {
       if (file) break;
       file = inPack(dir, first(mappings[deckName]));
+    }
+    for (const name of BY_NAME[event] || []) {
+      if (file) break;
+      file = inPack(dir, name);
     }
     if (file) out[event] = file;
   }

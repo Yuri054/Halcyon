@@ -102,7 +102,7 @@ contextBridge.exposeInMainWorld('halcyon', {
     run: call('scraper:run'), candidates: call('scraper:candidates'), choose: call('scraper:choose') },
   storage: { info: call('storage:info') },
   apps: { games: call('apps:games'), openQuiver: call('apps:openQuiver') },
-  achievements: { game: call('achievements:game'), totals: call('achievements:totals') },
+  achievements: { game: call('achievements:game'), totals: call('achievements:totals'), testToast: call('achievements:testToast') },
   retro: { status: call('retro:status'), signIn: call('retro:signIn'), signOut: call('retro:signOut'), sync: call('retro:sync'), game: call('retro:game') },
   system: {
     status: call('system:status'),

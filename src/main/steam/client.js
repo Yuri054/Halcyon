@@ -326,6 +326,17 @@ function installLaunchHooks({ skipShaders: skip }) {
         } catch (e) { h.error = String(e); }
       });
     }
+    // Achievements as Steam hears of them, queued for Halcyon to collect (takeAchievements).
+    if (!h.achievements) {
+      h.achQueue = h.achQueue || [];
+      h.achievements = SteamClient.GameSessions.RegisterForAchievementNotification((n) => {
+        try {
+          if (!n || !n.unAppID || !n.achievement || !n.achievement.bAchieved) return;
+          h.achQueue.push({ appid: n.unAppID, a: n.achievement, at: Date.now() });
+          if (h.achQueue.length > 50) h.achQueue.splice(0, h.achQueue.length - 50);
+        } catch (e) { h.error = String(e); }
+      });
+    }
     if (!h.userRequest) {
       h.userRequest = SteamClient.Apps.RegisterForGameActionUserRequest((actionId, gameId, action, request) => {
         try {
@@ -337,6 +348,14 @@ function installLaunchHooks({ skipShaders: skip }) {
       });
     }
   })()`);
+}
+
+/** Achievements Steam has reported since the last call: [{ appid, a: Steam's achievement, at }]. */
+async function takeAchievements() {
+  try {
+    const list = await evaluate('(() => { const h = window.__halcyon || {}; const q = h.achQueue || []; h.achQueue = []; return q; })()', 3000);
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
 }
 
 /** Halcyon is handling a Home press: keep Steam's overlay from opening for the next ms. */
@@ -420,4 +439,4 @@ function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { evaluate, enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, terminateApp, uninstallApp, installApp, installFolders, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, boolSetting, PORT };
+module.exports = { evaluate, enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, terminateApp, uninstallApp, installApp, installFolders, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, takeAchievements, boolSetting, PORT };

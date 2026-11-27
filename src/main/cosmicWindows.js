@@ -161,6 +161,8 @@ function connect(timeout = 4000) {
         infoId = bind(info, 3);
         managerId = bind(manager, 4);
         if (ws) bind(ws, 1);
+        const seatG = globals.find((x) => x.iface === 'wl_seat');
+        const seatId = seatG ? bind(seatG, 1) : 0;
         await sync();
         await sync();
         clearTimeout(timer);
@@ -215,6 +217,14 @@ function connect(timeout = 4000) {
               if (t.outputs.has(outputId) && (!fullscreen || t.fullscreen)) return true;
             }
             return t.outputs.has(outputId);
+          },
+          /** Bring a window to the front and give it the keyboard. */
+          async activate(t) {
+            if (!seatId) return false;
+            const h = await handleOf(t);
+            send(managerId, 2, u32(h, seatId));                                              // activate
+            await sync();
+            return true;
           },
           close() { sock.end(); },
         });
@@ -321,4 +331,16 @@ async function moveWindows(pick, port) {
   } catch { return []; } finally { if (c) c.close(); }
 }
 
-module.exports = { available, connect, moveWindow, windowOutputs, followNewWindows, moveWindows };
+/** Bring the newest window that pick(window) accepts to the front. Resolves its title or ''. */
+async function activateWindow(pick) {
+  if (!available()) return '';
+  let c;
+  try {
+    c = await connect();
+    const t = c.toplevels().filter((x) => pick({ identifier: x.identifier, title: x.title, appId: x.appId })).pop();
+    if (!t) return '';
+    return (await c.activate(t)) ? t.title : '';
+  } catch { return ''; } finally { if (c) c.close(); }
+}
+
+module.exports = { available, connect, moveWindow, windowOutputs, followNewWindows, moveWindows, activateWindow };

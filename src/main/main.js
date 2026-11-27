@@ -420,11 +420,25 @@ if (!app.requestSingleInstanceLock()) {
    * windows along: the ones that opened when Halcyon started it, and any Steam game window
    * (COSMIC names those steam_app_<id>).
    */
+  /** Which windows belong to the running game: those it opened, and Steam games' windows. */
+  function isGameWindow(w) {
+    const steamIds = launcher.nowPlaying().map((p) => String(p.id)).filter((id) => /^steam:\d+$/.test(id)).map((id) => `steam_app_${id.slice(6)}`);
+    return gameWindows.has(w.identifier) || steamIds.includes(w.appId) || /^steam_app_\d+$/.test(w.appId);
+  }
+
+  /**
+   * Hand the screen back to the game. Closing the Guide lets the desktop pick what comes to
+   * the front, and that can be Halcyon (fullscreen on the same screen), hiding the game.
+   */
+  function focusGame() {
+    if (!launcher.nowPlaying().length || !cosmicWindows.available()) return;
+    setTimeout(() => cosmicWindows.activateWindow(isGameWindow).then((t) => diary.log('resume: brought to front:', t || 'nothing found')).catch(() => {}), 120);
+  }
+
   async function moveToScreen(label) {
     const d = screen.getAllDisplays().find((x) => x.label === label);
     if (!d) return { ok: false, error: 'That screen isn’t connected.' };
     const port = portOf(d.label);
-    const playingSteam = launcher.nowPlaying().map((p) => String(p.id)).filter((id) => /^steam:\d+$/.test(id)).map((id) => `steam_app_${id.slice(6)}`);
     const anyGame = launcher.nowPlaying().length > 0;
     store.data.settings.monitor = label;
     store.save();
@@ -433,7 +447,7 @@ if (!app.requestSingleInstanceLock()) {
     if (win) await placeOnMonitor(win);
     let moved = [];
     if (anyGame && cosmicWindows.available()) {
-      moved = await cosmicWindows.moveWindows((w) => gameWindows.has(w.identifier) || playingSteam.includes(w.appId) || /^steam_app_\d+$/.test(w.appId), port);
+      moved = await cosmicWindows.moveWindows(isGameWindow, port);
       diary.log('move to screen: game windows', JSON.stringify(moved));
     }
     return { ok: true, game: moved.length, gameMoved: moved.filter((m) => m.ok).length };
@@ -482,7 +496,7 @@ if (!app.requestSingleInstanceLock()) {
     handle('home:status', async () => ({ ok: true, enabled: cfg().settings.homeButtonGuide !== false, steamReleased: cfg().steamGuideFocusOff, watching: padWatch.listening, steamConnected: steamClient.enabled(steam.findInstalls(cfg().steam.extraRoots)) && (await steamClient.downloads()).ok }));
     handle('game:resume', () => {
       // From the in-game menu: closing that window hands focus straight back to the game.
-      if (gameMenu) { closeGameMenu(); return { ok: true }; }
+      if (gameMenu) { closeGameMenu(); focusGame(); return { ok: true }; }
       // From the dashboard: step aside so the game underneath has the screen again.
       if (win && launcher.nowPlaying().length && !process.env.HALCYON_DRY_RUN) win.minimize();
       return { ok: true };

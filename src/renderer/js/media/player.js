@@ -121,6 +121,9 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
     video.addEventListener('waiting', () => el.classList.add('is-loading'));
     video.addEventListener('playing', () => el.classList.remove('is-loading'));
     video.addEventListener('ended', () => next(1, true));
+    // Keep the screen on while a video plays (music may let it sleep).
+    const awake = () => api.system.keepAwake(Boolean(!closed && session && !session.audio && !video.paused && !video.ended)).catch(() => {});
+    for (const ev of ['play', 'playing', 'pause', 'ended', 'emptied']) video.addEventListener(ev, awake);
     video.addEventListener('error', () => { if (!closed && session) toast('Jellyfin could not stream this file.', { type: 'error', title: session.item.name }); });
 
     function position() { return (Number.isFinite(video.currentTime) ? video.currentTime : 0) + offset; }
@@ -291,6 +294,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       video.pause();
       video.removeAttribute('src');
       video.load();
+      api.system.keepAwake(false).catch(() => {});
       focus.popLayer(layer);
       el.classList.add('is-closing');
       setTimeout(() => el.remove(), 350);

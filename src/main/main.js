@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, protocol, net, Menu, shell, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net, Menu, shell, screen, powerSaveBlocker } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { JsonStore, DEFAULTS } = require('./store');
@@ -816,6 +816,13 @@ if (!app.requestSingleInstanceLock()) {
     });
     // The monitors, for Settings › display › Monitor.
     handle('system:moveToScreen', (label) => moveToScreen(String(label || '')));
+    // While a video plays: keep the desktop's screen blanking and screensaver away.
+    let awake = null;
+    handle('system:keepAwake', (on) => {
+      if (on && awake == null) { awake = powerSaveBlocker.start('prevent-display-sleep'); diary.log('keep awake: on (video playing)'); }
+      else if (!on && awake != null) { powerSaveBlocker.stop(awake); awake = null; diary.log('keep awake: off'); }
+      return { ok: true, on: awake != null };
+    });
     handle('system:displays', async () => {
       const here = await dashboardDisplay();
       const primary = screen.getPrimaryDisplay();

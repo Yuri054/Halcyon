@@ -415,6 +415,8 @@ function touch() {
 
 function checkIdle() {
   if (dimmed || state.lib.settings.dimWhenIdle === false || !input.isLive()) return;
+  // Not while a video or music plays (music in the background too).
+  if ([...document.querySelectorAll('video')].some((v) => !v.paused && !v.ended)) { lastActivity = performance.now(); return; }
   if (performance.now() - lastActivity >= app.idleMs) setDimmed(true);
 }
 

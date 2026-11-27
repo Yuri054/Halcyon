@@ -369,9 +369,13 @@ if (!app.requestSingleInstanceLock()) {
   // pointer is on, which isn't Halcyon's after Halcyon has been moved (until you click there),
   // so for a while after a launch every new window is brought over to Halcyon's screen.
   let following = null;
+  // The windows that opened for the game Halcyon started (their COSMIC identifiers), so the
+  // Guide's "Move to another screen" can bring the game along.
+  const gameWindows = new Set();
   function stopFollowing() { if (following) { following.stop(); following = null; } }
   async function followGameToHalcyon(id) {
     stopFollowing();
+    gameWindows.clear();
     if (!cosmicWindows.available() || process.env.HALCYON_DRY_RUN) return;
     const d = await dashboardDisplay().catch(() => null);
     const port = d && portOf(d.label);
@@ -380,8 +384,33 @@ if (!app.requestSingleInstanceLock()) {
       ms: 90000,
       skipTitles: [DASHBOARD_TITLE, 'Halcyon game menu', 'Halcyon Guide'],
       onMove: (m) => diary.log(`game window "${m.title}" moved from ${m.from.join(', ') || '?'} to ${m.to}${m.ok ? '' : ' (not confirmed)'}`),
+      onNew: (w) => { if (w.identifier) gameWindows.add(w.identifier); },
     });
     diary.log(`launch ${id}: new windows follow Halcyon to ${port}`);
+  }
+
+  /**
+   * Move Halcyon to another monitor (and make it the chosen one), bringing the running game's
+   * windows along: the ones that opened when Halcyon started it, and any Steam game window
+   * (COSMIC names those steam_app_<id>).
+   */
+  async function moveToScreen(label) {
+    const d = screen.getAllDisplays().find((x) => x.label === label);
+    if (!d) return { ok: false, error: 'That screen isn’t connected.' };
+    const port = portOf(d.label);
+    const playingSteam = launcher.nowPlaying().map((p) => String(p.id)).filter((id) => /^steam:\d+$/.test(id)).map((id) => `steam_app_${id.slice(6)}`);
+    const anyGame = launcher.nowPlaying().length > 0;
+    store.data.settings.monitor = label;
+    store.save();
+    pushLibrary();
+    // Halcyon first, then the game, so the game ends up in front on the new screen.
+    if (win) await placeOnMonitor(win);
+    let moved = [];
+    if (anyGame && cosmicWindows.available()) {
+      moved = await cosmicWindows.moveWindows((w) => gameWindows.has(w.identifier) || playingSteam.includes(w.appId) || /^steam_app_\d+$/.test(w.appId), port);
+      diary.log('move to screen: game windows', JSON.stringify(moved));
+    }
+    return { ok: true, game: moved.length, gameMoved: moved.filter((m) => m.ok).length };
   }
 
   // ---- the Guide (in its own window over a game) asks the dashboard to take over
@@ -746,6 +775,7 @@ if (!app.requestSingleInstanceLock()) {
       }));
     });
     // The monitors, for Settings › display › Monitor.
+    handle('system:moveToScreen', (label) => moveToScreen(String(label || '')));
     handle('system:displays', async () => {
       const here = await dashboardDisplay();
       const primary = screen.getPrimaryDisplay();
@@ -963,7 +993,7 @@ if (!app.requestSingleInstanceLock()) {
     });
     launcher = new Launcher(library, (event) => {
       diary.log('launch event:', event);
-      if (event.type === 'exited' || event.type === 'failed') stopFollowing();
+      if (event.type === 'exited' || event.type === 'failed') { stopFollowing(); if (!launcher.nowPlaying().length) gameWindows.clear(); }
       // New unlocks from the session just ended.
       if (event.type === 'exited' && /^steam:\d+$/.test(event.id || '')) setTimeout(() => achievements && achievements.game(event.id.slice(6), { refresh: true }).catch(() => {}), 8000);
       // After an emulated game, new RetroAchievements unlocks.

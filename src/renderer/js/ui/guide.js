@@ -156,6 +156,7 @@ export async function openGuide({ select = null } = {}) {
     // settings
     return [
       volume.item(),
+      { label: playing.length ? 'Move game to another screen' : 'Move to another screen', value: 'movescreen', key: 'movescreen', iconName: 'screen', verb: 'Choose' },
       !overTask && { label: 'Settings', value: 'go:settings', key: 'go:settings', iconName: 'gear' },
       ...Object.entries(POWER).map(([id, p]) => ({ label: p.label, value: `power:${id}`, key: `power:${id}`, iconName: p.iconName, danger: id === 'exit' })),
     ];
@@ -218,6 +219,21 @@ export async function openGuide({ select = null } = {}) {
     if (pick === 'np:toggle') { nowPlaying()?.toggle(); continue; }
     if (pick === 'downloads') { after = () => app.downloads(); break; }
     if (pick === 'storage') { after = () => app.storage(); break; }
+    if (pick === 'movescreen') {
+      const list = (await api.system.displays().catch(() => [])) || [];
+      const where = await panel.ask({
+        title: playing.length ? 'Move game to' : 'Move to',
+        subtitle: playing.length ? 'Halcyon and the game move together' : 'Halcyon moves to that screen',
+        items: list.map((d) => ({ label: d.name, value: d.label, iconName: 'screen', checked: d.current, disabled: d.current,
+          sub: [d.port, `${d.width} × ${d.height}`, d.current && 'here now'].filter(Boolean).join(' · ') })),
+      });
+      if (!where) continue;
+      const r = await api.system.moveToScreen(where);
+      if (r && r.ok === false) { toast(r.error, { type: 'error', title: 'Move to another screen' }); continue; }
+      if (playing.length && r && r.game && !r.gameMoved) toast('Halcyon moved, but the game window didn’t.', { type: 'error', title: 'Move to another screen' });
+      after = () => (playing.length ? api.game.resume() : null);
+      break;
+    }
     if (pick === 'achievements') { after = () => app.achievements(); break; }
 
     if (pick.startsWith('power:')) {

@@ -283,6 +283,10 @@ Uninstall.
 closes it again. *Game start animation* (Settings › display) turns the Halcyon intro that plays
 while a game starts on or off.
 
+The Guide's settings blade has **Move to another screen**: Halcyon moves there (and it becomes the
+chosen monitor), and a running game comes along, staying fullscreen: the windows that opened when
+Halcyon started it, and any Steam game window.
+
 ## Sections
 
 The tabs are **home, games, tv & movies, music** and **settings**. Settings has two sub-tabs,

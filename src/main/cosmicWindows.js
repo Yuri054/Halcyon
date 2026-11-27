@@ -85,7 +85,7 @@ function connect(timeout = 4000) {
       if (type === 'ext_foreign_toplevel_list_v1' && op === 0) {
         const id = body.readUInt32LE(0);
         objects.set(id, 'ext_foreign_toplevel_handle_v1');
-        toplevels.set(id, { id, title: '', appId: '', cosmic: 0, outputs: new Set(), fullscreen: false });
+        toplevels.set(id, { id, title: '', appId: '', identifier: '', cosmic: 0, outputs: new Set(), fullscreen: false });
         return;
       }
       if (type === 'ext_foreign_toplevel_handle_v1') {
@@ -93,6 +93,7 @@ function connect(timeout = 4000) {
         if (op === 0) toplevels.delete(obj);
         else if (op === 2 && t) t.title = readStr(body, 0).value;
         else if (op === 3 && t) t.appId = readStr(body, 0).value;
+        else if (op === 4 && t) t.identifier = readStr(body, 0).value;   // stable for the window's life
         return;
       }
       if (type === 'zcosmic_toplevel_handle_v1') {
@@ -264,7 +265,7 @@ async function windowOutputs(title, appId = null) {
  * windows on the screen the pointer is on, which isn't Halcyon's after Halcyon has moved.
  * Fullscreen windows stay fullscreen there. Returns { stop }; it also stops by itself after ms.
  */
-async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = () => {} } = {}) {
+async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = () => {}, onNew = () => {} } = {}) {
   if (!available() || !port) return { stop() {} };
   let c;
   try { c = await connect(); } catch { return { stop() {} }; }
@@ -284,6 +285,7 @@ async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = ()
           if (known.has(t.id) || !t.title) continue;
           if (skipTitles.includes(t.title)) { known.add(t.id); continue; }
           known.add(t.id);
+          onNew({ identifier: t.identifier, title: t.title, appId: t.appId });
           const now = await c.where(t);
           if (now.outputs.length === 1 && now.outputs[0] === port) continue;
           const moved = await c.moveTo(t, out.id, { fullscreen: now.fullscreen, wait: 1500 });
@@ -296,4 +298,27 @@ async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = ()
   return { stop };
 }
 
-module.exports = { available, connect, moveWindow, windowOutputs, followNewWindows };
+/**
+ * Move every window that pick(window) accepts to the output `port`, keeping fullscreen ones
+ * fullscreen. pick gets { identifier, title, appId }. Resolves [{ title, ok, from }].
+ */
+async function moveWindows(pick, port) {
+  if (!available()) return [];
+  let c;
+  try {
+    c = await connect();
+    const out = c.outputs().find((o) => o.name === port);
+    if (!out) return [];
+    const moved = [];
+    for (const t of c.toplevels()) {
+      if (!pick({ identifier: t.identifier, title: t.title, appId: t.appId })) continue;
+      const now = await c.where(t);
+      if (now.outputs.length === 1 && now.outputs[0] === port) { moved.push({ title: t.title, ok: true, from: now.outputs }); continue; }
+      const ok = await c.moveTo(t, out.id, { fullscreen: now.fullscreen, wait: 2000 });
+      moved.push({ title: t.title, ok, from: now.outputs });
+    }
+    return moved;
+  } catch { return []; } finally { if (c) c.close(); }
+}
+
+module.exports = { available, connect, moveWindow, windowOutputs, followNewWindows, moveWindows };

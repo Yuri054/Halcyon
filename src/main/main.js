@@ -430,9 +430,12 @@ if (!app.requestSingleInstanceLock()) {
    * Hand the screen back to the game. Closing the Guide lets the desktop pick what comes to
    * the front, and that can be Halcyon (fullscreen on the same screen), hiding the game.
    */
-  function focusGame() {
-    if (!launcher.nowPlaying().length || !cosmicWindows.available()) return;
-    setTimeout(() => cosmicWindows.activateWindow(isGameWindow).then((t) => diary.log('resume: brought to front:', t || 'nothing found')).catch(() => {}), 120);
+  async function focusGame(delay = 120) {
+    if (!launcher.nowPlaying().length || !cosmicWindows.available()) return '';
+    await new Promise((r) => setTimeout(r, delay));
+    const t = await cosmicWindows.activateWindow(isGameWindow).catch(() => '');
+    diary.log('resume: brought to front:', t || 'nothing found');
+    return t;
   }
 
   async function moveToScreen(label) {
@@ -497,9 +500,10 @@ if (!app.requestSingleInstanceLock()) {
     handle('game:resume', () => {
       // From the in-game menu: closing that window hands focus straight back to the game.
       if (gameMenu) { closeGameMenu(); focusGame(); return { ok: true }; }
-      // From the dashboard: step aside so the game underneath has the screen again.
-      if (win && launcher.nowPlaying().length && !process.env.HALCYON_DRY_RUN) win.minimize();
-      return { ok: true };
+      // From the dashboard: bring the game in front, with Halcyon staying fullscreen behind it,
+      // so the desktop never shows when the game closes. Minimizing is the fallback.
+      if (!win || !launcher.nowPlaying().length || process.env.HALCYON_DRY_RUN) return { ok: true };
+      return focusGame(0).then((t) => { if (!t && win && !win.isDestroyed()) win.minimize(); return { ok: true }; });
     });
     handle('game:patch', (id, patch) => { library.patchGame(id, patch); pushLibrary(); return { ok: true }; });
 
@@ -960,11 +964,17 @@ if (!app.requestSingleInstanceLock()) {
     await new Promise((r) => setTimeout(r, 500));
     if (!win || win.isDestroyed()) return 'none';
     if (win.isFocused() && !force) return 'focused';
+    // COSMIC: ask the desktop itself to bring Halcyon forward (it ignores the app's own request).
+    if (!force && cosmicWindows.available() && await cosmicWindows.activateWindow((w) => w.title === DASHBOARD_TITLE).catch(() => '')) {
+      await new Promise((r) => setTimeout(r, 300));
+      if (win && !win.isDestroyed() && win.isFocused()) return 'focused';
+    }
     const old = win;
     store.flush();
     reopened = true;                 // the new window skips the start-up animation
     const next = createWindow();
-    next.once('ready-to-show', () => { if (!old.isDestroyed()) old.destroy(); });
+    // The old window stays until the new one is shown and on its screen, so nothing shows between.
+    next.once('ready-to-show', () => setTimeout(() => { if (!old.isDestroyed()) old.destroy(); }, 1500));
     return 'reopened';
   }
 

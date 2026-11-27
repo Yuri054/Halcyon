@@ -1,7 +1,7 @@
 {
   "name": "halcyon",
   "productName": "Halcyon",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A console-style game launcher for Linux: Steam, emulators and custom games, fully controller-driven.",
   "main": "src/main/main.js",
   "scripts": {
@@ -40,6 +40,9 @@
       "src/**/*",
       "package.json",
       "!**/*.md"
+    ],
+    "asarUnpack": [
+      "src/main/overlay/**"
     ],
     "linux": {
       "target": [

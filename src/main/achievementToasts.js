@@ -11,7 +11,8 @@ const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const diary = require('./log');
 
-const HELPER = path.join(__dirname, 'overlay', 'toast.py');
+// Python can't read inside the app archive: packaged builds unpack the helper next to it.
+const HELPER = path.join(__dirname, 'overlay', 'toast.py').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 const ICON_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(steamstatic\.com|steamcdn-a\.akamaihd\.net|retroachievements\.org)\//;
 
 class AchievementToasts {

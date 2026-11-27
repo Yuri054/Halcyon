@@ -57,7 +57,30 @@ export function visibleGames() {
 /** How well a game works with a controller: full, partial, none or unknown (emulated games: full). */
 export const padSupport = (g) => (g.source === 'emulator' ? 'full' : g.controller || 'unknown');
 
+// Filters can be combined: "installed+pad:full" shows games that are installed AND fully
+// support a controller. Within a group only one applies (installed or not installed; one
+// source; one level of controller support), so picking another in the same group swaps it.
+const FILTER_GROUP = (f) => (f === 'installed' || f === 'uninstalled' ? 'status'
+  : f.startsWith('pad:') ? 'pad'
+    : ['steam', 'ports', 'emulated', 'custom'].includes(f) || f.startsWith('sys:') ? 'source' : f);
+export const filterParts = (filter) => (!filter || filter === 'all' ? [] : String(filter).split('+').filter(Boolean));
+/** The filter with f turned on or off (others in its group make way). */
+export function toggleFilter(filter, f) {
+  if (f === 'all') return 'all';
+  const parts = filterParts(filter);
+  if (parts.includes(f)) return parts.filter((p) => p !== f).join('+') || 'all';
+  return [...parts.filter((p) => FILTER_GROUP(p) !== FILTER_GROUP(f)), f].join('+');
+}
+
 export function filterGames(filter, list = visibleGames()) {
+  const parts = filterParts(filter);
+  if (parts.length > 1) {
+    // Hidden / no-controller games come from the whole library, then the rest narrow them.
+    const first = parts.find((p) => p === 'hidden' || p === 'nopad');
+    let out = first ? filterGames(first, list) : list;
+    for (const p of parts) if (p !== first) out = filterGames(p, out);
+    return out;
+  }
   if (filter === 'all') return list;
   if (filter === 'favorites') return list.filter((g) => g.favorite);
   if (filter === 'recent') return list.filter((g) => g.lastPlayed && g.installed).sort((a, b) => b.lastPlayed - a.lastPlayed).slice(0, 24);
@@ -77,6 +100,8 @@ export function filterGames(filter, list = visibleGames()) {
 }
 
 export function filterLabel(filter) {
+  const parts = filterParts(filter);
+  if (parts.length > 1) return parts.map((p) => filterLabel(p)).join(' + ');
   const fixed = { all: 'All games', favorites: 'Favorites', recent: 'Recently played', steam: 'Steam', emulated: 'Emulated', custom: 'Added by hand', ports: 'PC ports', hidden: 'Hidden', nopad: 'No controller', installed: 'Installed', uninstalled: 'Not installed', downloads: 'Downloading',
     'pad:full': 'Full controller support', 'pad:partial': 'Partial controller support', 'pad:none': 'No controller support', 'pad:unknown': 'Controller support not known' };
   if (fixed[filter]) return fixed[filter];

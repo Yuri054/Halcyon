@@ -5,14 +5,14 @@ import { h, icon, flash } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import { sfx } from '../core/sfx.js';
 import {
-  api, state, SORTS, visibleGames, filterGames, filterLabel, sortGames, search,
+  api, state, SORTS, visibleGames, filterGames, filterLabel, filterParts, toggleFilter, sortGames, search,
   game as findGame, gameContext, fmt, padSupport, isPlaying,
 } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { gameTile } from '../ui/tile.js';
 import { gameMenu } from '../ui/gamemenu.js';
 import { keyboard } from '../ui/osk.js';
-import { menu } from '../ui/dialog.js';
+import { menu, openPanel } from '../ui/dialog.js';
 import { artImg } from '../ui/art.js';
 import { toast } from '../ui/toast.js';
 
@@ -197,14 +197,14 @@ export function createGames() {
       chip('t:sort', `${document.body.dataset.theme === 'x360' ? 'Sort: ' : ''}${SORTS.find(([id]) => id === sort)?.[1] || 'Sort'}`, { iconName: 'clock', onSelect: doSort }));
 
     const base = filterGames(state.filter);
-    shown = search(state.filter === 'recent' ? base : sortGames(base, sort), state.query);
+    shown = search(filterParts(state.filter).includes('recent') ? base : sortGames(base, sort), state.query);
 
     if (!shown.length) {
       grid.replaceChildren(h('div', { class: 'empty' },
         icon(state.query ? 'search' : 'grid', 'empty__icon'),
         h('div', { class: 'empty__title' }, state.query ? `Nothing matches “${state.query}”` : `No games in ${filterLabel(state.filter)}`),
         h('div', { class: 'empty__sub' }, state.query ? 'Try a shorter search, or clear it from the Search chip.'
-          : state.filter === 'favorites' ? 'Press X on any game to mark it as a favorite.'
+          : filterParts(state.filter).includes('favorites') ? 'Press X on any game to mark it as a favorite.'
             : 'Games appear here automatically once they are installed or added.')));
     } else {
       if (v === 'classic') classicRender(focus.base().current?.dataset.key || null);
@@ -237,28 +237,56 @@ export function createGames() {
     app.refreshChrome();
   }
 
-  async function doFilter() {
-    const row = (f) => ({ label: filterLabel(f), value: f, checked: f === state.filter, hint: String(filterGames(f).length) });
-    const gs = groups();
-    let pick = await menu({
-      title: 'Show',
-      subtitle: 'Which games the list shows',
-      selected: gs.find((g) => g.list.includes(state.filter))?.id || state.filter,
-      items: [
-        ...filters().filter((f) => MAIN.includes(f)).map(row),
-        gs.length > 0 && { heading: ' ' },
-        ...gs.map((g) => ({ label: g.label, value: g.id, iconName: g.iconName, verb: 'Open', checked: g.list.includes(state.filter),
-          hint: g.list.includes(state.filter) ? filterLabel(state.filter) : String(g.list.length) })),
-      ].filter(Boolean),
-    });
-    const group = gs.find((g) => g.id === pick);
-    if (group) pick = await menu({ title: group.label, subtitle: 'Show', selected: state.filter, items: group.list.map(row) });
-    if (pick == null) return;
-    if (pick === state.filter) { focusGrid(); return; }
-    state.filter = pick;
-    api.ui.set({ filter: pick });
+  /** Apply a filter (single or combined), remember it, and redraw. */
+  function applyFilter(f, { focusGames = false } = {}) {
+    state.filter = f;
+    api.ui.set({ filter: f });
     render({ resetScroll: true });
     flash(el, 'is-swapping');
+    if (focusGames && shown.length) focusGrid();
+    app.refreshChrome();
+  }
+
+  /**
+   * Show: several filters can be on at once (installed + full controller support). A toggles
+   * one and the list updates behind the menu; B closes it. "All games" clears them all.
+   */
+  async function doFilter() {
+    const panel = openPanel();
+    let selected = null;
+    let inGroup = null;
+    for (;;) {
+      const on = filterParts(state.filter);
+      const row = (f) => ({ label: filterLabel(f), value: f, checked: on.includes(f), verb: on.includes(f) ? 'Turn off' : 'Turn on',
+        hint: String(filterGames(on.includes(f) ? state.filter : toggleFilter(state.filter, f)).length) });
+      const gs = groups();
+      const group = inGroup && gs.find((g) => g.id === inGroup);
+      const pick = await panel.ask(group ? {
+        title: group.label, subtitle: `Showing ${fmt.count(filterGames(state.filter).length, 'game')}`, selected,
+        items: group.list.map(row),
+      } : {
+        title: 'Show',
+        subtitle: on.length ? `${filterLabel(state.filter)} · ${fmt.count(filterGames(state.filter).length, 'game')}` : 'Pick one or more',
+        selected,
+        items: [
+          { label: 'All games', value: 'all', iconName: 'grid', checked: !on.length, hint: String(filterGames('all').length), sub: on.length ? 'Clear the filters' : null },
+          ...filters().filter((f) => MAIN.includes(f) && f !== 'all').map(row),
+          gs.length > 0 && { heading: ' ' },
+          ...gs.map((g) => {
+            const mine = on.filter((f) => g.list.includes(f));
+            return { label: g.label, value: g.id, iconName: g.iconName, verb: 'Open', checked: mine.length > 0, hint: mine.length ? mine.map(filterLabel).join(', ') : String(g.list.length) };
+          }),
+        ].filter(Boolean),
+      });
+      if (pick == null) {
+        if (group) { selected = inGroup; inGroup = null; continue; }
+        break;
+      }
+      if (gs.some((g) => g.id === pick)) { inGroup = pick; selected = null; continue; }
+      selected = pick;
+      applyFilter(toggleFilter(state.filter, pick));
+    }
+    await panel.close();
     if (shown.length) focusGrid(); else focus.focusKey('t:filter');
     app.refreshChrome();
   }

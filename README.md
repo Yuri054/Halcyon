@@ -281,7 +281,7 @@ collections pages are switched off: nothing in the tabs, Guide or home screen le
 In the 360 theme the games tab is the console's *My Games* list: every game (installed ones in
 colour, the rest greyed out, ready to install), with **Show** (all, favorites, recent, Steam, each
 installed, not installed, favorites, recently played; then *Where it's from*, *Controller support* and *More*, each opening its own short list), **Search** and **Sort** buttons. LT/RT step through the
-Show choices from the buttons. It always opens on all games.
+Show choices from the buttons. Several Show filters can be on at once (say *Installed* + *Full controller support*), and the filter is remembered between sessions.
 
 **View** (or Select) switches how games are shown: *Covers* (two rows), *Shelf* (one row of big
 covers with the selected game's details under it), *Classic* (the 360's game library: the selected cover big, the rest receding to the right, the categories stacked above with up/down to change them, and "1 of 8 | name | platform game" underneath) or *List*

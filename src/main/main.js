@@ -157,6 +157,7 @@ if (!app.requestSingleInstanceLock()) {
   // The dashboard window's title, which is how the compositor finds it (a test copy can use
   // another one so it never moves the real Halcyon).
   const DASHBOARD_TITLE = process.env.HALCYON_WINDOW_TITLE || 'Halcyon';
+  const GUIDE_TITLE = `${DASHBOARD_TITLE} Guide`;
   const portOf = (label) => (label || '').split(' - ').pop();
   const displayByPort = (port) => screen.getAllDisplays().find((d) => portOf(d.label) === port) || null;
   /**
@@ -233,7 +234,7 @@ if (!app.requestSingleInstanceLock()) {
       transparent: false,
       backgroundColor: '#05070a',
       skipTaskbar: true,
-      title: 'Halcyon Guide',
+      title: GUIDE_TITLE,
       alwaysOnTop: true,
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
     });
@@ -241,7 +242,31 @@ if (!app.requestSingleInstanceLock()) {
     w.webContents.on('will-navigate', (e) => e.preventDefault());
     w.loadFile(path.join(__dirname, '../renderer/gamemenu.html'), waitForOpen ? { query: { wait: '1' } } : undefined);
     w.webContents.once('did-finish-load', () => { w.loaded = true; });
+    // A fixed title, so the window can be found on the desktop by it.
+    w.on('page-title-updated', (e) => e.preventDefault());
     return w;
+  }
+
+  /**
+   * COSMIC opens a new window on the screen the pointer is on, which after "Move to another
+   * screen" isn't Halcyon's. Put the Guide on Halcyon's screen (fullscreen) as it opens.
+   */
+  async function placeGuide(w) {
+    const d = chosenDisplay();
+    if (!d || !cosmicWindows.available()) return;
+    const port = portOf(d.label);
+    for (let i = 0; i < 10 && !w.isDestroyed(); i++) {
+      const on = await cosmicWindows.windowOutputs(GUIDE_TITLE);
+      if (on.length) {
+        if (on.length === 1 && on[0] === port) return;
+        w.placing = true;
+        const r = await cosmicWindows.moveWindow(GUIDE_TITLE, port, { fullscreen: true });
+        diary.log(`guide-over-game: ${on.join(', ')} -> ${port}:`, r.ok ? 'moved' : r.error);
+        setTimeout(() => { if (!w.isDestroyed()) { w.placing = false; w.focus(); } }, 150);
+        return;
+      }
+      await new Promise((res) => setTimeout(res, 50));
+    }
   }
 
   /** Keep a Guide window loaded and hidden while a game runs: shown on Home with no gap. */
@@ -288,16 +313,17 @@ if (!app.requestSingleInstanceLock()) {
       diary.log(`guide-over-game: shown (${ready ? 'ready' : 'fresh'}), focused =`, menu.isFocused());
     };
     if (ready) show(); else { shownAt = Date.now(); menu.focus(); diary.log('guide-over-game: opened (fresh)'); }
+    placeGuide(menu).catch(() => {});
     // Never leave an unseen Guide holding Home: if it has not got the screen soon, drop it.
     setTimeout(() => {
-      if (!menu.isDestroyed() && gameMenu === menu && !menu.isFocused()) { diary.log('guide-over-game: never got the screen, closing'); closeGameMenu(); }
-    }, 1200);
+      if (!menu.isDestroyed() && gameMenu === menu && !menu.isFocused() && !menu.placing) { diary.log('guide-over-game: never got the screen, closing'); closeGameMenu(); }
+    }, 1500);
     menu.on('focus', () => diary.log('guide-over-game: focus'));
     // If the game takes the screen back, close the Guide straight away: left open behind a
     // game it would keep the focus, and the game would stop taking input.
     menu.on('blur', () => {
       diary.log('guide-over-game: blur after', Date.now() - shownAt, 'ms');
-      setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused() && gameMenu === menu) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 400);
+      setTimeout(() => { if (!menu.isDestroyed() && !menu.isFocused() && !menu.placing && gameMenu === menu) { diary.log('guide-over-game: lost the screen, closing'); closeGameMenu(); } }, 400);
     });
     menu.on('closed', () => { diary.log('guide-over-game: closed'); if (gameMenu === menu) { gameMenu = null; guideClosedAt = Date.now(); } });
     if (process.env.HALCYON_DEV_MENU_SCRIPT) require('./devscript').run(menu, process.env.HALCYON_DEV_MENU_SCRIPT);
@@ -382,7 +408,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!port) return;
     following = await cosmicWindows.followNewWindows(port, {
       ms: 90000,
-      skipTitles: [DASHBOARD_TITLE, 'Halcyon game menu', 'Halcyon Guide'],
+      skipTitles: [DASHBOARD_TITLE, 'Halcyon game menu', GUIDE_TITLE],
       onMove: (m) => diary.log(`game window "${m.title}" moved from ${m.from.join(', ') || '?'} to ${m.to}${m.ok ? '' : ' (not confirmed)'}`),
       onNew: (w) => { if (w.identifier) gameWindows.add(w.identifier); },
     });

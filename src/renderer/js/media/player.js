@@ -79,7 +79,10 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
     const songArtist = h('div', { class: 'player__artist' });
     const songAlbum = h('div', { class: 'player__album' });
     const upNext = h('div', { class: 'player__next' });
-    const nowPlaying = h('div', { class: 'player__now' }, cover, h('div', { class: 'player__info' }, h('div', { class: 'player__eyebrow' }, 'now playing'), songTitle, songArtist, songAlbum, upNext));
+    // Lyrics beside the song, when Jellyfin has them: timed ones follow the music.
+    const lyricsList = h('div', { class: 'player__lyricslist' });
+    const lyricsBox = h('div', { class: 'player__lyrics' }, lyricsList);
+    const nowPlaying = h('div', { class: 'player__now' }, cover, h('div', { class: 'player__info' }, h('div', { class: 'player__eyebrow' }, 'now playing'), songTitle, songArtist, songAlbum, upNext), lyricsBox);
     const el = h('div', { class: 'layer layer--player' }, poster, video, nowPlaying, spinner, osd, vol);
     document.getElementById('layers').append(el);
 
@@ -107,6 +110,82 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       volTimer = setTimeout(() => vol.classList.remove('is-on'), 1400);
       api.system.setVolume({ level: volume.level, muted: false });
     }
+    // ---- lyrics: [{ at, text, el }]; `picked` is a line chosen with up / down (A jumps there)
+    let lyrics = { synced: false, lines: [] };
+    let lyricAt = -1;
+    let picked = -1;
+    let pickTimer = null;
+    async function loadLyrics(item) {
+      lyrics = { synced: false, lines: [] };
+      lyricAt = -1;
+      picked = -1;
+      lyricsList.replaceChildren();
+      el.classList.remove('has-lyrics', 'has-synced-lyrics');
+      const r = await api.jellyfin.lyrics(item.id).catch(() => null);
+      if (closed || session?.item.id !== item.id || !r?.ok || !r.data?.lines?.length) return;
+      lyrics = { synced: r.data.synced, lines: r.data.lines.map((l, n) => {
+        const line = h('div', { class: `player__lyric${l.text ? '' : ' is-gap'}` }, l.text || '♪');
+        if (r.data.synced && l.at != null) line.addEventListener('click', () => jumpToLyric(n));
+        return { at: l.at, text: l.text, el: line };
+      }) };
+      lyricsList.replaceChildren(...lyrics.lines.map((l) => l.el));
+      el.classList.add('has-lyrics');
+      el.classList.toggle('has-synced-lyrics', lyrics.synced);
+      followLyrics(true);
+      app.refreshChrome();
+    }
+    /** Light the line being sung and keep it in the middle of the box. */
+    function followLyrics(instant = false) {
+      if (!lyrics.synced || !lyrics.lines.length) return;
+      const t = position() + 0.15;
+      let n = -1;
+      for (let k = 0; k < lyrics.lines.length; k++) if (lyrics.lines[k].at != null && lyrics.lines[k].at <= t) n = k;
+      if (n === lyricAt && !instant) return;
+      lyricAt = n;
+      lyrics.lines.forEach((l, k) => { l.el.classList.toggle('is-now', k === n); l.el.classList.toggle('is-past', k < n); });
+      if (picked < 0) centreLyric(Math.max(0, n), instant);
+    }
+    function centreLyric(n, instant) {
+      const line = lyrics.lines[n]?.el;
+      if (!line) return;
+      lyricsBox.scrollTo({ top: line.offsetTop - lyricsBox.clientHeight / 2 + line.offsetHeight / 2, behavior: instant ? 'instant' : 'smooth' });
+    }
+    /** Up / down: choose a line (timed lyrics), or just scroll (plain ones). */
+    function pickLyric(step) {
+      if (!lyrics.lines.length) return false;
+      if (!lyrics.synced) { lyricsBox.scrollBy({ top: step * lyricsBox.clientHeight * 0.4, behavior: 'smooth' }); return true; }
+      const from = picked >= 0 ? picked : Math.max(0, lyricAt);
+      picked = Math.max(0, Math.min(lyrics.lines.length - 1, from + step));
+      lyrics.lines.forEach((l, k) => l.el.classList.toggle('is-picked', k === picked));
+      centreLyric(picked);
+      // Left alone for a few seconds, the lyrics go back to following the song.
+      clearTimeout(pickTimer);
+      pickTimer = setTimeout(clearPick, 5000);
+      app.refreshChrome();
+      return true;
+    }
+    function clearPick() {
+      clearTimeout(pickTimer);
+      if (picked < 0) return;
+      picked = -1;
+      lyrics.lines.forEach((l) => l.el.classList.remove('is-picked'));
+      followLyrics(true);
+      app.refreshChrome();
+    }
+    /** Go to the moment a line is sung. */
+    function jumpToLyric(n) {
+      const at = lyrics.lines[n]?.at;
+      if (at == null || !Number.isFinite(video.duration)) return;
+      video.currentTime = Math.max(0, Math.min(video.duration - 0.5, at - offset));
+      if (video.paused) video.play().catch(() => {});
+      picked = -1;
+      lyrics.lines.forEach((l) => l.el.classList.remove('is-picked'));
+      lyricAt = -2;
+      followLyrics(false);
+      sfx.select();
+      app.refreshChrome();
+    }
+
     const paint = () => {
       const d = Number.isFinite(video.duration) ? video.duration + offset : NaN;
       now.textContent = clock(position());
@@ -116,6 +195,8 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       state.replaceChildren(icon(video.paused ? 'play' : 'pause'));
     };
     video.addEventListener('timeupdate', paint);
+    video.addEventListener('timeupdate', () => followLyrics());
+    video.addEventListener('seeked', () => followLyrics(true));
     video.addEventListener('play', () => { paint(); app.refreshChrome(); showOsd(); report('progress'); });
     video.addEventListener('pause', () => { paint(); app.refreshChrome(); el.classList.add('is-osd'); quiet(false); clearTimeout(osdTimer); report('progress'); });
     video.addEventListener('waiting', () => el.classList.add('is-loading'));
@@ -153,6 +234,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
         songArtist.textContent = it.albumArtist || '';
         songAlbum.textContent = [it.album, it.year].filter(Boolean).join(' · ');
         upNext.textContent = '';
+        loadLyrics(it);
         const following = queue[i + 1];
         if (following) api.jellyfin.details(following).then((r) => { if (r.ok && !closed && index === i) upNext.textContent = `Next: ${r.data.name}`; }).catch(() => {});
       }
@@ -263,6 +345,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       background = {
         get title() { return session?.item.name || ''; },
         get artist() { return session?.item.albumArtist || ''; },
+        get item() { return session?.item || null; },
         paused: () => video.paused,
         toggle: () => { if (video.paused) video.play().catch(() => {}); else video.pause(); announce(); },
         stop: () => close(),
@@ -307,7 +390,9 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       current: null,
       onAction(action, _t, repeat) {
         if (action !== 'rup' && action !== 'rdown') showOsd();
-        if (action === 'accept' && !repeat) { if (video.paused) video.play().catch(() => {}); else video.pause(); sfx.select(); }
+        if (action === 'accept' && !repeat && picked >= 0) jumpToLyric(picked);
+        else if (action === 'accept' && !repeat) { if (video.paused) video.play().catch(() => {}); else video.pause(); sfx.select(); }
+        else if ((action === 'up' || action === 'down') && session?.audio && lyrics.lines.length) { if (pickLyric(action === 'up' ? -1 : 1)) sfx.move(); }
         else if (action === 'left') seek(repeat ? -30 : -10);
         else if (action === 'right') seek(repeat ? 60 : 30);
         else if (action === 'rup') changeVolume(5);
@@ -317,13 +402,15 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
         else if (action === 'y' && !repeat) chooseTracks();
         else if (action === 'lb' && !repeat) next(-1);
         else if (action === 'rb' && !repeat) next(1);
+        else if (action === 'back' && !repeat && picked >= 0) { sfx.back(); clearPick(); }
         else if (action === 'back' && !repeat) { sfx.back(); if (session?.audio && !video.paused) toBackground(); else close(); }
         return true;
       },
       hints: () => [
-        { a: 'accept', label: video.paused ? 'Play' : 'Pause' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'rup', b: 'rdown', label: 'Volume' },
+        picked >= 0 ? { a: 'accept', label: 'Jump to this line' } : { a: 'accept', label: video.paused ? 'Play' : 'Pause' },
+        session?.audio && lyrics.lines.length > 0 && { a: 'up', b: 'down', label: lyrics.synced ? 'Lyrics' : 'Scroll lyrics' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'rup', b: 'rdown', label: 'Volume' },
         session?.audio ? { a: 'x', label: 'Stop' } : { a: 'x', label: 'Subtitles' }, !session?.audio && { a: 'y', label: 'Audio & subtitles' }, queue.length > 1 && { a: 'lb', b: 'rb', label: 'Previous / next' },
-        { a: 'back', label: session?.audio && !video.paused ? 'Keep playing' : 'Stop' },
+        { a: 'back', label: picked >= 0 ? 'Back to the song' : session?.audio && !video.paused ? 'Keep playing' : 'Stop' },
       ].filter(Boolean),
     };
     let layer = focus.pushLayer(layerSpec);

@@ -251,6 +251,22 @@ class Jellyfin {
     return (r?.Items || []).map(Jellyfin.item);
   }
 
+  /**
+   * A song's lyrics: { ok, synced, lines: [{ at (seconds, or null), text }] }. Jellyfin has them
+   * when the song has an .lrc (timed) or .txt file next to it, or embedded lyrics.
+   */
+  async lyrics(id) {
+    let r;
+    try {
+      r = await this.request(`/Audio/${encodeURIComponent(id)}/Lyrics`);
+    } catch (err) {
+      if (err.status === 404) return { ok: true, synced: false, lines: [] };
+      throw err;
+    }
+    const lines = (r?.Lyrics || []).map((l) => ({ at: Number.isFinite(l.Start) ? l.Start / TICKS : null, text: String(l.Text || '').trim() }));
+    return { ok: true, synced: lines.some((l) => l.at != null && l.at > 0), lines };
+  }
+
   /** The artists in a music library (album artists, as Jellyfin's own apps list them). */
   async artists(parentId) {
     const r = await this.request(`/Artists/AlbumArtists?ParentId=${encodeURIComponent(parentId)}&UserId=${this.uid}&SortBy=SortName&SortOrder=Ascending&Limit=1000&${Jellyfin.fields}`);

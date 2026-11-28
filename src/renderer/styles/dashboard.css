@@ -258,3 +258,5 @@ body.is-arranging .view--home [data-slot]:not(.is-focused):not(.is-moving) .tile
 .tile--brand .tile__brandlogo { width: 78%; max-height: 62%; object-fit: contain; filter: drop-shadow(0 0.08rem 0.12rem rgba(0, 0, 0, 0.18)); }
 .tile--brand.tile--hero .tile__brandlogo { width: 56%; }
 .tile__label--hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* The tab names and clock stay on one line, even with the now-playing chip in the top bar. */
+.tab, #clock, .profile__name { white-space: nowrap; }

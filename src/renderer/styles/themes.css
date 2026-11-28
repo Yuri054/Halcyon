@@ -1191,3 +1191,18 @@ body[data-theme='x360'][data-xbg='dusk'] #bg {
 [data-theme='x360'] .xsettings__box { max-width: 92rem; height: min(52rem, calc(100vh - 24rem)); }
 [data-theme='x360'] .xsettings__infohead { font-size: 1.9rem; }
 .row-heading { padding: 0.8rem 0.4rem 0.3rem; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+/* 360: recently-added rows line up with the front section's 3 x 13.2rem rows. */
+[data-theme='x360'] .media__shelf { --shelf-h: 40.4rem; --row-gap: 0.6rem; }
+[data-theme='x360'] .media__shelf > .block__title { visibility: hidden; margin-bottom: 0; }
+[data-theme='x360'] .media__shelf { gap: 0.4rem; }
+[data-theme='x360'] .media__rowtitle { color: #fff; font-size: 1.05rem; text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.3); }
+[data-theme='x360'] .media__rowtiles { gap: 0.4rem; }
+[data-theme] .media__front > .tile { width: auto; height: auto; min-width: 0; }
+[data-theme='x360'] .media__front--music { --front-h: 40.4rem; gap: 0.4rem; grid-template-columns: 17.6rem var(--front-h) calc((var(--front-h) - 0.4rem) / 2) calc((var(--front-h) - 0.4rem) / 2); }
+
+/* Music's front: exact sizes, so every box is the square it should be (the 360 theme's own
+   rows, and covers' fixed proportions, would otherwise win). */
+[data-theme] .media__front.media__front--music { grid-template-rows: repeat(6, calc((33.4rem - 5 * 1.1rem) / 6)); height: auto; }
+[data-theme='x360'] .media__front.media__front--music { grid-template-rows: repeat(6, calc((40.4rem - 5 * 0.4rem) / 6)); }
+[data-theme] .media__front.media__front--music > .tile { width: auto; height: auto; min-width: 0; min-height: 0; aspect-ratio: auto; }
+[data-theme] .media__front.media__front--music > .tile .tile__body { position: absolute; inset: 0; }

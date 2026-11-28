@@ -884,6 +884,7 @@ if (!app.requestSingleInstanceLock()) {
     handle('jellyfin:seasons', jf((id) => jellyfin.seasons(id)));
     handle('jellyfin:episodes', jf((series, season) => jellyfin.episodes(series, season)));
     handle('jellyfin:tracks', jf((id) => jellyfin.tracks(id)));
+    handle('jellyfin:lyrics', jf((id) => jellyfin.lyrics(id)));
     handle('jellyfin:artists', jf((id) => jellyfin.artists(id)));
     handle('jellyfin:playlists', jf((kind) => jellyfin.playlists(kind)));
     handle('jellyfin:artistAlbums', jf((id) => jellyfin.artistAlbums(id)));

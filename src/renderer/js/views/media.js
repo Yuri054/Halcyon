@@ -42,6 +42,7 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
   let library = null;       // { lib, items } while a library is open
   const items = new Map();  // id -> item, for context and backdrops
 
+  const SHELF_SIZE = 7;   // posters in each row of recently added
   const block = (title, cls, tiles) => h('div', { class: `block ${cls}` }, h('h3', { class: 'block__title' }, title), h('div', { class: 'block__tiles' }, tiles));
   const remember = (list) => { for (const it of list) items.set(it.id, it); return list; };
 
@@ -59,6 +60,23 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     const again = focus.byKey(el, key) || el.querySelector('[data-focus]');
     if (again) focus.focus(again, { layer: focus.base(), scroll: false });
     app.refreshChrome();
+  }
+
+  /** Music's big tile while something plays: the song's cover, what it is, and whether it's paused. */
+  function nowPlayingTile(np, index) {
+    const it = np.item;
+    const urls = it ? [img(it.albumId || it.id, 'Primary', 640), img(it.id, 'Primary', 640)] : [];
+    const cover = urls.length ? artImg(urls, 'media__nowimg', { lazy: false }) : null;
+    const t = h('div', { class: 'tile tile--hero media__now', 'data-focus': true, 'data-key': 'mx:nowplaying', style: { '--i': index } },
+      h('div', { class: 'tile__body' },
+        urls.length ? h('div', { class: 'media__nowbg', style: { backgroundImage: `url("${urls[0]}")` } }) : null,
+        h('div', { class: 'media__nowcover' }, cover || icon('music')),
+        h('div', { class: 'media__nowtext' },
+          h('div', { class: 'media__noweyebrow' }, icon(np.paused() ? 'pause' : 'play'), np.paused() ? 'Paused' : 'Now playing'),
+          h('div', { class: 'media__nowtitle' }, np.title),
+          h('div', { class: 'media__nowartist' }, [np.artist, it?.album].filter(Boolean).join(' · ')))));
+    t.addEventListener('click', () => nowPlaying()?.show());
+    return t;
   }
 
   // YouTube's TV app, offered on tv & movies whether or not Jellyfin is set up.
@@ -122,9 +140,19 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     const moreNext = nextUp.filter((x) => !used.has(x.id));
     if (moreResume.length) blocks.push(block('Continue watching', 'block--wide media__rail', moreResume.map((it) => mediaTile(it, 'wide', i++))));
     if (moreNext.length) blocks.push(block('Next up', 'block--wide media__rail', moreNext.map((it) => mediaTile(it, 'wide', i++))));
-    for (const l of latest) {
-      const lib = l.library.collection === 'tvshows' ? 'TV shows' : l.library.name;
-      blocks.push(block(`Recently added · ${lib}`, 'block--covers media__latest', l.items.slice(0, 12).map((it) => mediaTile(it, 'cover', i++))));
+    // Recently added: one labelled row per library, a few posters each, then "All ..." to see them all.
+    const shelves = latest.filter((l) => l.items.length).slice(0, 3);
+    if (shelves.length) {
+      blocks.push(h('div', { class: `block media__shelf media__shelf--${shelves.length}` },
+        h('h3', { class: 'block__title' }, 'recently added'),
+        ...shelves.map((l) => {
+          const name = l.library.collection === 'tvshows' ? 'TV shows' : l.library.name;
+          return h('div', { class: 'media__row' },
+            h('div', { class: 'media__rowtitle' }, name),
+            h('div', { class: 'media__rowtiles' },
+              ...l.items.slice(0, SHELF_SIZE).map((it) => mediaTile(it, 'cover', i++)),
+              actionTile({ key: `mx:all:${l.library.id}`, label: `All ${name.toLowerCase()}`, iconName: LIB_ICON[l.library.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(l.library) })));
+        })));
     }
     blocks.push(block('More', 'block--quick', [
       youTubeTile(i++),
@@ -145,7 +173,6 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     const lib = libs[0];
     const np = nowPlaying();
     const tail = [
-      np && actionTile({ key: 'mx:nowplaying', label: 'Now playing', sub: np.title, iconName: 'music', tone: 'accent', index: i++, onSelect: () => nowPlaying()?.show() }),
       ...libs.slice(1).map((l) => actionTile({ key: `mx:lib:${l.id}`, label: l.name, iconName: 'music', tone: 'accent', index: i++, onSelect: () => openLibrary(l) })),
       actionTile({ key: 'mx:search2', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
       actionTile({ key: 'mx:server', label: 'Server', sub: status.userName, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),
@@ -158,13 +185,30 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     const albums = remember(home.latest.flatMap((l) => l.items));
     const at = (node, area) => { node.style.gridArea = area; return node; };
     const modeTile = ([mode, label, iconName], area) => at(actionTile({ key: `mx:mode:${mode}`, label, iconName, tone: 'accent', index: i++, onSelect: () => openLibrary(lib, '', mode) }), area);
+    const recentPlays = remember(home.recent || []);
+    // The big tile: what's playing, when something is; otherwise the newest album.
     const [feature, ...rest] = albums;
-    const front = h('div', { class: 'media__front' },
+    const big = np ? nowPlayingTile(np, i++) : feature && mediaTile(feature, 'cover', i++, 'new album');
+    // The places around it: the newest albums, then what was played lately, so none sit empty.
+    const used = new Set(np ? [] : [feature?.id]);
+    // Each album once: a song is left out when its album is already showing.
+    const albumsShown = new Set([np ? np.item?.album : feature?.name].filter(Boolean));
+    const fill = [];
+    for (const x of [...(np ? albums : rest), ...recentPlays]) {
+      if (!x || used.has(x.id)) continue;
+      const album = x.type === 'Audio' ? x.album : x.name;
+      if (album && albumsShown.has(album)) continue;
+      used.add(x.id);
+      if (album) albumsShown.add(album);
+      fill.push(x);
+    }
+    // Music is square: one big cover (or what's playing), then four large covers beside it.
+    const front = h('div', { class: 'media__front media__front--music' },
       modeTile(MUSIC_MODES[0], 'a1'), modeTile(MUSIC_MODES[1], 'a2'), modeTile(MUSIC_MODES[2], 'a3'),
-      feature && at(mediaHero(feature, 'new album', i++), 'hero'),
-      ...['b3', 'c3', 'd1', 'd2', 'd3'].map((area, n) => rest[n] && at(mediaTile(rest[n], 'wide', i++), area)));
+      big && at(big, 'hero'),
+      ...['s1', 's2', 's3', 's4'].map((area, n) => fill[n] && at(mediaTile(fill[n], 'cover', i++), area)));
     const blocks = [h('div', { class: 'block block--front' }, h('h3', { class: 'block__title' }, 'music'), front)];
-    const recent = remember(home.recent || []);
+    const recent = recentPlays;
     if (recent.length) blocks.push(block('recently played', 'block--covers media__latest media__songs', recent.map((it) => mediaTile(it, 'cover', i++))));
     const lists = remember(home.playlists || []);
     if (lists.length) blocks.push(block('playlists', 'block--covers media__latest media__songs', lists.map((it) => mediaTile(it, 'cover', i++))));

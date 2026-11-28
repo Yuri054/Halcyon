@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld('halcyon', {
     markPlayed: call('jellyfin:markPlayed'),
     hideFromResume: call('jellyfin:hideFromResume'),
     details: call('jellyfin:details'),
+    lyrics: call('jellyfin:lyrics'),
     seasons: call('jellyfin:seasons'),
     episodes: call('jellyfin:episodes'),
     tracks: call('jellyfin:tracks'),

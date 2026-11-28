@@ -14,17 +14,17 @@ Download the latest build from [Releases](https://github.com/Yuri054/Halcyon/rel
 - **AppImage** (any distribution): make it executable and run it.
 
   ```bash
-  chmod +x Halcyon-1.0.1-x86_64.AppImage
+  chmod +x Halcyon-1.0.2-x86_64.AppImage
   ```
 
   ```bash
-  ./Halcyon-1.0.1-x86_64.AppImage
+  ./Halcyon-1.0.2-x86_64.AppImage
   ```
 
 - **.deb** (Debian, Ubuntu, Pop!_OS, Mint): install it, then start Halcyon from the app menu.
 
   ```bash
-  sudo apt install ./Halcyon-1.0.1-amd64.deb
+  sudo apt install ./Halcyon-1.0.2-amd64.deb
   ```
 
 Settings and artwork live in `~/.config/Halcyon` either way.

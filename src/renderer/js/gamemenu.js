@@ -2,6 +2,7 @@
 // Home button is pressed while Halcyon is in the background. It shows the same
 // Guide as the dashboard; picking something that belongs to the dashboard hands
 // over to it, and closing the Guide gives the screen straight back to the game.
+import { openFriends } from './ui/friends.js';
 import { h } from './core/dom.js';
 import * as focus from './core/focus.js';
 import * as input from './core/input.js';
@@ -71,6 +72,7 @@ async function run() {
     downloads: async (opts) => { staysOpen = true; await openDownloads(opts); api.game.resume(); },
     storage: async () => { staysOpen = true; await openStorage(); api.game.resume(); },
     achievements: async () => { staysOpen = true; await openAchievements(); api.game.resume(); },
+    friends: async () => { staysOpen = true; await openFriends(); api.game.resume(); },
     refreshChrome: renderHints,
   });
 

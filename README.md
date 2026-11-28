@@ -204,6 +204,20 @@ tile starts arranging; the home shows exactly how it will look as you go:
 
 Outside arranging, **Start** on a game tile opens the game's options.
 
+## Friends
+
+With your Steam Web API key (Settings › Steam), Halcyon shows your **Steam friends**: who's in a
+game (and which), who's online, and who's offline and since when, refreshed every minute.
+
+- **Friends** in the Guide (between home and downloads) shows who's on; *All friends* opens the
+  list. There's also a **Friends** tile for home and Settings › Accounts › *Friends*.
+- On a friend: **Join** their game when Steam says how (a lobby or server), or **Play** /
+  **Install** the same game if you have it; **Chat** or **View profile** opens it in Steam.
+- A note appears when a friend comes online or starts a game (Settings › Accounts ›
+  *Friend notifications*).
+- Steam must be allowed to share your friends list: in Steam, your profile's *Friends List*
+  privacy should be Public or Friends Only.
+
 ## Achievements
 
 With a Steam Web API key (Settings › steam), a Steam game's options show its achievements count

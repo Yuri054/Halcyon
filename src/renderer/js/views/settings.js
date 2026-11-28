@@ -10,6 +10,7 @@ import { toast } from '../ui/toast.js';
 import { editCustomGame, addGame, report } from '../ui/gamemenu.js';
 import { enableControls, disableControls } from '../ui/downloads.js';
 import { actionTile } from '../ui/tile.js';
+import { openFriends, onlineFriends } from '../ui/friends.js';
 
 const KIND = { native: 'Native install', flatpak: 'Flatpak', snap: 'Snap', custom: 'Added folder' };
 
@@ -336,6 +337,9 @@ export function createSettings() {
         installs.length > 0 && row({ key: 'steam:open', label: 'Open Steam', iconName: 'screen', onSelect: () => report(api.steam.open()), tip: 'Steam’s desktop window' }),
       ]),
       card('accounts', [
+        heading('Friends'),
+        row({ key: 'friends', label: 'Friends', iconName: 'x-people', value: account.hasKey ? `${onlineFriends().length} online` : 'Needs a Steam key', onSelect: () => (account.hasKey ? openFriends() : editSteamKey()), tip: 'Your Steam friends: who’s online and what they’re playing. Join their game, play the same one, or chat in Steam. Needs your Steam Web API key (Settings › Steam).' }),
+        row({ key: 'friendNotices', label: 'Friend notifications', iconName: 'x-note', toggle: s.friendNotices !== false, onSelect: () => set({ friendNotices: s.friendNotices === false }), tip: 'A note when a friend comes online or starts playing a game' }),
         heading('Achievements'),
         row({ key: 'retro', label: 'RetroAchievements', iconName: 'trophy', value: state.lib.retro ? state.lib.retro.user : 'Not signed in', onSelect: retroMenu,
           sub: state.lib.retro ? `${Object.keys(state.lib.retroGames || {}).length} games with achievements` : null,

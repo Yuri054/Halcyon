@@ -109,6 +109,11 @@ contextBridge.exposeInMainWorld('halcyon', {
     open: call('youtube:open'),
     signOut: call('youtube:signOut'),
   },
+  friends: {
+    list: call('friends:list'),
+    refresh: call('friends:refresh'),
+    open: call('friends:open'),
+  },
   boot: {
     list: call('boot:list'),
     add: call('boot:add'),
@@ -125,7 +130,7 @@ contextBridge.exposeInMainWorld('halcyon', {
     setAutostart: call('system:setAutostart'),
   },
   on(channel, handler) {
-    const allowed = ['library:changed', 'launch:event', 'window:focus', 'system:batteries', 'app:notice', 'install:progress', 'scrape:progress', 'steam:downloads', 'dashboard:navigate', 'guide:open'];
+    const allowed = ['library:changed', 'launch:event', 'window:focus', 'system:batteries', 'app:notice', 'install:progress', 'scrape:progress', 'steam:downloads', 'dashboard:navigate', 'guide:open', 'friends:changed', 'friends:event'];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, payload) => handler(payload));
   },

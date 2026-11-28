@@ -23,6 +23,7 @@ import { createGames } from './views/games.js';
 import { createCollections } from './views/collections.js';
 import { createSystems } from './views/systems.js';
 import { createSettings } from './views/settings.js';
+import { openFriends, startFriendNotices } from './ui/friends.js';
 
 const $ = (id) => document.getElementById(id);
 // The tabs along the top. Store and collections are switched off (their pages still exist,
@@ -579,9 +580,10 @@ function baseBack(target) {
 // -------------------------------------------------------------------- boot
 
 async function boot() {
-  Object.assign(app, { go, launch, resume: resumeGame, refreshChrome, guide, search: searchGames, downloads: openDownloads, storage: openStorage, achievements: openAchievements });
+  Object.assign(app, { go, launch, resume: resumeGame, refreshChrome, guide, search: searchGames, downloads: openDownloads, storage: openStorage, achievements: openAchievements, friends: openFriends });
   state.lib = await api.library.get();
   applySettings();
+  startFriendNotices();
 
   const media = { tv: createMedia({ id: 'tv', label: 'tv & movies', kind: 'video' }), music: createMedia({ id: 'music', label: 'music', kind: 'music' }) };
   for (const v of [createHome(), createGames(), media.tv, media.music, createStore(), createCollections(), createSystems(), createSettings()]) {

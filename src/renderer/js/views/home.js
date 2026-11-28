@@ -10,6 +10,7 @@ import { toast } from '../ui/toast.js';
 import { menu } from '../ui/dialog.js';
 import { gamerscore } from '../ui/achievements.js';
 import { openYouTube } from '../ui/youtube.js';
+import { openFriends, onlineFriends } from '../ui/friends.js';
 import { sfx } from '../core/sfx.js';
 
 /**
@@ -31,6 +32,7 @@ const TILES = {
   achievements: { label: 'Achievements', iconName: 'trophy', count: () => gamerscore() || undefined, go: () => app.achievements?.() },
   tv: { label: 'TV & movies', iconName: 'film', go: () => app.go('tv', { enter: true }) },
   music: { label: 'Music', iconName: 'music', go: () => app.go('music', { enter: true }) },
+  friends: { label: 'Friends', iconName: 'x-people', count: () => onlineFriends().length || undefined, go: openFriends },
   youtube: { label: 'YouTube', iconName: 'video', logo: 'img/youtube-2011.svg', go: openYouTube },
   downloads: { label: 'Downloads', iconName: 'download', go: () => app.downloads() },
   storage: { label: 'Storage', iconName: 'folder', go: () => app.storage() },

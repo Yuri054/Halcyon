@@ -12,6 +12,7 @@ import { toast } from './toast.js';
 import { volumeRow } from './volume.js';
 import { nowPlaying } from '../media/player.js';
 import { gamerscore } from './achievements.js';
+import { refreshFriends, friendsNow, onlineFriends, friendRow, friendMenu } from './friends.js';
 import { snapshot as downloadSnapshot, downloadCard, nameOf } from './downloads.js';
 
 let active = null;   // { panel, dead }
@@ -31,7 +32,7 @@ const POWER = {
   exit: { label: 'Exit to desktop', iconName: 'exit', title: 'Exit to desktop?', subtitle: 'Halcyon will close. Running games are not affected.' },
 };
 
-const BLADES = { games: 'games & apps', home: 'home', downloads: 'downloads', system: 'settings' };
+const BLADES = { games: 'games & apps', home: 'home', friends: 'friends', downloads: 'downloads', system: 'settings' };
 
 /** Which blade an initial selection belongs to. */
 const bladeFor = (select) => (!select ? 'home' : select.startsWith('power:') || select === 'volume' ? 'system' : select.startsWith('play:') ? 'games' : 'home');
@@ -85,9 +86,11 @@ export async function openGuide({ select = null } = {}) {
   paintStatus();
   const clock = setInterval(paintStatus, 10000);
 
+  const friendsOn = Boolean(state.lib.steamAccount?.hasKey);
+  if (friendsOn) await refreshFriends().catch(() => {});
   const blades = overTask
-    ? [playing.some((p) => p.quittable) && 'home', 'system'].filter(Boolean)
-    : ['games', 'home', steamHere && 'downloads', 'system'].filter(Boolean);
+    ? [playing.some((p) => p.quittable) && 'home', friendsOn && 'friends', 'system'].filter(Boolean)
+    : ['games', 'home', friendsOn && 'friends', steamHere && 'downloads', 'system'].filter(Boolean);
   let blade = blades.includes(bladeFor(select)) ? bladeFor(select) : blades.includes('home') ? 'home' : blades[0];
 
   let switchTo = null;
@@ -140,6 +143,16 @@ export async function openGuide({ select = null } = {}) {
         ...recent.map((g) => ({ label: g.name, value: `play:${g.id}`, key: `play:${g.id}`, iconName: 'play', hint: fmt.ago(g.lastPlayed).replace(/^Played /, ''), verb: 'Play' })),
         { label: 'All games', value: 'go:games', key: 'go:games', iconName: 'grid', hint: String(visibleGames().length) },
         { label: 'Emulators & systems', value: 'go:systems', key: 'go:systems', iconName: 'chip' },
+      ];
+    }
+    if (blade === 'friends') {
+      // Who's on: in a game first, then online; the whole list from the last row.
+      const on = onlineFriends();
+      const all = friendsNow().friends;
+      return [
+        ...on.slice(0, 6).map(friendRow),
+        !on.length && { label: friendsNow().error || 'No friends online', key: 'fnone', disabled: true },
+        { label: 'All friends', value: 'friends', key: 'friends', iconName: 'user', hint: `${on.length} / ${all.length}`, verb: 'Open' },
       ];
     }
     if (blade === 'downloads') {
@@ -237,6 +250,8 @@ export async function openGuide({ select = null } = {}) {
       break;
     }
     if (pick === 'achievements') { after = () => app.achievements(); break; }
+    if (pick === 'friends') { after = () => app.friends(); break; }
+    if (pick.startsWith('friend:')) { await friendMenu(pick.slice(7), panel); continue; }
 
     if (pick.startsWith('power:')) {
       const id = pick.slice(6);

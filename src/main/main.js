@@ -6,6 +6,7 @@ const { JsonStore, DEFAULTS } = require('./store');
 const { Library } = require('./library');
 const { Launcher } = require('./launcher');
 const { YouTube } = require('./youtube');
+const { Friends } = require('./steam/friends');
 const files = require('./files');
 const system = require('./system');
 const installer = require('./emulators/install');
@@ -47,6 +48,7 @@ if (!app.requestSingleInstanceLock()) {
   let library = null;
   let launcher = null;
   let youtube = null;
+  let friends = null;
   let jellyfin = null;
   let achievements = null;
   let retro = null;
@@ -866,6 +868,19 @@ if (!app.requestSingleInstanceLock()) {
       }));
     });
     // The monitors, for Settings › display › Monitor.
+    handle('friends:list', () => friends.snapshot());
+    handle('friends:refresh', () => friends.refresh({ force: true }));
+    // A friend in Steam: join their game, or open their profile or a chat with them.
+    handle('friends:open', (kind, id) => {
+      id = String(id || '');
+      if (!/^\d+$/.test(id)) return { ok: false, error: 'Unknown friend.' };
+      const url = kind === 'join' ? friends.joinLink(id) : kind === 'profile' ? `steam://url/SteamIDPage/${id}` : kind === 'chat' ? `steam://friends/message/${id}` : null;
+      if (!url) return { ok: false, error: kind === 'join' ? 'Steam doesn’t say how to join this game.' : 'Unknown request.' };
+      const install = (library.raw.steam.installs || [])[0];
+      const argv = steam.clientCommand(install && install.kind, install && install.root, url);
+      if (!argv) return { ok: false, error: 'Steam is not installed.' };
+      return launcher.steamUrl(argv);
+    });
     handle('boot:list', () => ({ ok: true, videos: bootVideos() }));
     handle('boot:add', (file) => {
       const fs = require('fs');
@@ -1139,6 +1154,13 @@ if (!app.requestSingleInstanceLock()) {
       if (event.source === 'steam') rescan().catch(() => {}); else pushLibrary();
     if (achievementToasts) { achievementToasts.launcher = launcher; if (!process.env.HALCYON_DRY_RUN) achievementToasts.start(); }
     });
+    // Steam friends: refreshed every minute; changes reach the dashboard, and a friend coming
+    // online or starting a game is announced there (Settings › Accounts).
+    friends = new Friends(store, {
+      onChange: () => send('friends:changed'),
+      onEvent: (ev) => { if (store.data.settings.friendNotices !== false) send('friends:event', ev); },
+    });
+    if (!process.env.HALCYON_DRY_RUN || process.env.HALCYON_FRIENDS) friends.start();
     youtube = new YouTube({
       launcher,
       title: YOUTUBE_TITLE,

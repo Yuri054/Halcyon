@@ -636,3 +636,10 @@ body[data-theme='x360'] .view--media .media__hero .tile__logo + .tile__title[hid
 #boot.boot--video { background: #000; }
 #boot.boot--video::before, #boot.boot--video > :not(video) { display: none; }
 .boot__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+/* Friends: who's in a game stands out; offline friends step back. */
+.row--friend .row__thumb { border-radius: 0.2rem; }
+.row--friend-playing .row__sub { color: #7cc242; opacity: 1; }
+.row--friend-offline { opacity: 0.6; }
+.row--friend-offline.is-focused { opacity: 1; }
+.panel__art--friend { aspect-ratio: 1; }

@@ -10,7 +10,7 @@
 import { h, icon } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import { sfx } from '../core/sfx.js';
-import { api } from '../core/state.js';
+import { api, state as appState } from '../core/state.js';   // ("state" is the play / pause icon below)
 import { app } from '../core/bus.js';
 import { toast } from '../ui/toast.js';
 import { menu } from '../ui/dialog.js';
@@ -99,8 +99,30 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
     let volume = null;
     let volTimer = null;
     api.system.status().then((st) => { if (st?.volume?.ok) volume = { level: st.volume.level, muted: st.volume.muted }; }).catch(() => {});
+    // Music has its own volume (the player's, kept in settings), so the rest of the computer's
+    // sound is left alone; videos change the system's volume as before.
+    let musicVolume = Number.isFinite(appState.lib?.settings?.musicVolume) ? appState.lib.settings.musicVolume : 100;
+    let musicSave = null;
+    const applyMusicVolume = () => { video.volume = Math.pow(musicVolume / 100, 2); };   // a curve that sounds even
+    function showVolume(level) {
+      vol.firstChild.replaceWith(icon('music'));
+      volFill.style.width = `${level}%`;
+      volText.textContent = `${level}`;
+      vol.classList.add('is-on');
+      clearTimeout(volTimer);
+      volTimer = setTimeout(() => vol.classList.remove('is-on'), 1400);
+    }
     function changeVolume(step) {
+      if (session?.audio) {
+        musicVolume = Math.max(0, Math.min(100, Math.round(musicVolume / 5) * 5 + step));
+        applyMusicVolume();
+        showVolume(musicVolume);
+        clearTimeout(musicSave);
+        musicSave = setTimeout(() => api.settings.set({ musicVolume }).catch(() => {}), 600);
+        return;
+      }
       if (!volume) return;
+      if (vol.firstChild.dataset.kind !== 'sound') { const i = icon('sound'); i.dataset.kind = 'sound'; vol.firstChild.replaceWith(i); }
       volume.level = Math.max(0, Math.min(100, Math.round(volume.level / 5) * 5 + step));
       volume.muted = false;
       volFill.style.width = `${volume.level}%`;
@@ -227,6 +249,8 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       sub.textContent = it.type === 'Episode' ? [episodeCode(it), it.name].filter(Boolean).join(' · ') : [it.albumArtist, it.year].filter(Boolean).join(' · ');
       audioIndex = session.audioIndex;
       el.classList.toggle('is-audio', Boolean(session.audio));
+      el.classList.toggle('is-music-volume', Boolean(session.audio));
+      if (session.audio) applyMusicVolume(); else video.volume = 1;
       if (background) announce();
       if (session.audio) {
         cover.replaceChildren(artImg([img(it.images.primaryOf, 'Primary', 800)], 'player__cover-img', { lazy: false }) || icon('music'));
@@ -408,7 +432,7 @@ export function openPlayer({ queue, start = 0, fromStart = false }) {
       },
       hints: () => [
         picked >= 0 ? { a: 'accept', label: 'Jump to this line' } : { a: 'accept', label: video.paused ? 'Play' : 'Pause' },
-        session?.audio && lyrics.lines.length > 0 && { a: 'up', b: 'down', label: lyrics.synced ? 'Lyrics' : 'Scroll lyrics' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'rup', b: 'rdown', label: 'Volume' },
+        session?.audio && lyrics.lines.length > 0 && { a: 'up', b: 'down', label: lyrics.synced ? 'Lyrics' : 'Scroll lyrics' }, { a: 'left', label: '−10 s' }, { a: 'right', label: '+30 s' }, { a: 'rup', b: 'rdown', label: session?.audio ? 'Music volume' : 'Volume' },
         session?.audio ? { a: 'x', label: 'Stop' } : { a: 'x', label: 'Subtitles' }, !session?.audio && { a: 'y', label: 'Audio & subtitles' }, queue.length > 1 && { a: 'lb', b: 'rb', label: 'Previous / next' },
         { a: 'back', label: picked >= 0 ? 'Back to the song' : session?.audio && !video.paused ? 'Keep playing' : 'Stop' },
       ].filter(Boolean),

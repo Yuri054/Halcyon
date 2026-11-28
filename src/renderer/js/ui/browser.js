@@ -6,7 +6,7 @@ import { sfx } from '../core/sfx.js';
 import { wait } from '../core/bus.js';
 import { keyboard } from './osk.js';
 
-const VERBS = { dir: 'Choose a folder', image: 'Choose an image', exec: 'Choose a program', any: 'Choose a file' };
+const VERBS = { dir: 'Choose a folder', image: 'Choose an image', video: 'Choose a video', exec: 'Choose a program', any: 'Choose a file' };
 
 /** mode: 'dir' | 'image' | 'exec' | 'any'. Resolves with an absolute path or null. */
 export function browse({ title, mode = 'any', start = '~' }) {

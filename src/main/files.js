@@ -2,7 +2,7 @@
 // Directory listing for the in-app (controller-friendly) file browser.
 const fs = require('fs');
 const path = require('path');
-const { HOME, IMAGE_EXT, expandHome, isDir, mediaUrl } = require('./util');
+const { HOME, IMAGE_EXT, VIDEO_EXT, expandHome, isDir, mediaUrl } = require('./util');
 
 function list(dir, mode = 'any') {
   let target = path.resolve(expandHome(dir || HOME));
@@ -25,6 +25,7 @@ function list(dir, mode = 'any') {
     if (mode === 'dir' || !st.isFile()) continue;
     const ext = path.extname(entry.name).toLowerCase();
     if (mode === 'image' && !IMAGE_EXT.has(ext)) continue;
+    if (mode === 'video' && !VIDEO_EXT.has(ext)) continue;
     if (mode === 'exec' && !(st.mode & 0o111)) continue;
     files.push({ name: entry.name, path: full, dir: false, preview: IMAGE_EXT.has(ext) ? mediaUrl(full) : null });
   }

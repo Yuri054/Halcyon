@@ -109,6 +109,11 @@ contextBridge.exposeInMainWorld('halcyon', {
     open: call('youtube:open'),
     signOut: call('youtube:signOut'),
   },
+  boot: {
+    list: call('boot:list'),
+    add: call('boot:add'),
+    remove: call('boot:remove'),
+  },
   system: {
     status: call('system:status'),
     setVolume: call('system:setVolume'),

@@ -442,9 +442,47 @@ function checkIdle() {
 // -------------------------------------------------------------- start-up
 
 /** Console-style power-on: the mark draws itself, the chime plays, the dashboard opens. */
+/** What plays when Halcyon starts: 'halcyon' (its own animation), 'off', or 'video:<file>'. */
+function bootIntro() {
+  const s = state.lib.settings;
+  return s.bootIntro || (s.bootAnimation === false ? 'off' : 'halcyon');
+}
+
+/** A boot video (one the person added), fullscreen; any of A, B or Start skips it. */
+async function bootVideo(el, url) {
+  const video = h('video', { class: 'boot__video', src: url, playsinline: true, preload: 'auto' });
+  el.classList.add('boot--video');
+  el.append(video);
+  let finish;
+  const done = new Promise((r) => { finish = r; });
+  const layer = focus.pushLayer({
+    root: el,
+    current: null,
+    onAction: (action, _t, repeat) => { if (!repeat && (action === 'accept' || action === 'back' || action === 'start')) finish('skipped'); return true; },
+    hints: () => [],
+  });
+  video.addEventListener('ended', () => finish('ended'));
+  video.addEventListener('error', () => finish('error'));
+  video.addEventListener('loadedmetadata', () => setTimeout(() => finish('timeout'), (video.duration || 20) * 1000 + 3000));
+  setTimeout(() => finish('timeout'), 60000);   // whatever happens, never stuck here
+  video.play().catch(() => finish('error'));
+  await done;
+  video.pause();
+  focus.popLayer(layer);
+  el.classList.add('is-out');
+  flash(views[state.section].el, 'view--from-right');
+  setTimeout(() => { el.remove(); document.body.classList.remove('is-booting'); }, 900);
+}
+
 async function bootSequence(skip) {
   const el = $('boot');
-  if (skip) { el.remove(); return; }
+  const intro = skip ? 'off' : bootIntro();
+  if (intro === 'off') { el.remove(); return; }
+  if (intro.startsWith('video:')) {
+    const r = await api.boot.list().catch(() => null);
+    const v = r?.videos?.find((x) => x.id === intro.slice(6));
+    if (v) { document.body.classList.add('is-booting'); await bootVideo(el, v.url); return; }
+  }
   let finish;
   const done = new Promise((r) => { finish = r; });
   const layer = focus.pushLayer({
@@ -711,7 +749,7 @@ async function boot() {
   const info = await api.app.info().catch(() => ({}));
   await applySoundPack();   // so the start-up sound comes from the pack too
   document.body.classList.add('is-ready');
-  await bootSequence(info.skipBoot || state.lib.settings.bootAnimation === false);
+  await bootSequence(info.skipBoot);
 }
 
 boot().catch((err) => {

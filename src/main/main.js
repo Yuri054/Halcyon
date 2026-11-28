@@ -22,7 +22,7 @@ const { Jellyfin } = require('./media/jellyfin');
 const { Achievements } = require('./steam/achievements');
 const { Retro } = require('./retro');
 const { AchievementToasts } = require('./achievementToasts');
-const { IMAGE_EXT, expandHome, isDir } = require('./util');
+const { IMAGE_EXT, VIDEO_EXT, expandHome, isDir } = require('./util');
 
 const windowed = process.argv.includes('--windowed');
 
@@ -450,6 +450,40 @@ if (!app.requestSingleInstanceLock()) {
     return t;
   }
 
+  /**
+   * A video file, answering the byte ranges a video element asks for (it won't play without
+   * them): 206 with the asked-for slice, or the whole file.
+   */
+  function videoResponse(file, range) {
+    const fs = require('fs');
+    const { Readable } = require('stream');
+    let size;
+    try { size = fs.statSync(file).size; } catch { return new Response('Not found', { status: 404 }); }
+    const type = { '.webm': 'video/webm', '.mp4': 'video/mp4', '.mkv': 'video/x-matroska', '.mov': 'video/quicktime', '.ogv': 'video/ogg' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    const m = /^bytes=(\d*)-(\d*)$/.exec(range || '');
+    if (!m) {
+      return new Response(Readable.toWeb(fs.createReadStream(file)), { status: 200, headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' } });
+    }
+    let start = m[1] === '' ? size - Number(m[2]) : Number(m[1]);
+    let end = m[1] !== '' && m[2] !== '' ? Number(m[2]) : size - 1;
+    start = Math.max(0, start);
+    end = Math.min(size - 1, end);
+    if (start > end) return new Response('', { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+    return new Response(Readable.toWeb(fs.createReadStream(file, { start, end })), {
+      status: 206,
+      headers: { 'Content-Type': type, 'Content-Length': String(end - start + 1), 'Content-Range': `bytes ${start}-${end}/${size}`, 'Accept-Ranges': 'bytes' },
+    });
+  }
+
+  // ---- boot intros: videos the person added, kept in <config>/boot
+  const bootDir = () => path.join(app.getPath('userData'), 'boot');
+  function bootVideos() {
+    try {
+      return require('fs').readdirSync(bootDir()).filter((f) => VIDEO_EXT.has(path.extname(f).toLowerCase())).sort()
+        .map((f) => ({ id: f, name: path.basename(f, path.extname(f)).replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bSteamos\b/g, 'SteamOS'), url: `media://local/${encodeURIComponent(path.join(bootDir(), f))}` }));
+    } catch { return []; }
+  }
+
   async function moveToScreen(label) {
     const d = screen.getAllDisplays().find((x) => x.label === label);
     if (!d) return { ok: false, error: 'That screen isn’t connected.' };
@@ -832,6 +866,24 @@ if (!app.requestSingleInstanceLock()) {
       }));
     });
     // The monitors, for Settings › display › Monitor.
+    handle('boot:list', () => ({ ok: true, videos: bootVideos() }));
+    handle('boot:add', (file) => {
+      const fs = require('fs');
+      const src = String(file || '');
+      if (!path.isAbsolute(src) || !VIDEO_EXT.has(path.extname(src).toLowerCase()) || !fs.existsSync(src)) return { ok: false, error: 'Choose a video file (.webm, .mp4, .mkv, .mov).' };
+      fs.mkdirSync(bootDir(), { recursive: true });
+      const id = path.basename(src);
+      fs.copyFileSync(src, path.join(bootDir(), id));
+      return { ok: true, id, videos: bootVideos() };
+    });
+    handle('boot:remove', (id) => {
+      const fs = require('fs');
+      const f = path.join(bootDir(), path.basename(String(id || '')));
+      if (!f.startsWith(bootDir() + path.sep) || !fs.existsSync(f)) return { ok: false, error: 'That video is already gone.' };
+      fs.unlinkSync(f);
+      if (store.data.settings.bootIntro === `video:${path.basename(f)}`) { store.data.settings.bootIntro = 'halcyon'; store.save(); pushLibrary(); }
+      return { ok: true, videos: bootVideos() };
+    });
     handle('system:moveToScreen', (label) => moveToScreen(String(label || '')));
     // While a video plays: keep the desktop's screen blanking and screensaver away.
     let awake = null;
@@ -1034,9 +1086,13 @@ if (!app.requestSingleInstanceLock()) {
     protocol.handle('media', (request) => {
       try {
         const file = decodeURIComponent(new URL(request.url).pathname.slice(1));
-        if (!path.isAbsolute(file) || !IMAGE_EXT.has(path.extname(file).toLowerCase())) {
+        const ext = path.extname(file).toLowerCase();
+        // Images from anywhere; videos only from Halcyon's own boot-intro folder.
+        const bootVideo = VIDEO_EXT.has(ext) && path.resolve(file).startsWith(bootDir() + path.sep);
+        if (!path.isAbsolute(file) || !(IMAGE_EXT.has(ext) || bootVideo)) {
           return new Response('Forbidden', { status: 403 });
         }
+        if (bootVideo) return videoResponse(file, request.headers.get('range'));
         return net.fetch(pathToFileURL(file).toString());
       } catch {
         return new Response('Bad request', { status: 400 });

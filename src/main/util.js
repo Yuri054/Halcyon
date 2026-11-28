@@ -5,6 +5,7 @@ const path = require('path');
 
 const HOME = os.homedir();
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.bmp']);
+const VIDEO_EXT = new Set(['.webm', '.mp4', '.mkv', '.mov', '.ogv']);
 
 const expandHome = (p) => (p && p.startsWith('~') ? path.join(HOME, p.slice(1)) : p);
 
@@ -84,6 +85,7 @@ function uniqueBy(list, keyFn) {
 }
 
 module.exports = {
+  VIDEO_EXT,
   HOME, IMAGE_EXT, expandHome, exists, isDir, isExecutableFile, realpath,
   which, flatpakInstalled, splitArgs, mediaUrl, uniqueBy,
 };

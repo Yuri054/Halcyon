@@ -130,6 +130,48 @@ export function createSettings() {
     }
   }
 
+  // ---- start-up intro: Halcyon's animation, off, or a video kept in the config folder
+  let bootVideos = [];
+  const refreshBoot = () => api.boot.list().then((r) => { bootVideos = r?.videos || []; if (!el.hidden) render(); }).catch(() => {});
+  const currentIntro = () => state.lib.settings.bootIntro || (state.lib.settings.bootAnimation === false ? 'off' : 'halcyon');
+  function bootIntroName() {
+    const cur = currentIntro();
+    if (cur === 'off') return 'Off';
+    if (cur.startsWith('video:')) return bootVideos.find((v) => v.id === cur.slice(6))?.name || 'Video';
+    return 'Halcyon';
+  }
+  async function pickBootIntro() {
+    for (;;) {
+      await refreshBoot();
+      const cur = currentIntro();
+      const pick = await menu({
+        title: 'Start-up intro', subtitle: 'Plays when Halcyon opens; A, B or Start skips it', selected: cur,
+        items: [
+          { label: 'Halcyon', sub: 'The Halcyon mark drawing itself', value: 'halcyon', iconName: 'spark', checked: cur === 'halcyon' },
+          ...bootVideos.map((v) => ({ label: v.name, sub: 'Video', value: `video:${v.id}`, iconName: 'video', checked: cur === `video:${v.id}` })),
+          { label: 'Off', sub: 'Straight to the dashboard', value: 'off', iconName: 'exit', checked: cur === 'off' },
+          { label: 'Add a video…', sub: 'A .webm or .mp4; Halcyon keeps a copy in its config folder', value: '+add', iconName: 'plus' },
+          bootVideos.length > 0 && { label: 'Remove a video…', value: '+remove', iconName: 'trash', danger: true },
+        ].filter(Boolean),
+      });
+      if (pick == null) return;
+      if (pick === '+add') {
+        const file = await browse({ mode: 'video', title: 'Choose a boot video', start: '~/Downloads' });
+        if (!file) continue;
+        const r = await report(api.boot.add(file));
+        if (r && r.ok) await set({ bootIntro: `video:${r.id}` });
+        continue;
+      }
+      if (pick === '+remove') {
+        const which = await menu({ title: 'Remove a video', items: bootVideos.map((v) => ({ label: v.name, value: v.id, iconName: 'trash', danger: true })) });
+        if (which) await report(api.boot.remove(which));
+        continue;
+      }
+      await set({ bootIntro: pick });
+      return;
+    }
+  }
+
   /** The 360 theme's background. Each choice shows straight away behind the list. */
   async function pickBackground() {
     let selected = x360Background();
@@ -242,7 +284,7 @@ export function createSettings() {
         row({ key: 'accent', label: 'Accent color', iconName: 'palette', value: s.accent[0].toUpperCase() + s.accent.slice(1), swatch: s.accent,
           onSelect: () => set({ accent: ACCENTS[(ACCENTS.indexOf(s.accent) + 1) % ACCENTS.length] }), tip: 'Cycles through the available accent colors' }),
         heading('Animations'),
-        row({ key: 'bootAnimation', label: 'Start-up animation', iconName: 'spark', toggle: s.bootAnimation !== false, onSelect: () => set({ bootAnimation: s.bootAnimation === false }), tip: 'The Halcyon mark drawing itself when Halcyon opens' }),
+        row({ key: 'bootIntro', label: 'Start-up intro', iconName: 'spark', value: bootIntroName(), onSelect: pickBootIntro, tip: 'What plays when Halcyon opens: its own animation, nothing, or a boot video you add (A, B or Start skips it)' }),
         row({ key: 'launchScene', label: 'Game start animation', iconName: 'spark', toggle: s.launchScene !== false, onSelect: () => set({ launchScene: s.launchScene === false }), sub: s.launchScene !== false ? 'The Halcyon intro plays while a game starts' : 'Off: a simple loading card', tip: 'Dawn over the sea, a kingfisher, the Halcyon card, then the game’s title until it opens. Off shows the simple loading card.' }),
       ]),
       card('audio', [
@@ -428,6 +470,7 @@ export function createSettings() {
     if (sub) sub.textContent = scrapeStatus;
   });
   refreshPacks();
+  refreshBoot();
   refreshDl();
   refreshHome();
   api.on('library:changed', () => { if (!el.hidden) refreshHome(); });

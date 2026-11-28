@@ -4,6 +4,7 @@
 // minute while Halcyon runs; a friend coming online or starting a game is reported as an
 // event, so the dashboard can say so.
 const steam = require('./steam');
+const webapi = require('./webapi');
 const diary = require('../log');
 
 const BASE = process.env.HALCYON_STEAM_API_URL || 'https://api.steampowered.com';
@@ -125,6 +126,61 @@ class Friends {
       lastOnline: Number(p.lastlogoff) || 0,
       profile: p.profileurl || '',
     };
+  }
+
+  // ---- comparing achievements with a friend
+
+  /** A friend's progress in one game: Map(apiname -> { achieved, time }), or { private } / null. */
+  async theirAchievements(id, appid) {
+    const acct = this.account();
+    if (!acct) return null;
+    const r = await getJson(`/ISteamUserStats/GetPlayerAchievements/v1/?steamid=${encodeURIComponent(id)}&appid=${encodeURIComponent(appid)}&format=json`, acct.key);
+    if (!r.ok) return r.private || r.badKey ? { private: true } : null;
+    const list = (r.json && r.json.playerstats && r.json.playerstats.achievements) || [];
+    return new Map(list.map((a) => [a.apiname, { achieved: Boolean(a.achieved), time: a.unlocktime || 0 }]));
+  }
+
+  /**
+   * Games you both have, with achievements, for comparing: { ok, games: [{ appid, name, them:
+   * { unlocked, total }, you: { unlocked, total } | null, theirLastPlayed }] }, most recently
+   * played by them first. mine: { owns(appid), summary(appid), game(appid) } from the dashboard's
+   * own library and achievements. Kept for ten minutes per friend.
+   */
+  async sharedGames(id, mine) {
+    const acct = this.account();
+    if (!acct) return { ok: false, error: 'Add your Steam Web API key under Settings › Steam.' };
+    this.shared = this.shared || new Map();
+    const cached = this.shared.get(id);
+    if (cached && Date.now() - cached.at < LIST_EVERY_MS) return cached.result;
+    const owned = await webapi.ownedGames(acct.key, id);
+    if (!owned.ok) return owned;
+    if (owned.empty) return { ok: false, private: true, error: 'They keep their games private on Steam, so there’s nothing to compare.' };
+    const both = owned.games.filter((g) => g.playtimeMin > 0 && mine.owns(g.appid)).sort((a, b) => b.lastPlayed - a.lastPlayed).slice(0, 30);
+    const out = [];
+    // A few at a time, so Steam isn't asked for everything at once.
+    for (let i = 0; i < both.length; i += 6) {
+      const batch = await Promise.all(both.slice(i, i + 6).map(async (g) => {
+        const theirs = await this.theirAchievements(id, g.appid);
+        if (!theirs || theirs.private || !theirs.size) return null;
+        let you = mine.summary(g.appid);
+        if (!you) { const r = await mine.game(g.appid).catch(() => null); you = r && r.ok ? { unlocked: r.unlocked, total: r.total } : null; }
+        return { appid: g.appid, name: g.name, theirLastPlayed: g.lastPlayed, them: { unlocked: [...theirs.values()].filter((a) => a.achieved).length, total: theirs.size }, you };
+      }));
+      out.push(...batch.filter(Boolean));
+    }
+    const result = { ok: true, games: out };
+    this.shared.set(id, { at: Date.now(), result });
+    return result;
+  }
+
+  /** One game, side by side: { ok, name, list: [{ ...achievement, you: { achieved, time }, them: {...} }] }. */
+  async compareGame(id, appid, mineGame) {
+    const [me, theirs] = await Promise.all([mineGame(appid), this.theirAchievements(id, appid)]);
+    if (!me || !me.ok) return me || { ok: false, error: 'Couldn’t load your achievements for this game.' };
+    if (!theirs) return { ok: false, error: 'Steam didn’t answer. Try again in a moment.' };
+    if (theirs.private) return { ok: false, error: 'They keep their game details private on Steam.' };
+    const list = me.list.map((a) => ({ ...a, you: { achieved: a.achieved, time: a.unlockTime }, them: theirs.get(a.id) || { achieved: false, time: 0 } }));
+    return { ok: true, list };
   }
 
   /** The steam:// link that joins a friend's game, or null when Steam gives no way in. */

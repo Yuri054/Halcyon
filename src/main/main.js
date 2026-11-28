@@ -870,6 +870,14 @@ if (!app.requestSingleInstanceLock()) {
     // The monitors, for Settings › display › Monitor.
     handle('friends:list', () => friends.snapshot());
     handle('friends:refresh', () => friends.refresh({ force: true }));
+    // Comparing achievements with a friend, using the dashboard's own library and achievements.
+    const mineForFriends = {
+      owns: (appid) => library.get(`steam:${appid}`) != null,
+      summary: (appid) => { const x = (store.data.achievements || {})[String(appid)]; return x && x.total ? { unlocked: x.unlocked, total: x.total } : null; },
+      game: (appid) => achievements.game(appid),
+    };
+    handle('friends:sharedGames', (id) => friends.sharedGames(String(id || ''), mineForFriends));
+    handle('friends:compare', (id, appid) => friends.compareGame(String(id || ''), String(appid || ''), (a) => achievements.game(a)));
     // A friend in Steam: join their game, or open their profile or a chat with them.
     handle('friends:open', (kind, id) => {
       id = String(id || '');

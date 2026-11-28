@@ -47,12 +47,14 @@ export async function friendMenu(id, panel = null) {
       joinable && { label: `Join ${f.game}`, sub: 'Steam joins their game', value: 'join', iconName: 'play' },
       !joinable && mine?.installed && { label: `Play ${f.game}`, sub: 'You have it too', value: 'play', iconName: 'play' },
       !joinable && mine && !mine.installed && { label: `Install ${f.game}`, sub: 'You own it too', value: 'play', iconName: 'download' },
+      { label: 'Compare achievements', sub: 'The games you both have, side by side', value: 'compare', iconName: 'trophy' },
       { label: 'Chat in Steam', value: 'chat', iconName: 'pencil' },
       { label: 'View profile in Steam', value: 'profile', iconName: 'user' },
     ].filter(Boolean),
   });
   if (!pick) return;
   if (pick === 'play') { if (panel) await panel.close(); app.launch(mine.id); return 'closed'; }
+  if (pick === 'compare') { await compareWith(f, panel); return; }
   const r = await api.friends.open(pick, f.id).catch((err) => ({ ok: false, error: err.message }));
   if (r && r.ok === false) toast(r.error, { type: 'error', title: f.name });
 }
@@ -110,3 +112,102 @@ export function startFriendNotices() {
 }
 
 export const friendsAvailable = () => Boolean(state.lib?.steamAccount?.hasKey);
+
+
+// ---- comparing achievements with a friend
+
+// A Steam game is worth 1000G, shared evenly across its achievements (as Halcyon scores them).
+const points = (unlocked, total) => (total ? Math.round((1000 / total) * unlocked) : 0);
+
+/**
+ * Ask while something loads: shows `loading` until `work` resolves, then asks again with the
+ * result. Resolves the person's pick from the loaded list.
+ */
+async function askAfter(panel, loading, work, build) {
+  let result;
+  let done = false;
+  let waiting = true;   // once B leaves the loading screen, a late answer must not close the next one
+  const land = (r) => { result = r; done = true; if (waiting) panel.cancel(); };
+  work.then(land, (err) => land({ ok: false, error: err.message }));
+  const early = await panel.ask(loading);
+  waiting = false;
+  if (!done) return { pick: early, result: null };
+  return { pick: await panel.ask(build(result)), result };
+}
+
+/** The games you both have, each with both your scores; pick one to see it side by side. */
+async function compareWith(f, outer) {
+  const panel = outer || openPanel();
+  let selected = null;
+  let cache = null;
+  for (;;) {
+    const view = (r) => {
+      if (!r || !r.ok) return { title: `You and ${f.name}`, subtitle: 'Comparing achievements', items: [{ label: r?.error || 'Couldn’t compare', key: 'none', disabled: true }] };
+      const games = r.games;
+      return {
+        title: `You and ${f.name}`, subtitle: games.length ? `${games.length} games you both play` : 'No games with achievements in common', selected,
+        items: games.map((g) => {
+          const total = g.them.total;
+          const mine = g.you ? points(g.you.unlocked, total) : null;
+          const theirs = points(g.them.unlocked, total);
+          const lead = mine == null ? '' : mine > theirs ? 'You lead' : mine < theirs ? `${f.name} leads` : 'Tied';
+          return {
+            label: g.name, value: g.appid, key: `cmp:${g.appid}`, art: gameArt(g.appid), verb: 'Compare',
+            sub: `You ${mine == null ? '?' : `${mine}G`}  ·  ${f.name} ${theirs}G`, hint: lead,
+          };
+        }),
+      };
+    };
+    let pick;
+    if (cache) pick = await panel.ask(view(cache));
+    else {
+      const r = await askAfter(panel, { title: `You and ${f.name}`, subtitle: 'Comparing achievements', items: [{ label: 'Looking through your games…', key: 'wait', disabled: true }] },
+        api.friends.sharedGames(f.id).then((x) => (x && x.ok === false && x.error ? x : x?.data || x)), view);
+      cache = r.result;
+      pick = r.pick;
+    }
+    if (pick == null) break;
+    selected = pick;
+    await compareGame(f, pick, panel, cache.games.find((g) => g.appid === pick)?.name);
+  }
+  if (!outer) await panel.close();
+}
+
+function gameArt(appid) {
+  const g = findGame(`steam:${appid}`);
+  return g ? (g.art.cover.length ? g.art.cover : g.art.hero) : null;
+}
+
+/** One game, side by side: what each of you has, grouped. */
+async function compareGame(f, appid, panel, name) {
+  const view = (r) => {
+    if (!r || !r.ok) return { title: name || 'Achievements', subtitle: f.name, items: [{ label: r?.error || 'Couldn’t compare', key: 'none', disabled: true }] };
+    const list = r.list;
+    const total = list.length;
+    const you = list.filter((a) => a.you.achieved).length;
+    const them = list.filter((a) => a.them.achieved).length;
+    const row = (a) => {
+      const secret = a.hidden && !a.you.achieved && !a.them.achieved;
+      return {
+        label: secret ? 'Secret achievement' : a.name, sub: secret ? 'Keep playing to find out' : a.description || '', key: `a:${a.id}`, value: a.id,
+        art: [a.you.achieved ? a.icon : a.iconGray || a.icon].filter(Boolean), cls: 'row--compare',
+        hint: `${a.you.achieved ? '✓' : '–'} you   ${a.them.achieved ? '✓' : '–'} ${f.name}`,
+      };
+    };
+    const groups = [
+      [`Only ${f.name} has`, list.filter((a) => a.them.achieved && !a.you.achieved)],
+      ['Only you have', list.filter((a) => a.you.achieved && !a.them.achieved)],
+      ['You both have', list.filter((a) => a.you.achieved && a.them.achieved)],
+      ['Neither of you yet', list.filter((a) => !a.you.achieved && !a.them.achieved)],
+    ].filter(([, l]) => l.length);
+    return {
+      title: name || 'Achievements',
+      subtitle: `You ${points(you, total)}G (${you}/${total})  ·  ${f.name} ${points(them, total)}G (${them}/${total})`,
+      items: groups.flatMap(([heading, l]) => [{ heading }, ...l.map(row)]),
+    };
+  };
+  let { pick, result } = await askAfter(panel, { title: name || 'Achievements', subtitle: f.name, items: [{ label: 'Loading achievements…', key: 'wait', disabled: true }] },
+    api.friends.compare(f.id, appid).then((x) => x?.data || x), view);
+  // Nothing to do on an achievement itself; B goes back to the games.
+  while (pick != null && result) pick = await panel.ask({ ...view(result), selected: pick });
+}

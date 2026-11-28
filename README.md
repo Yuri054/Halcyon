@@ -213,6 +213,9 @@ game (and which), who's online, and who's offline and since when, refreshed ever
   list. There's also a **Friends** tile for home and Settings › Accounts › *Friends*.
 - On a friend: **Join** their game when Steam says how (a lobby or server), or **Play** /
   **Install** the same game if you have it; **Chat** or **View profile** opens it in Steam.
+- **Compare achievements** (on a friend): the games you both play, each with both your scores and
+  who leads; pick one to see its achievements side by side: only they have, only you have, both,
+  and neither yet. Needs their game details to be visible on Steam.
 - A note appears when a friend comes online or starts a game (Settings › Accounts ›
   *Friend notifications*).
 - Steam must be allowed to share your friends list: in Steam, your profile's *Friends List*

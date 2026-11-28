@@ -113,6 +113,8 @@ contextBridge.exposeInMainWorld('halcyon', {
     list: call('friends:list'),
     refresh: call('friends:refresh'),
     open: call('friends:open'),
+    sharedGames: call('friends:sharedGames'),
+    compare: call('friends:compare'),
   },
   boot: {
     list: call('boot:list'),

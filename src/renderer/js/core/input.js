@@ -22,6 +22,10 @@ let windowFocused = true;
 let mode = 'keys';
 const held = new Map();      // action -> { since, next }
 let knownPads = '';
+// Buttons already held when Halcyon first looks (or when a controller connects) are taken as
+// held, not pressed: some controllers report a button as down at that moment, which would
+// otherwise act at once (pick the first thing on screen, start a game...).
+let armed = false;
 
 function setMode(next) {
   if (mode === next) return;
@@ -71,12 +75,19 @@ function poll(now) {
   if (sig !== knownPads) {
     const before = knownPads;
     knownPads = sig;
+    armed = false;
     listeners.pads(pads.map((p) => ({ index: p.index, id: p.id, name: cleanName(p.id) })), before !== '' || pads.length > 0);
   }
 
   const state = {};
   for (const pad of pads) {
     for (const [action, on] of Object.entries(readPad(pad))) if (on) state[action] = true;
+  }
+
+  if (!armed) {
+    for (const action of Object.keys(state)) held.set(action, { since: now, next: now + REPEAT_DELAY });
+    armed = true;
+    return;
   }
 
   // While the window is in the background (a game is running) track state but

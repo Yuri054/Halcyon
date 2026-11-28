@@ -24,6 +24,7 @@ import { createCollections } from './views/collections.js';
 import { createSystems } from './views/systems.js';
 import { createSettings } from './views/settings.js';
 import { openFriends, startFriendNotices } from './ui/friends.js';
+import { askStartScreen } from './ui/startscreen.js';
 
 const $ = (id) => document.getElementById(id);
 // The tabs along the top. Store and collections are switched off (their pages still exist,
@@ -751,6 +752,8 @@ async function boot() {
   const info = await api.app.info().catch(() => ({}));
   await applySoundPack();   // so the start-up sound comes from the pack too
   document.body.classList.add('is-ready');
+  // "Where would you like to play?" first, when there's more than one screen (Settings › Display).
+  if (info.askScreen) await askStartScreen();
   await bootSequence(info.skipBoot);
 }
 

@@ -643,3 +643,20 @@ body[data-theme='x360'] .view--media .media__hero .tile__logo + .tile__title[hid
 .row--friend-offline { opacity: 0.6; }
 .row--friend-offline.is-focused { opacity: 1; }
 .panel__art--friend { aspect-ratio: 1; }
+
+/* "Where would you like to play?" at start: one big tile per screen. */
+.startscreen { position: fixed; inset: 0; z-index: 140; background: radial-gradient(80% 70% at 50% 40%, #2b2f33, #0b0c0d 75%); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3rem; animation: fade 0.3s ease both; }
+.startscreen.is-leaving { opacity: 0; transition: opacity 0.25s ease; }
+.startscreen__head { text-align: center; }
+.startscreen__title { font-size: 3rem; font-weight: 300; letter-spacing: -0.01em; }
+.startscreen__sub { margin-top: 0.6rem; font-size: 1.25rem; opacity: 0.65; }
+.startscreen__tiles { display: flex; gap: 1.4rem; flex-wrap: wrap; justify-content: center; max-width: 92vw; }
+.startscreen__tile { position: relative; width: 22rem; height: 15rem; padding: 1.4rem 1.6rem; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); display: flex; flex-direction: column; justify-content: flex-end; gap: 0.3rem; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; }
+.startscreen__icon { position: absolute; top: 38%; left: 50%; width: 4.4rem; height: 4.4rem; transform: translate(-50%, -50%); opacity: 0.9; }
+.startscreen__icon .icon, .startscreen__icon svg { width: 100%; height: 100%; }
+.startscreen__name { font-size: 1.5rem; }
+.startscreen__meta { font-size: 1rem; opacity: 0.65; }
+.startscreen__tag { position: absolute; top: 0.9rem; right: 1rem; font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.startscreen__tile.is-focused { background: var(--accent, #107c10); transform: scale(1.05); box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.25), 0 1.2rem 2.4rem rgba(0, 0, 0, 0.5); }
+.startscreen__count { font-size: 1.15rem; opacity: 0.7; min-height: 1.5rem; }
+[data-theme='x360'] .startscreen__tile.is-focused { background: #109c10; box-shadow: 0 0 0 0.3rem #7cc242, 0 1.2rem 2.4rem rgba(0, 0, 0, 0.5); }

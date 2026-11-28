@@ -276,6 +276,7 @@ export function createSettings() {
       card('display', [
         heading('Screen'),
         row({ key: 'monitor', label: 'Monitor', iconName: 'screen', value: s.monitor ? (s.monitor.split(' - ')[1] || s.monitor) : 'Automatic', onSelect: pickMonitor, tip: 'Which screen Halcyon fills' }),
+        row({ key: 'askScreenAtStart', label: 'Ask which screen at start', iconName: 'screen', toggle: s.askScreenAtStart !== false, onSelect: () => set({ askScreenAtStart: s.askScreenAtStart === false }), tip: 'When Halcyon starts with more than one screen connected, it asks where to open (on the screen you started it from), then goes there. Left alone for 10 seconds, it opens on the screen used last time. Off: it opens on the chosen Monitor straight away.' }),
         row({ key: 'fullscreen', label: 'Fullscreen', iconName: 'screen', toggle: s.fullscreen, onSelect: () => set({ fullscreen: !s.fullscreen }), tip: 'F11 also toggles fullscreen' }),
         heading('Theme'),
         row({ key: 'theme', label: 'Theme', iconName: 'layers', value: theme[1],

@@ -279,6 +279,11 @@ system turns it off or plays a sample.
 
 ## Monitor
 
+**Ask which screen at start** (Settings › Display, on by default): with more than one screen
+connected, Halcyon opens on the screen you started it from and asks *Where would you like to play?*,
+one tile per screen. Pick one and it goes there (and remembers it); left alone for 10 seconds, it
+opens on the screen used last time. Turn it off to go straight to the chosen monitor.
+
 Settings › display › *Monitor* picks the screen Halcyon fills (and the Guide that opens over
 games). Monitors are listed by name (make, model, port, resolution) and remembered by that name,
 so rearranging them doesn't matter. If the chosen one is unplugged, Halcyon opens wherever the

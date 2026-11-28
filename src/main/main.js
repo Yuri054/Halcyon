@@ -49,6 +49,8 @@ if (!app.requestSingleInstanceLock()) {
   let launcher = null;
   let youtube = null;
   let friends = null;
+  // "Which screen?" at start (Settings › Display): true until the person has picked.
+  let askingScreen = false;
   let jellyfin = null;
   let achievements = null;
   let retro = null;
@@ -929,6 +931,13 @@ if (!app.requestSingleInstanceLock()) {
       if (store.data.settings.bootIntro === `video:${path.basename(f)}`) { store.data.settings.bootIntro = 'halcyon'; store.save(); pushLibrary(); }
       return { ok: true, videos: bootVideos() };
     });
+    // The start-up question answered: go to that screen (and make it the monitor), then carry on.
+    handle('system:startScreen', async (label) => {
+      askingScreen = false;
+      if (label) return moveToScreen(String(label));
+      if (win) await placeOnMonitor(win);
+      return { ok: true };
+    });
     handle('system:moveToScreen', (label) => moveToScreen(String(label || '')));
     // While a video plays: keep the desktop's screen blanking and screensaver away.
     let awake = null;
@@ -1001,12 +1010,15 @@ if (!app.requestSingleInstanceLock()) {
       configFile: store.file,
       electron: process.versions.electron,
       skipBoot: (Boolean(process.env.HALCYON_DEV_SCRIPT) && !process.env.HALCYON_BOOT) || reopened,
+      askScreen: askingScreen,
     }));
   }
 
   function createWindow() {
     const fullscreen = !windowed && store.data.settings.fullscreen;
-    const there = chosenDisplay();
+    // Asking which screen at start: open where the shortcut was clicked (COSMIC puts a new window
+    // on the pointer's screen), and move once the person has picked.
+    const there = askingScreen ? null : chosenDisplay();
     // A test run can ask for its window size (HALCYON_WINDOW_SIZE=1920x1080), e.g. for recording.
     const [askW, askH] = String(process.env.HALCYON_WINDOW_SIZE || '').split('x').map(Number);
     const w = new BrowserWindow({
@@ -1035,7 +1047,7 @@ if (!app.requestSingleInstanceLock()) {
     const current = () => win === w;
     w.on('page-title-updated', (e) => { e.preventDefault(); w.setTitle(DASHBOARD_TITLE); });
     // Once the page has its title (that's how the compositor finds the window), go to the chosen monitor.
-    w.once('ready-to-show', () => { if (!w.isDestroyed()) { w.show(); setTimeout(() => { if (current()) placeOnMonitor(w); }, 400); } });
+    w.once('ready-to-show', () => { if (!w.isDestroyed()) { w.show(); setTimeout(() => { if (current() && !askingScreen) placeOnMonitor(w); }, 400); } });
     w.on('focus', () => { if (current()) send('window:focus', true); });
     w.on('blur', () => { if (current()) send('window:focus', false); });
     // The fullscreen setting changes only when you change it (F11 or Settings). The window can
@@ -1211,6 +1223,8 @@ if (!app.requestSingleInstanceLock()) {
 
     // Scan while the window is being created so the first paint already has games.
     ready = library.scan();
+    askingScreen = store.data.settings.askScreenAtStart !== false && screen.getAllDisplays().length > 1
+      && (!process.env.HALCYON_DEV_SCRIPT || Boolean(process.env.HALCYON_ASK_SCREEN));
     createWindow();
     await ready;
     checkControllers();

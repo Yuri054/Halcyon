@@ -70,7 +70,8 @@ export async function snapshot() {
         state: st.paused ? 'Paused' : a.state === 'Updating' || a.state === 'Downloading' ? (a.install ? 'Installing' : 'Updating') : a.state || 'Working',
         line: [a.toDownload ? `${bytes(a.downloaded)} of ${bytes(a.toDownload)}` : '', speed(a.rate), st.paused ? '' : timeLeft(a.eta)].filter(Boolean).join('  ·  '),
       } : null,
-      queue: items.filter((i) => !i.completed && !i.scheduled && !(a && i.appid === a.appid)),
+      // Paused downloads (no place in Steam's queue) after the ones still waiting their turn.
+      queue: items.filter((i) => !i.completed && !i.scheduled && !(a && i.appid === a.appid)).sort((x, y) => (x.position < 0) - (y.position < 0) || x.position - y.position),
       scheduled: items.filter((i) => i.scheduled),
       finished: items.filter((i) => i.completed && !(a && i.appid === a.appid)),
       waiting: busy.filter((g) => g.download.update && !items.some((i) => i.appid === g.id.slice(6))),
@@ -246,12 +247,14 @@ async function scheduledMenu(panel, appid) {
     items: [
       { label: 'Update now', value: 'now', iconName: 'download', sub: 'Starts it straight away' },
       { label: 'Add to the queue', value: 'queue', iconName: 'layers', sub: 'Downloads after what is already queued' },
-      { label: 'Remove from the list', value: 'remove', iconName: 'trash', danger: true, sub: 'Steam may schedule it again later' },
+      { label: 'Remove from the list', value: 'remove', iconName: 'clock', sub: 'Steam may schedule it again later' },
+      cancelItem(appid),
     ],
   });
   if (pick === 'now') await act('resume', appid);
   if (pick === 'queue') await act('update', appid);
   if (pick === 'remove') await act('remove', appid);
+  if (pick === 'cancel') await cancelDownload(panel, appid);
 }
 
 // ----------------------------------------------------------------- manager
@@ -430,6 +433,13 @@ export async function openDownloads({ focusApp = null } = {}) {
     const onAction = (action) => {
       if (!m.connected || (action !== 'x' && action !== 'y' && action !== 'start')) return false;
       const v = focusedValue || (m.active ? `item:${m.active.appid}` : null);
+      // A scheduled update: X starts it now, Y its options, Start cancels it.
+      const sched = v && /^sched:(\d+)$/.exec(v)?.[1];
+      if (sched) {
+        if (action === 'x') act('resume', sched);
+        else { quick = action === 'y' ? v : `cancel:${sched}`; panel.cancel(); }
+        return true;
+      }
       const appid = v && /^item:(\d+)$/.exec(v)?.[1];
       if (!appid) return false;
       if (action === 'y') { quick = v; panel.cancel(); return true; }
@@ -445,7 +455,8 @@ export async function openDownloads({ focusApp = null } = {}) {
     const pick = quick || pick0;
     clearInterval(timer);
     onNamed = null;
-    if (rebuilt) { selected = panel.el.querySelector('.row.is-focused')?.itemValue ?? selected; continue; }
+    // Rebuilt (the list changed): stay on the download that was selected, wherever it moved to.
+    if (rebuilt) { selected = focusedValue ?? panel.el.querySelector('.row.is-focused')?.itemValue ?? selected; continue; }
     if (pick == null) break;
     selected = pick;
 

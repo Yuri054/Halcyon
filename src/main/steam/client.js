@@ -125,8 +125,9 @@ async function downloads() {
         paused: Boolean(i.paused),
         active: Boolean(i.active),
         completed: Boolean(i.completed),
-        // Steam lists updates it has put off until later with no queue position and a time.
-        scheduled: !i.completed && !i.active && Number(i.queue_index) < 0,
+        // Steam lists updates it has put off until later with no queue position (and usually a
+        // time). A download someone paused also has no position but no time: that's not scheduled.
+        scheduled: !i.completed && !i.active && Number(i.queue_index) < 0 && !(i.paused && !Number(i.deferred_time)),
         when: Number(i.deferred_time) || 0,
         finishedAt: Number(i.completed_time) || 0,
         error: i.update_error || '',

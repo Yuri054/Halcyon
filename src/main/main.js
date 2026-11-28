@@ -403,7 +403,8 @@ if (!app.requestSingleInstanceLock()) {
     stopFollowing();
     gameWindows.clear();
     if (!cosmicWindows.available() || process.env.HALCYON_DRY_RUN) return;
-    const d = await dashboardDisplay().catch(() => null);
+    // The chosen monitor (Halcyon may still be on its way there); otherwise wherever it is.
+    const d = chosenDisplay() || await dashboardDisplay().catch(() => null);
     const port = d && portOf(d.label);
     if (!port) return;
     const steamApp = /^steam:\d+$/.test(String(id)) ? `steam_app_${String(id).slice(6)}` : '';

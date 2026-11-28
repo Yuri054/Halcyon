@@ -149,14 +149,22 @@ function steamAppRunning(appid) {
 function watchSteamApp(appid, { onStart, onExit, appearWithinMs = 180000, everyMs = 2500 }) {
   const began = Date.now();
   let startedAt = 0;
+  let goneSince = 0;
   const timer = setInterval(() => {
     const running = steamAppRunning(appid);
     if (!startedAt) {
       if (running) { startedAt = Date.now(); onStart(); }
       else if (Date.now() - began > appearWithinMs) clearInterval(timer);
-    } else if (!running) {
+      return;
+    }
+    if (running) { goneSince = 0; return; }
+    // Gone for a moment isn't over: some games (Brütal Legend) start a first process that
+    // quits and starts the real game. Early on, wait longer before calling it the end.
+    if (!goneSince) goneSince = Date.now();
+    const grace = Date.now() - startedAt < 30000 ? 12000 : 5000;
+    if (Date.now() - goneSince >= grace) {
       clearInterval(timer);
-      onExit(Date.now() - startedAt);
+      onExit(goneSince - startedAt);
     }
   }, everyMs);
   timer.unref();

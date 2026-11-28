@@ -107,6 +107,7 @@ function connect(timeout = 4000) {
           for (let i = 0; i + 4 <= a.length; i += 4) states.push(a.readUInt32LE(i));
           t.fullscreen = states.includes(STATE_FULLSCREEN);
           t.minimized = states.includes(1);                         // minimized
+          t.activated = states.includes(2);                         // has the keyboard
         }
         return;
       }
@@ -194,7 +195,7 @@ function connect(timeout = 4000) {
           async where(t) {
             await handleOf(t);
             await sync();
-            return { outputs: [...t.outputs].map((id) => outputs.get(id)?.name).filter(Boolean), fullscreen: t.fullscreen, minimized: Boolean(t.minimized) };
+            return { outputs: [...t.outputs].map((id) => outputs.get(id)?.name).filter(Boolean), fullscreen: t.fullscreen, minimized: Boolean(t.minimized), activated: Boolean(t.activated) };
           },
           /** Keep the connection's view current (new windows, their states). */
           refresh: () => sync(),

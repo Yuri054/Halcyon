@@ -45,7 +45,11 @@ async function report(promise, okMessage) {
   return result;
 }
 
-export async function gameMenu(id) {
+/**
+ * A game's options. extra: more choices at the end, [{ label, sub, iconName, run }] (home adds
+ * "Arrange home"); picking one closes the menu and runs it.
+ */
+export async function gameMenu(id, { extra = [] } = {}) {
   const panel = openPanel();
   let selected = 'play';
   for (;;) {
@@ -80,6 +84,8 @@ export async function gameMenu(id) {
         g.source === 'steam' && g.download && { label: 'Manage download', value: 'download', iconName: 'download', sub: downloadLabel(g.download) },
         g.source === 'steam' && { label: 'View in the Steam store', value: 'steamStore', iconName: 'cloud' },
         g.source === 'steam' && g.installed && { label: 'Uninstall', value: 'uninstall', iconName: 'trash', danger: true, sub: g.sizeBytes ? `Frees ${fmt.size(g.sizeBytes)}` : null },
+        extra.length > 0 && { heading: 'Home' },
+        ...extra.map((x, n) => ({ label: x.label, sub: x.sub, iconName: x.iconName, value: `extra:${n}` })),
         { heading: g.source === 'custom' ? 'Command' : 'Location' },
         { label: g.detail || 'Unknown', value: 'noop', disabled: true },
       ],
@@ -88,6 +94,7 @@ export async function gameMenu(id) {
     selected = choice;
 
     if (choice === 'play') { await panel.close(); return app.launch(id); }
+    if (choice.startsWith('extra:')) { await panel.close(); return extra[Number(choice.slice(6))].run(); }
     if (choice === 'achievements') await openGameAchievements(g.id.slice(6), panel);
     if (choice === 'retroach') await openRetroAchievements(retroFor(g), panel);
     if (choice === 'quitgame') {

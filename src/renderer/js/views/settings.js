@@ -38,7 +38,7 @@ export function createSettings() {
   const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
   const CAT_ORDER = ['system', 'display', 'library', 'artwork', 'steam', 'youtube'];
   const CAT_LABEL = { system: 'System', display: 'Display', library: 'Library', artwork: 'Artwork', steam: 'Steam', youtube: 'YouTube' };
-  const CAT_ICON = { system: 'pad', display: 'screen', library: 'grid', artwork: 'image', steam: 'cloud', youtube: 'video' };
+  const CAT_ICON = { system: 'x-console', display: 'screen', library: 'list', artwork: 'image', steam: 'cloud', youtube: 'video' };
   function showInfo(target) {
     if (!target) return;
     const key = target.dataset.key || '';

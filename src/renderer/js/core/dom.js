@@ -21,7 +21,42 @@ export function h(tag, props, ...children) {
 
 const svg = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
+// Solid glyphs in the console's style, used instead of the line icons while the 360 theme is on.
+const X360_ICONS = {
+  'x-console': '<rect x="9.2" y="2.5" width="5.6" height="13.8" rx="1.1" fill="currentColor" stroke="none"/><rect x="9.2" y="17.6" width="5.6" height="3.9" rx="1.1" fill="currentColor" stroke="none"/>',
+  'x-profile': '<path fill-rule="evenodd" d="M4 2.5h16v19H4zM6.2 4.7v14.6h11.6V4.7z" fill="currentColor" stroke="none"/><circle cx="12" cy="9.6" r="2.7" fill="currentColor" stroke="none"/><path d="M7.6 17.6c.5-2.8 2.3-4.3 4.4-4.3s3.9 1.5 4.4 4.3z" fill="currentColor" stroke="none"/>',
+  'x-list': '<rect x="3" y="4.6" width="3" height="3" fill="currentColor" stroke="none"/><rect x="8.2" y="5.2" width="12.8" height="1.8" fill="currentColor" stroke="none"/><rect x="3" y="10.5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="8.2" y="11.1" width="12.8" height="1.8" fill="currentColor" stroke="none"/><rect x="3" y="16.4" width="3" height="3" fill="currentColor" stroke="none"/><rect x="8.2" y="17" width="12.8" height="1.8" fill="currentColor" stroke="none"/>',
+  'x-power': '<path d="M12 2.8v8.4" stroke-width="2.6"/><path d="M6.2 6.4a8.3 8.3 0 1011.6 0" stroke-width="2.6"/>',
+  'x-pin': '<path d="M14.6 2.6l6.8 6.8-1.6 1.6-1.3-.6-3.4 3.4.4 4.1-1.6 1.6-3.7-3.7-5.3 5.3-.9-.9 5.3-5.3-3.7-3.7 1.6-1.6 4.1.4 3.4-3.4-.6-1.3z" fill="currentColor" stroke="none"/>',
+  'x-recent': '<path fill-rule="evenodd" d="M12 2.5a9.5 9.5 0 110 19 9.5 9.5 0 010-19zm-1.1 4.2v6.2l4.9 2.9 1-1.7-3.7-2.2V6.7z" fill="currentColor" stroke="none"/>',
+  'x-games': '<path fill-rule="evenodd" d="M7.3 6.5h9.4c2.6 0 4.4 1.9 5 4.6l.9 4.3c.4 1.9-.8 3.5-2.4 3.5-1.1 0-1.8-.6-2.4-1.5l-1.2-1.7H7.4l-1.2 1.7c-.6.9-1.3 1.5-2.4 1.5-1.6 0-2.8-1.6-2.4-3.5l.9-4.3c.6-2.7 2.4-4.6 5-4.6zM6.4 9.4v1.6H4.8v1.6h1.6v1.6H8v-1.6h1.6V11H8V9.4zm9.9.3a1 1 0 100 2 1 1 0 000-2zm2.1 2.1a1 1 0 100 2 1 1 0 000-2z" fill="currentColor" stroke="none"/>',
+  'x-apps': '<rect x="3" y="3" width="8.3" height="8.3" fill="currentColor" stroke="none"/><rect x="12.7" y="3" width="8.3" height="8.3" fill="currentColor" stroke="none"/><rect x="3" y="12.7" width="8.3" height="8.3" fill="currentColor" stroke="none"/><rect x="12.7" y="12.7" width="8.3" height="8.3" fill="currentColor" stroke="none"/>',
+  'x-disc': '<path fill-rule="evenodd" d="M12 2.5a9.5 9.5 0 110 19 9.5 9.5 0 010-19zm0 6.6a2.9 2.9 0 100 5.8 2.9 2.9 0 000-5.8z" fill="currentColor" stroke="none"/>',
+  'x-drive': '<path fill-rule="evenodd" d="M3 6h18v12H3zm11.5 7.6v1.8H19v-1.8z" fill="currentColor" stroke="none"/>',
+  'x-people': '<circle cx="8.3" cy="7.3" r="3.1" fill="currentColor" stroke="none"/><path d="M2.4 18.8c.5-4 2.8-6.1 5.9-6.1s5.4 2.1 5.9 6.1z" fill="currentColor" stroke="none"/><circle cx="16.3" cy="8.6" r="2.6" fill="currentColor" stroke="none"/><path d="M15.4 12.9c.3 0 .6-.1.9-.1 2.7 0 4.7 1.8 5.2 5.4h-5.6c-.1-2.2-.3-3.9-.5-5.3z" fill="currentColor" stroke="none"/>',
+  'x-lock': '<path fill-rule="evenodd" d="M7.3 10V7.8a4.7 4.7 0 019.4 0V10H18.6v11H5.4V10zm2.3 0h4.8V7.8a2.4 2.4 0 00-4.8 0z" fill="currentColor" stroke="none"/>',
+  'x-tv': '<path fill-rule="evenodd" d="M2.5 4.5h19v12.5h-19zm2.1 2.1v8.3h14.8V6.6z" fill="currentColor" stroke="none"/><rect x="9" y="18.2" width="6" height="1.9" fill="currentColor" stroke="none"/>',
+  'x-cloud': '<path d="M7 19a4.5 4.5 0 01-.6-9 6 6 0 0111.4 1.5A3.8 3.8 0 0117.5 19z" fill="currentColor" stroke="none"/>',
+  'x-video': '<path fill-rule="evenodd" d="M2.5 5h19v14h-19zm7.2 3.6v6.8l5.8-3.4z" fill="currentColor" stroke="none"/>',
+  'x-film': '<path fill-rule="evenodd" d="M3 4h18v16H3zm2 2v2h2V6zm12 0v2h2V6zM5 10v2h2v-2zm12 0v2h2v-2zM5 14v2h2v-2zm12 0v2h2v-2zM9 6v12h6V6z" fill="currentColor" stroke="none"/>',
+  'x-music': '<path d="M9.5 4.5l10-2v12.8a3 3 0 11-2-2.8V7.3l-6 1.2v9.3a3 3 0 11-2-2.8z" fill="currentColor" stroke="none"/>',
+  'x-trophy': '<path fill-rule="evenodd" d="M7 3h10v2h3.5v2.5a4.5 4.5 0 01-4.1 4.5 5 5 0 01-3.3 2.8V17H16v2.5H8V17h2.9v-2.2A5 5 0 017.6 12 4.5 4.5 0 013.5 7.5V5H7zm-1.6 4v.5c0 1.2.7 2.1 1.7 2.4C7 9 7 8 7 7zm13.2 0H17c0 1 0 2-.1 2.9 1-.3 1.7-1.2 1.7-2.4z" fill="currentColor" stroke="none"/>',
+  'x-download': '<path d="M10.4 3h3.2v8.2h3.6L12 16.6l-5.2-5.4h3.6z" fill="currentColor" stroke="none"/><rect x="4" y="18.4" width="16" height="2.4" fill="currentColor" stroke="none"/>',
+  'x-search': '<circle cx="10.3" cy="10.3" r="6" stroke-width="2.6"/><path d="M14.8 14.8l5.6 5.6" stroke-width="3"/>',
+  'x-folder': '<path d="M2.5 5h7l2 2.2h10V19h-19z" fill="currentColor" stroke="none"/>',
+  'x-plus': '<path d="M10.6 3.5h2.8v7.1h7.1v2.8h-7.1v7.1h-2.8v-7.1H3.5v-2.8h7.1z" fill="currentColor" stroke="none"/>',
+  'x-gear': '<path fill-rule="evenodd" d="M10.4 2.5h3.2l.5 2.6 1.6.7 2.2-1.5 2.3 2.3-1.5 2.2.7 1.6 2.6.5v3.2l-2.6.5-.7 1.6 1.5 2.2-2.3 2.3-2.2-1.5-1.6.7-.5 2.6h-3.2l-.5-2.6-1.6-.7-2.2 1.5-2.3-2.3 1.5-2.2-.7-1.6-2.6-.5v-3.2l2.6-.5.7-1.6-1.5-2.2 2.3-2.3 2.2 1.5 1.6-.7zM12 8.8a3.2 3.2 0 100 6.4 3.2 3.2 0 000-6.4z" fill="currentColor" stroke="none"/>',
+  'x-screen': '<path fill-rule="evenodd" d="M2.5 4.5h19v12.5h-19zm2.1 2.1v8.3h14.8V6.6z" fill="currentColor" stroke="none"/><rect x="9" y="18.2" width="6" height="1.9" fill="currentColor" stroke="none"/>',
+};
+// Which line icon each 360 glyph stands in for.
+const X360_FOR = {
+  pad: 'x-games', star: 'x-pin', starFill: 'x-pin', clock: 'x-recent', grid: 'x-apps', gear: 'x-gear', power: 'x-power', screen: 'x-tv', image: 'x-profile',
+  cloud: 'x-cloud', video: 'x-video', film: 'x-film', music: 'x-music', folder: 'x-drive', download: 'x-download', search: 'x-search', plus: 'x-plus',
+  list: 'x-list', user: 'x-profile', disc: 'x-disc', tv: 'x-tv', trophy: 'x-trophy',
+};
+
 const ICONS = {
+  trophy: '<path d="M7 4h10v4a5 5 0 01-10 0z"/><path d="M7 6H4v1.5A3.5 3.5 0 007.4 11M17 6h3v1.5a3.5 3.5 0 01-3.4 3.5M12 13v4M8.5 20h7M10 17h4"/>',
   play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/>',
   pause: '<path d="M7 4.5h3.5v15H7zM13.5 4.5H17v15h-3.5z" fill="currentColor" stroke="none"/>',
   film: '<rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M3.5 9h17M3.5 15h17M8 5v14M16 5v14"/>',
@@ -76,7 +111,10 @@ const ICONS = {
 export function icon(name, cls = '') {
   const span = document.createElement('span');
   span.className = `icon ${cls}`.trim();
-  span.innerHTML = svg(ICONS[name] || '');
+  // The 360 theme uses its own solid glyphs (named "x-..." directly, or standing in for a line icon).
+  const x360 = typeof document !== 'undefined' && document.body?.dataset.theme === 'x360';
+  const glyph = X360_ICONS[name] || (x360 && /\btile__icon\b/.test(cls) && X360_ICONS[X360_FOR[name]]);
+  span.innerHTML = svg(glyph || ICONS[name] || '');
   return span;
 }
 

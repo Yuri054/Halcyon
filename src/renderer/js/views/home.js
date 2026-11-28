@@ -28,7 +28,7 @@ const TILES = {
   steam: { label: 'Steam', iconName: 'cloud', count: (g) => g.filter((x) => x.source === 'steam').length, go: () => app.go('games', { filter: 'steam', enter: true }) },
   emulated: { label: 'Emulated', iconName: 'chip', count: (g) => g.filter((x) => x.source === 'emulator').length, go: () => app.go('games', { filter: 'emulated', enter: true }) },
   ports: { label: 'PC ports', iconName: 'pad', count: (g) => g.filter((x) => x.source === 'port').length, go: () => app.go('games', { filter: 'ports', enter: true }) },
-  achievements: { label: 'Achievements', iconName: 'star', count: () => gamerscore() || undefined, go: () => app.achievements?.() },
+  achievements: { label: 'Achievements', iconName: 'trophy', count: () => gamerscore() || undefined, go: () => app.achievements?.() },
   tv: { label: 'TV & movies', iconName: 'film', go: () => app.go('tv', { enter: true }) },
   music: { label: 'Music', iconName: 'music', go: () => app.go('music', { enter: true }) },
   youtube: { label: 'YouTube', iconName: 'video', logo: 'img/youtube-2011.svg', go: openYouTube },
@@ -499,20 +499,25 @@ export function createHome() {
     // The first real tile (top-left), not the search tab peeking in at the edge.
     defaultFocus: () => scroller.querySelector('.metro [data-focus]') || scroller.querySelector('[data-focus]:not(.tile--peek)') || scroller.querySelector('[data-focus]'),
     onAction(action, target) {
-      // Y anywhere on the home's tiles: arrange the home, starting at this tile.
-      if (action === 'y' && (target?.dataset.slot || target?.dataset.key === 'q:+')) { arrange(target.dataset.slot || 'q:+'); return true; }
       const id = target?.dataset.game;
+      const onTile = target?.dataset.slot || target?.dataset.key === 'q:+';
+      // Y on a game: its options, as everywhere else (with "Arrange home" at the end).
+      if (id && action === 'y') {
+        gameMenu(id, { extra: target.dataset.slot ? [{ label: 'Arrange home', sub: 'Move, change or remove the home’s tiles', iconName: 'grid', run: () => arrange(target.dataset.slot) }] : [] });
+        return true;
+      }
+      // Start on any home tile (Y on a tile that isn't a game): arrange the home from here.
+      if (onTile && (action === 'start' || action === 'y')) { arrange(target.dataset.slot || 'q:+'); return true; }
       if (!id) return false;
-      if (action === 'start' || (action === 'y' && !target.dataset.slot)) { gameMenu(id); return true; }
       if (action === 'x') { const g = findGame(id); api.game.patch(id, { favorite: !g.favorite }); return true; }
       return false;
     },
     hints(target) {
-      const arrangeHint = (target?.dataset.slot || target?.dataset.key === 'q:+') ? [{ a: 'y', label: 'Arrange home' }] : [];
+      const onTile = target?.dataset.slot || target?.dataset.key === 'q:+';
+      const arrangeHint = onTile ? [{ a: target?.dataset.game ? 'start' : 'y', label: 'Arrange home' }] : [];
       if (target?.dataset.game) {
         const g = findGame(target.dataset.game);
-        return [{ a: 'accept', label: isPlaying(g?.id) ? 'Resume' : g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' },
-          ...(target.dataset.slot ? [...arrangeHint, { a: 'start', label: 'Options' }] : [{ a: 'y', label: 'Options' }])];
+        return [{ a: 'accept', label: isPlaying(g?.id) ? 'Resume' : g && !g.installed ? 'Install' : 'Play' }, { a: 'x', label: g?.favorite ? 'Unfavorite' : 'Favorite' }, { a: 'y', label: 'Options' }, ...arrangeHint];
       }
       if (target?.dataset.block === 'empty') return arrangeHint;
       return [{ a: 'accept', label: target?.dataset.key === 'q:+' ? 'Add a tile' : 'Open' }, ...arrangeHint];

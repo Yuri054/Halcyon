@@ -118,7 +118,7 @@ export async function openGuide({ select = null } = {}) {
         ...playing.flatMap((p) => {
           return [
             { label: `Resume ${p.name}`, value: `resume:${p.id}`, key: `resume:${p.id}`, iconName: 'play', verb: 'Resume' },
-            { label: 'Quit game', value: `quit:${p.id}`, key: `quit:${p.id}`, iconName: 'exit', danger: true, verb: 'Quit' },
+            { label: p.app ? `Close ${p.name}` : 'Quit game', value: `quit:${p.id}`, key: `quit:${p.id}`, iconName: 'exit', danger: true, verb: p.app ? 'Close' : 'Quit' },
           ];
         }),
         !overTask && nowPlaying() && { label: nowPlaying().title, sub: 'Now playing', value: 'np:show', key: 'np:show', iconName: 'music', verb: 'Show' },
@@ -199,6 +199,8 @@ export async function openGuide({ select = null } = {}) {
     if (pick.startsWith('quit:')) {
       const id = pick.slice(5);
       const name = playing.find((p) => p.id === id)?.name || 'this game';
+      // An app (YouTube) closes without asking: nothing is lost.
+      if (playing.find((p) => p.id === id)?.app) { await api.game.quit(id); break; }
       panel.el.classList.add('is-confirming');
       const sure = await panel.ask({
         title: `Quit ${name}?`, subtitle: 'Anything the game has not saved will be lost.', selected: 'yes',

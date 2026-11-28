@@ -9,6 +9,7 @@ import { api } from '../core/state.js';
 import { toast } from '../ui/toast.js';
 import { menu } from '../ui/dialog.js';
 import { gamerscore } from '../ui/achievements.js';
+import { openYouTube } from '../ui/youtube.js';
 
 /**
  * The tiles the home page's tile section can hold, in a catalog: the person picks which, and
@@ -25,6 +26,7 @@ const TILES = {
   achievements: { label: 'Achievements', iconName: 'star', count: () => gamerscore() || undefined, go: () => app.achievements?.() },
   tv: { label: 'TV & movies', iconName: 'film', go: () => app.go('tv', { enter: true }) },
   music: { label: 'Music', iconName: 'music', go: () => app.go('music', { enter: true }) },
+  youtube: { label: 'YouTube', iconName: 'video', go: openYouTube },
   downloads: { label: 'Downloads', iconName: 'download', go: () => app.downloads() },
   storage: { label: 'Storage', iconName: 'folder', go: () => app.storage() },
   search: { label: 'Search', iconName: 'search', go: () => app.search() },
@@ -92,7 +94,7 @@ export function createHome() {
 
   /** The tile section: the chosen tiles in order, then a + tile to add more. */
   function quickTiles(games, next, tone) {
-    const tones = { games: 'accent', settings: 'glass', power: 'danger', favorites: 'gold', emulated: 'violet', steam: 'slate' };
+    const tones = { games: 'accent', settings: 'glass', power: 'danger', youtube: 'danger', favorites: 'gold', emulated: 'violet', steam: 'slate' };
     const tiles = homeTiles().map((id) => {
       const t = TILES[id];
       const tile = actionTile({ key: `q:${id}`, label: t.label, count: t.count ? t.count(games) : undefined, iconName: t.iconName, tone: tone || tones[id] || 'glass', index: next(), onSelect: t.go });

@@ -13,6 +13,7 @@ import { artImg } from '../ui/art.js';
 import { mediaTile, mediaHero, img, episodeCode } from '../media/tile.js';
 import { openPlayer, nowPlaying, onNowPlaying } from '../media/player.js';
 import { openDetails } from '../media/details.js';
+import { openYouTube } from '../ui/youtube.js';
 
 const TICKS = 10000000;
 const LIB_ICON = { movies: 'film', tvshows: 'tv', music: 'music' };
@@ -60,6 +61,9 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
     app.refreshChrome();
   }
 
+  // YouTube's TV app, offered on tv & movies whether or not Jellyfin is set up.
+  const youTubeTile = (index) => actionTile({ key: 'mx:youtube', label: 'YouTube', sub: 'The TV app', iconName: 'video', tone: 'danger', index, onSelect: openYouTube });
+
   function render() {
     if (library) { renderLibrary(); return; }
     wallView.hidden = true;
@@ -74,7 +78,7 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
       scroller.replaceChildren(block('media', 'block--hero', [actionTile({
         key: 'mx:connect', size: 'hero', iconName: music ? 'music' : 'film', tone: 'accent', label: 'Connect to Jellyfin',
         sub: music ? 'Play your music from your own Jellyfin server.' : 'Watch your movies and shows from your own Jellyfin server.', onSelect: connect,
-      })]));
+      })]), ...(music ? [] : [block('apps', 'block--quick', [youTubeTile(1)])]));
       return;
     }
     if (error && !home) {
@@ -83,7 +87,7 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
       return;
     }
     if (music) { renderMusicFront(); return; }
-    // ---- the front page. Left: the libraries and search. Middle: the one thing to watch now
+  // ---- the front page. Left: the libraries and search. Middle: the one thing to watch now
     // (labelled: continue watching / next up / new). Right: what's next after it, then what's
     // new, each tile labelled. Then rows with clear names: continue watching, next up, and
     // recently added in each library.
@@ -123,6 +127,7 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
       blocks.push(block(`Recently added · ${lib}`, 'block--covers media__latest', l.items.slice(0, 12).map((it) => mediaTile(it, 'cover', i++))));
     }
     blocks.push(block('More', 'block--quick', [
+      youTubeTile(i++),
       ...libs.slice(3).map((lib) => actionTile({ key: `mx:lib:${lib.id}`, label: lib.name, iconName: LIB_ICON[lib.collection] || 'layers', tone: 'accent', index: i++, onSelect: () => openLibrary(lib) })),
       libs.length >= 3 && actionTile({ key: 'mx:search2', label: 'Search', iconName: 'search', tone: 'glass', index: i++, onSelect: search }),
       actionTile({ key: 'mx:server', label: status.serverName || 'Server', sub: `Signed in as ${status.userName}`, iconName: 'gear', tone: 'glass', index: i++, onSelect: serverMenu }),

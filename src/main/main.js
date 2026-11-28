@@ -5,6 +5,7 @@ const { pathToFileURL } = require('url');
 const { JsonStore, DEFAULTS } = require('./store');
 const { Library } = require('./library');
 const { Launcher } = require('./launcher');
+const { YouTube } = require('./youtube');
 const files = require('./files');
 const system = require('./system');
 const installer = require('./emulators/install');
@@ -45,6 +46,7 @@ if (!app.requestSingleInstanceLock()) {
   let store = null;
   let library = null;
   let launcher = null;
+  let youtube = null;
   let jellyfin = null;
   let achievements = null;
   let retro = null;
@@ -158,6 +160,7 @@ if (!app.requestSingleInstanceLock()) {
   // another one so it never moves the real Halcyon).
   const DASHBOARD_TITLE = process.env.HALCYON_WINDOW_TITLE || 'Halcyon';
   const GUIDE_TITLE = `${DASHBOARD_TITLE} Guide`;
+  const YOUTUBE_TITLE = `${DASHBOARD_TITLE} YouTube`;
   const portOf = (label) => (label || '').split(' - ').pop();
   const displayByPort = (port) => screen.getAllDisplays().find((d) => portOf(d.label) === port) || null;
   /**
@@ -411,7 +414,7 @@ if (!app.requestSingleInstanceLock()) {
     following = await cosmicWindows.followNewWindows(port, {
       // Long enough for Steam's shader processing and slow first starts.
       ms: 240000,
-      skipTitles: [DASHBOARD_TITLE, 'Halcyon game menu', GUIDE_TITLE],
+      skipTitles: [DASHBOARD_TITLE, 'Halcyon game menu', GUIDE_TITLE, YOUTUBE_TITLE],
       onMove: (m) => diary.log(`game window "${m.title}" moved from ${m.from.join(', ') || '?'} to ${m.to}${m.why === 'went back' ? ' again (it went back)' : ''}${m.ok ? '' : ' (not confirmed)'}`),
       onNew: (w) => { if (w.identifier) gameWindows.add(w.identifier); },
       // Give the game (not Steam's own windows) the keyboard and controller.
@@ -432,7 +435,7 @@ if (!app.requestSingleInstanceLock()) {
   /** Which windows belong to the running game: those it opened, and Steam games' windows. */
   function isGameWindow(w) {
     const steamIds = launcher.nowPlaying().map((p) => String(p.id)).filter((id) => /^steam:\d+$/.test(id)).map((id) => `steam_app_${id.slice(6)}`);
-    return gameWindows.has(w.identifier) || steamIds.includes(w.appId) || /^steam_app_\d+$/.test(w.appId);
+    return gameWindows.has(w.identifier) || steamIds.includes(w.appId) || /^steam_app_\d+$/.test(w.appId) || (Boolean(youtube && youtube.open) && w.title === YOUTUBE_TITLE);
   }
 
   /**
@@ -831,6 +834,8 @@ if (!app.requestSingleInstanceLock()) {
     handle('system:moveToScreen', (label) => moveToScreen(String(label || '')));
     // While a video plays: keep the desktop's screen blanking and screensaver away.
     let awake = null;
+    handle('youtube:open', () => { if (!youtube) return { ok: false, error: 'Not ready yet.' }; return youtube.show(); });
+    handle('youtube:signOut', () => youtube.signOut());
     handle('system:keepAwake', (on) => {
       if (on && awake == null) { awake = powerSaveBlocker.start('prevent-display-sleep'); diary.log('keep awake: on (video playing)'); }
       else if (!on && awake != null) { powerSaveBlocker.stop(awake); awake = null; diary.log('keep awake: off'); }
@@ -1075,6 +1080,21 @@ if (!app.requestSingleInstanceLock()) {
       if (!process.env.HALCYON_DEV_SCRIPT) setTimeout(() => bringToFront().catch(() => {}), 400);
       if (event.source === 'steam') rescan().catch(() => {}); else pushLibrary();
     if (achievementToasts) { achievementToasts.launcher = launcher; if (!process.env.HALCYON_DRY_RUN) achievementToasts.start(); }
+    });
+    youtube = new YouTube({
+      launcher,
+      title: YOUTUBE_TITLE,
+      chosenDisplay: () => chosenDisplay(),
+      boundsOn: (d) => boundsOn(d),
+      // COSMIC opens it on the pointer's screen: put it on Halcyon's, fullscreen.
+      place: async (title) => {
+        const d = chosenDisplay();
+        if (!d || !cosmicWindows.available()) return;
+        const r = await cosmicWindows.moveWindow(title, portOf(d.label), { fullscreen: true });
+        diary.log('youtube: placed on', portOf(d.label), r.ok ? 'ok' : r.error);
+        await cosmicWindows.activateWindow((w) => w.title === title).catch(() => '');
+      },
+      onClosed: () => {},
     });
     registerIpc();
 

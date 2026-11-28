@@ -104,6 +104,10 @@ contextBridge.exposeInMainWorld('halcyon', {
   apps: { games: call('apps:games'), openQuiver: call('apps:openQuiver') },
   achievements: { game: call('achievements:game'), totals: call('achievements:totals'), testToast: call('achievements:testToast') },
   retro: { status: call('retro:status'), signIn: call('retro:signIn'), signOut: call('retro:signOut'), sync: call('retro:sync'), game: call('retro:game') },
+  youtube: {
+    open: call('youtube:open'),
+    signOut: call('youtube:signOut'),
+  },
   system: {
     status: call('system:status'),
     setVolume: call('system:setVolume'),

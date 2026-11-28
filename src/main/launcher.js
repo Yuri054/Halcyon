@@ -48,7 +48,7 @@ class Launcher {
   }
 
   nowPlaying() {
-    return [...this.running.values()].map(({ id, name, since, quittable }) => ({ id, name, since, quittable }));
+    return [...this.running.values()].map(({ id, name, since, quittable, app }) => ({ id, name, since, quittable, app: Boolean(app) }));
   }
 
   /**
@@ -78,6 +78,7 @@ class Launcher {
   async quit(id) {
     const entry = id ? this.running.get(id) : [...this.running.values()].reverse().find((e) => e.quittable);
     if (!entry) return { ok: false, error: 'That game is no longer running.' };
+    if (entry.close) { entry.close(); return { ok: true, name: entry.name }; }
     if (!entry.quittable) return this.quitSteamGame(entry);
     entry.quitting = true;
     const signal = (sig) => {
@@ -119,6 +120,19 @@ class Launcher {
   started(game, proc = null) {
     this.running.set(game.id, { id: game.id, name: game.name, since: Date.now(), quittable: Boolean(proc), ...(proc || {}) });
     this.notify({ type: 'started', id: game.id, name: game.name });
+  }
+
+  /** One of Halcyon's own apps (YouTube) opened in its own window: shown and quit like a game. */
+  startedApp({ id, name, close }) {
+    this.running.set(id, { id, name, since: Date.now(), quittable: true, close, app: true });
+    this.notify({ type: 'started', id, name });
+  }
+
+  endedApp(id) {
+    const entry = this.running.get(id);
+    if (!entry) return;
+    this.running.delete(id);
+    this.notify({ type: 'exited', id, name: entry.name, minutes: Math.round((Date.now() - entry.since) / 60000), source: 'app' });
   }
 
   /** A play session ended: bank the time and tell the dashboard. */

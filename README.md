@@ -146,6 +146,20 @@ The 360 theme's home is laid out like the console's dashboard: the page of big a
 the search tab peeking in at the left, and the next page waiting at the right edge; moving onto it
 slides the whole page across.
 
+## YouTube
+
+**YouTube** (on tv & movies, and as a Home tile you can add) opens YouTube's own TV app, the
+one smart TVs run, fullscreen on Halcyon's screen. Sign in the TV way: it shows a code to enter
+at yt.be/activate on your phone, so no password is typed into Halcyon; or choose *Watch as
+guest*. The sign-in is kept in its own storage, apart from the rest of Halcyon.
+
+- D-pad or left stick moves, A selects, B goes back, X plays / pauses.
+- Home opens the Guide over it: *Resume YouTube* or *Close YouTube*. Closing it brings Halcyon
+  back, and music playing in the background stops when it opens.
+- The screen stays on while it is open.
+- It's YouTube's own app, so it shows what YouTube's TV app shows, ads included. YouTube serves
+  it to TVs only; Halcyon presents itself as one, which YouTube could stop allowing.
+
 ## PC ports and recomps
 
 Games installed with **Quiver Launcher** (decomp ports and recomps, such as Dusklight) appear

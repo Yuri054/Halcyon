@@ -10,6 +10,7 @@ export function artImg(urls, cls, { lazy = true } = {}) {
   if (lazy) img.loading = 'lazy';
   img.draggable = false;
   img.alt = '';
+  img.dataset.first = urls[0];   // which picture this is, even after falling back to another URL
   let i = 0;
   img.addEventListener('error', () => {
     i += 1;

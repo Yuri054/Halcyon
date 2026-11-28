@@ -54,6 +54,9 @@ const GAME_KINDS = {
 const SLOTS = ['a1', 'a2', 'a3', 'hero', 'b3', 'c3', 'd1', 'd2', 'd3'];
 export const DEFAULT_METRO = ['g:play', 'favorites', 'recent', 'g:recent:1', 'g:recent:2', 'g:recent:3', 'g:favorite:1', 'g:favorite:2', 'g:recent:4'];
 
+// Catalog tiles not offered when choosing a tile (they stay working where already placed).
+const HIDDEN_CHOICES = new Set(['steam', 'emulated', 'ports']);
+
 const kindOf = (id) => (/^g:(recent|favorite):\d+$/.test(id) ? id.replace(/:\d+$/, '') : id);
 const rankOf = (id) => Number((/:(\d+)$/.exec(id) || [])[1] || 0);
 const known = (id) => Boolean(TILES[id] || GAME_KINDS[kindOf(id)] || id === 'empty' || /^game:/.test(id));
@@ -321,7 +324,11 @@ export function createHome() {
         { label: GAME_KINDS['g:recent'].label, sub: 'The next one not already on home', value: 'g:recent', iconName: 'clock' },
         { label: GAME_KINDS['g:favorite'].label, sub: 'The next one not already on home', value: 'g:favorite', iconName: 'star' },
         { label: 'A game you choose…', value: 'pick', iconName: 'pad' },
-        ...Object.keys(TILES).filter((id) => !inUse.has(id) || id === current).map((id) => ({ label: TILES[id].label, value: id, iconName: TILES[id].iconName, checked: id === current })),
+        // Every tile, including ones already on home (picking one of those moves it here).
+        ...Object.keys(TILES).filter((id) => !HIDDEN_CHOICES.has(id) || id === current).map((id) => ({
+          label: TILES[id].label, value: id, iconName: TILES[id].iconName, checked: id === current,
+          sub: inUse.has(id) && id !== current ? 'On home already: moves here' : null,
+        })),
       ].filter(Boolean),
     });
     if (pick === 'g:recent' || pick === 'g:favorite') return `${pick}:${nextRank(pick)}`;
@@ -332,10 +339,26 @@ export function createHome() {
     return g ? `game:${g}` : null;
   }
 
+  /** Where a catalog tile already is on home, if anywhere: [list, index]. */
+  function findTile(id) {
+    if (!TILES[id]) return null;
+    for (const list of ['metro', 'quick']) { const n = draft[list].indexOf(id); if (n >= 0) return [list, n]; }
+    return null;
+  }
+
   async function changeSlot(slot) {
     const [list, n] = where(slot);
-    const id = await chooseBlock(draft[list][n] === 'empty' ? 'Add a tile here' : `Change ${blockName(draft[list][n])}`, draft[list][n]);
-    if (!id || !draft) return;
+    const before = draft[list][n];
+    const id = await chooseBlock(before === 'empty' ? 'Add a tile here' : `Change ${blockName(before)}`, before);
+    if (!id || !draft || id === before) return;
+    // Already somewhere else on home: it moves here, and that place gets what was here.
+    // (Only a first-section place can be empty; the tile list has no empty places.)
+    const other = findTile(id);
+    if (other) {
+      const [ol, on] = other;
+      if (ol === 'quick' && before === 'empty') draft.quick.splice(on, 1);
+      else draft[ol][on] = before;
+    }
     draft[list][n] = id;
     redraw();
     focusIn(slot);
@@ -343,6 +366,9 @@ export function createHome() {
   async function addTile() {
     const id = await chooseBlock('Add a tile', null);
     if (!id || !draft) return;
+    // Already on home: it moves to the end of the tiles (a first-section place it leaves stays empty).
+    const other = findTile(id);
+    if (other) { if (other[0] === 'quick') draft.quick.splice(other[1], 1); else draft.metro[other[1]] = 'empty'; }
     draft.quick.push(id);
     redraw();
     focusIn(`q:${draft.quick.length - 1}`);
@@ -398,8 +424,30 @@ export function createHome() {
   }
 
   function render() {
-    if (document.body.dataset.theme === 'x360') renderMetro(visibleGames().filter((g) => g.installed));
-    else renderBlocks();
+    keepPictures(() => {
+      if (document.body.dataset.theme === 'x360') renderMetro(visibleGames().filter((g) => g.installed));
+      else renderBlocks();
+    });
+  }
+
+  /**
+   * Re-draw without the pictures blinking: a new tile's picture is invisible until it has
+   * loaded, so the ones already on screen are carried over into the new tiles instead.
+   */
+  function keepPictures(draw) {
+    const key = (img) => `${img.classList[0]}|${img.dataset.first}`;
+    const loaded = new Map();
+    for (const img of scroller.querySelectorAll('img.is-loaded')) if (!loaded.has(key(img))) loaded.set(key(img), img);
+    draw();
+    for (const img of scroller.querySelectorAll('img:not(.is-loaded)')) {
+      const old = loaded.get(key(img));
+      if (!old) continue;
+      loaded.delete(key(img));
+      old.style.cssText = img.style.cssText;   // its crop, as the new tile set it
+      img.replaceWith(old);
+      // A game's wordmark replaces its written title once loaded.
+      if (old.classList.contains('tile__logo')) { const title = old.parentElement?.querySelector('.tile__title'); if (title) title.hidden = true; }
+    }
   }
 
   function renderBlocks() {

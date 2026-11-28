@@ -162,6 +162,8 @@ function renderProfile() {
 
 function go(section, { filter, enter = false, focusKey = null, quiet = false } = {}) {
   const changed = section !== state.section;
+  // Leaving games, or opening it without asking for a filter, puts the saved filter back.
+  if (!filter && views.games.restoreFilter && (state.section === 'games' || section === 'games') && views.games.restoreFilter() && section === 'games' && !changed) views.games.render();
   if (filter && views.games.setFilter) views.games.setFilter(filter);
 
   if (changed) {

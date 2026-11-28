@@ -213,8 +213,14 @@ export function createGames() {
     if (v === 'list') grid.scrollTop = resetScroll ? 0 : keepScroll; else if (v !== 'classic') grid.scrollLeft = resetScroll ? 0 : keepScroll;
   }
 
+  // A filter another page asked for (home's Favorites tile...) is only for this visit: the
+  // person's own filter is kept here and comes back when they leave or open games normally.
+  let ownFilter = null;
+  const keepOwn = () => { ownFilter = null; };
+
   function setFilter(f) {
     if (f === state.filter) { focusGrid(); return; }
+    keepOwn();
     state.filter = f;
     api.ui.set({ filter: f });
     render({ resetScroll: true });
@@ -239,6 +245,7 @@ export function createGames() {
 
   /** Apply a filter (single or combined), remember it, and redraw. */
   function applyFilter(f, { focusGames = false } = {}) {
+    keepOwn();
     state.filter = f;
     api.ui.set({ filter: f });
     render({ resetScroll: true });
@@ -330,7 +337,20 @@ export function createGames() {
     label: 'games',
     el,
     render,
-    setFilter(f) { state.filter = f; state.query = ''; api.ui.set({ filter: f }); render({ resetScroll: true }); },
+    /** Show a filter for this visit only (from another page); the saved filter is left alone. */
+    setFilter(f) {
+      if (ownFilter == null) ownFilter = state.filter;
+      state.filter = f;
+      state.query = '';
+      render({ resetScroll: true });
+    },
+    /** Back to the person's own filter, if a visit borrowed one. */
+    restoreFilter() {
+      if (ownFilter == null) return false;
+      state.filter = ownFilter;
+      ownFilter = null;
+      return true;
+    },
     defaultFocus: () => grid.querySelector('[data-focus]') || focus.byKey(chips, `f:${state.filter}`) || focus.byKey(tools, 't:filter'),
     onAction(action, target) {
       if (action === 'start') { doSearch(); return true; }

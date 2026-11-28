@@ -106,6 +106,7 @@ function connect(timeout = 4000) {
           const states = [];
           for (let i = 0; i + 4 <= a.length; i += 4) states.push(a.readUInt32LE(i));
           t.fullscreen = states.includes(STATE_FULLSCREEN);
+          t.minimized = states.includes(1);                         // minimized
         }
         return;
       }
@@ -193,7 +194,7 @@ function connect(timeout = 4000) {
           async where(t) {
             await handleOf(t);
             await sync();
-            return { outputs: [...t.outputs].map((id) => outputs.get(id)?.name).filter(Boolean), fullscreen: t.fullscreen };
+            return { outputs: [...t.outputs].map((id) => outputs.get(id)?.name).filter(Boolean), fullscreen: t.fullscreen, minimized: Boolean(t.minimized) };
           },
           /** Keep the connection's view current (new windows, their states). */
           refresh: () => sync(),
@@ -217,6 +218,13 @@ function connect(timeout = 4000) {
               if (t.outputs.has(outputId) && (!fullscreen || t.fullscreen)) return true;
             }
             return t.outputs.has(outputId);
+          },
+          /** Minimize a window. */
+          async minimize(t) {
+            const h = await handleOf(t);
+            send(managerId, 5, u32(h));                                                     // set_minimized
+            await sync();
+            return true;
           },
           /** Bring a window to the front and give it the keyboard. */
           async activate(t) {
@@ -275,7 +283,7 @@ async function windowOutputs(title, appId = null) {
  * windows on the screen the pointer is on, which isn't Halcyon's after Halcyon has moved.
  * Fullscreen windows stay fullscreen there. Returns { stop }; it also stops by itself after ms.
  */
-async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = () => {}, onNew = () => {}, focusIf = () => false, log = () => {} } = {}) {
+async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = () => {}, onNew = () => {}, focusIf = () => false, hideIf = () => false, log = () => {} } = {}) {
   if (!available() || !port) return { stop() {} };
   let c;
   try { c = await connect(); } catch { return { stop() {} }; }
@@ -307,6 +315,15 @@ async function followNewWindows(port, { ms = 90000, skipTitles = [], onMove = ()
           known.add(t.id);
           if (skipTitles.includes(t.title)) continue;
           const info = { identifier: t.identifier, title: t.title, appId: t.appId };
+          // Windows that only get in the way (Steam's own, while a game starts): never brought
+          // over, and put away if they opened on this screen anyway.
+          if (hideIf(info)) {
+            const at = await c.where(t);
+            const here = at.outputs.includes(port);
+            if (here) await c.minimize(t);
+            log(`new window "${t.title}" (${t.appId || 'no app id'}) opened on ${at.outputs.join(', ') || '?'}: ${here ? 'minimized' : 'left there'}`);
+            continue;
+          }
           onNew(info);
           const now = await bring(t, 'opened');
           log(`new window "${t.title}" (${t.appId || 'no app id'}) opened on ${now.outputs.join(', ') || '?'}${now.fullscreen ? ', fullscreen' : ''}`);

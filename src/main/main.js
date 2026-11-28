@@ -415,6 +415,9 @@ if (!app.requestSingleInstanceLock()) {
       onNew: (w) => { if (w.identifier) gameWindows.add(w.identifier); },
       // Give the game (not Steam's own windows) the keyboard and controller.
       focusIf: (w) => (steamApp ? w.appId === steamApp : !/^(steam|steamwebhelper)$/i.test(w.appId || '')),
+      // Steam's own windows that pop up as a game starts. Sign-in and anything else (an error,
+      // a cloud-save question) still come over so they can be answered.
+      hideIf: (w) => /^(steam|steamwebhelper)$/i.test(w.appId || '') && /^(Steam|Special Offers|Launching\.*|Friends List|What's New|Steam Big Picture Mode)$/i.test((w.title || '').replace('…', '...')),
       log: (line) => diary.log(line),
     });
     diary.log(`launch ${id}: new windows follow Halcyon to ${port}`);

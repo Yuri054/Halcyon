@@ -23,6 +23,21 @@ const svg = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 
 // Solid glyphs in the console's style, used instead of the line icons while the 360 theme is on.
 const X360_ICONS = {
+  'x-speaker': '<path d="M3 9h4l5-4.5v15L7 15H3z" fill="currentColor" stroke="none"/><path d="M15.2 8.6a4.8 4.8 0 010 6.8M18 6a8.4 8.4 0 010 12" stroke-width="2.2"/>',
+  'x-home': '<path d="M12 3l9.5 8.5h-2.8V21h-5v-6h-3.4v6h-5v-9.5H2.5z" fill="currentColor" stroke="none"/>',
+  'x-login': '<path d="M12.5 3H21v18h-8.5v-2.4h6.1V5.4h-6.1z" fill="currentColor" stroke="none"/><path d="M3 10.6h7.6V7.5l5 4.5-5 4.5v-3.1H3z" fill="currentColor" stroke="none"/>',
+  'x-moon': '<path d="M14.5 2.8a9.4 9.4 0 106.7 13.4A8 8 0 0114.5 2.8z" fill="currentColor" stroke="none"/>',
+  'x-info': '<path fill-rule="evenodd" d="M12 2.5a9.5 9.5 0 110 19 9.5 9.5 0 010-19zM10.7 10v7.5h2.6V10zm1.3-4a1.6 1.6 0 100 3.2A1.6 1.6 0 0012 6z" fill="currentColor" stroke="none"/>',
+  'x-refresh': '<path d="M19.5 9.3A8 8 0 004.6 8.6" stroke-width="2.4"/><path d="M4.5 14.7a8 8 0 0014.9.7" stroke-width="2.4"/><path d="M21 3.5v6.6h-6.6z" fill="currentColor" stroke="none"/><path d="M3 20.5v-6.6h6.6z" fill="currentColor" stroke="none"/>',
+  'x-chip': '<path fill-rule="evenodd" d="M6 6h12v12H6zm3.2 3.2v5.6h5.6V9.2z" fill="currentColor" stroke="none"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3" stroke-width="1.8"/>',
+  'x-eyeoff': '<path fill-rule="evenodd" d="M12 5.5c4.6 0 8 3.2 9.5 6.5-1.5 3.3-4.9 6.5-9.5 6.5S4 15.3 2.5 12C4 8.7 7.4 5.5 12 5.5zm0 3a3.5 3.5 0 100 7 3.5 3.5 0 000-7z" fill="currentColor" stroke="none"/><path d="M4 3.5l16.5 17" stroke-width="2.4"/>',
+  'x-key': '<path fill-rule="evenodd" d="M8 6a6 6 0 015.6 8.2l7.9 7.8h-3.6l-1.6-1.6-1.7 1.6-1.7-1.6 1.7-1.7-1.9-1.9A6 6 0 118 6zm-1.6 3.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2z" transform="translate(0 -3)" fill="currentColor" stroke="none"/>',
+  'x-palette': '<path fill-rule="evenodd" d="M12 2.5c5.4 0 9.5 3.7 9.5 8.2 0 3-2.3 4.7-4.6 4.7h-2c-1 0-1.6.8-1.2 1.7l.4.8c.6 1.4-.4 3.6-2.6 3.6C6.6 21.5 2.5 17.3 2.5 12S6.7 2.5 12 2.5zM7.2 9.3a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2zm3-3.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2zm4.6 0a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2zm3 3.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2z" fill="currentColor" stroke="none"/>',
+  'x-layers': '<path d="M12 2.8l10 5.2-10 5.2L2 8z" fill="currentColor" stroke="none"/><path d="M4.4 11.8L2 13l10 5.2L22 13l-2.4-1.2-7.6 4z" fill="currentColor" stroke="none"/>',
+  'x-spark': '<path d="M12 2l2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3z" fill="currentColor" stroke="none"/>',
+  'x-warn': '<path fill-rule="evenodd" d="M12 2.8l10 17.7H2zM10.8 9v6h2.4V9zm1.2 7.4a1.3 1.3 0 100 2.6 1.3 1.3 0 000-2.6z" fill="currentColor" stroke="none"/>',
+  'x-exit': '<path d="M3 3h8.5v2.4H5.4v13.2h6.1V21H3z" fill="currentColor" stroke="none"/><path d="M21 12l-5 4.5v-3.1H8.4v-2.8H16V7.5z" fill="currentColor" stroke="none"/>',
+  'x-note': '<path fill-rule="evenodd" d="M3 4.5h18v12.5H9.2L5 20.5V17H3zm3.5 3.6v1.8h11V8.1zm0 3.6v1.8h7.5v-1.8z" fill="currentColor" stroke="none"/>',
   'x-console': '<rect x="9.2" y="2.5" width="5.6" height="13.8" rx="1.1" fill="currentColor" stroke="none"/><rect x="9.2" y="17.6" width="5.6" height="3.9" rx="1.1" fill="currentColor" stroke="none"/>',
   'x-profile': '<path fill-rule="evenodd" d="M4 2.5h16v19H4zM6.2 4.7v14.6h11.6V4.7z" fill="currentColor" stroke="none"/><circle cx="12" cy="9.6" r="2.7" fill="currentColor" stroke="none"/><path d="M7.6 17.6c.5-2.8 2.3-4.3 4.4-4.3s3.9 1.5 4.4 4.3z" fill="currentColor" stroke="none"/>',
   'x-list': '<rect x="3" y="4.6" width="3" height="3" fill="currentColor" stroke="none"/><rect x="8.2" y="5.2" width="12.8" height="1.8" fill="currentColor" stroke="none"/><rect x="3" y="10.5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="8.2" y="11.1" width="12.8" height="1.8" fill="currentColor" stroke="none"/><rect x="3" y="16.4" width="3" height="3" fill="currentColor" stroke="none"/><rect x="8.2" y="17" width="12.8" height="1.8" fill="currentColor" stroke="none"/>',
@@ -53,6 +68,8 @@ const X360_FOR = {
   pad: 'x-games', star: 'x-pin', starFill: 'x-pin', clock: 'x-recent', grid: 'x-apps', gear: 'x-gear', power: 'x-power', screen: 'x-tv', image: 'x-profile',
   cloud: 'x-cloud', video: 'x-video', film: 'x-film', music: 'x-music', folder: 'x-drive', download: 'x-download', search: 'x-search', plus: 'x-plus',
   list: 'x-list', user: 'x-profile', disc: 'x-disc', tv: 'x-tv', trophy: 'x-trophy',
+  sound: 'x-speaker', home: 'x-home', login: 'x-login', moon: 'x-moon', info: 'x-info', refresh: 'x-refresh', chip: 'x-chip', eyeOff: 'x-eyeoff',
+  key: 'x-key', palette: 'x-palette', layers: 'x-layers', spark: 'x-spark', warn: 'x-warn', exit: 'x-exit',
 };
 
 const ICONS = {
@@ -113,7 +130,7 @@ export function icon(name, cls = '') {
   span.className = `icon ${cls}`.trim();
   // The 360 theme uses its own solid glyphs (named "x-..." directly, or standing in for a line icon).
   const x360 = typeof document !== 'undefined' && document.body?.dataset.theme === 'x360';
-  const glyph = X360_ICONS[name] || (x360 && /\btile__icon\b/.test(cls) && X360_ICONS[X360_FOR[name]]);
+  const glyph = X360_ICONS[name] || (x360 && /\b(tile__icon|row__icon--x)\b/.test(cls) && X360_ICONS[X360_FOR[name]]);
   span.innerHTML = svg(glyph || ICONS[name] || '');
   return span;
 }

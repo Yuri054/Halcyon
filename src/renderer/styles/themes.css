@@ -1172,3 +1172,22 @@ body[data-theme='x360'][data-xbg='dusk'] #bg {
 [data-theme='x360'] .tile--action.tile--hero .tile__label { font-size: 1.9rem; }
 [data-theme='x360'] .xsgrid .tile__icon { height: 25%; width: auto; }
 [data-theme='x360'] .xsgrid .tile__label { font-size: 1.4rem; }
+
+/* 360 settings lists: a small solid icon before each option, section headings between groups,
+   the value at the right, as in the console's System Settings / Console Settings lists. */
+[data-theme='x360'] .xsettings__list .row { min-height: 3.9rem; padding: 0 1.4rem 0 1.2rem; gap: 0.9rem; }
+[data-theme='x360'] .xsettings__list .row .row__icon { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; flex: none; color: #3b3e3f; opacity: 1; }
+[data-theme='x360'] .xsettings__list .row .row__icon svg { width: 100%; height: 100%; }
+[data-theme='x360'] .xsettings__list .row .row__label { font-size: 1.6rem; }
+[data-theme='x360'] .xsettings__list .row.is-focused .row__icon { color: #fff; }
+[data-theme='x360'] .xsettings__list .row--danger .row__label { color: #8b1e1e; }
+[data-theme='x360'] .xsettings__list .row--danger.is-focused { background: #b3261e; }
+[data-theme='x360'] .xsettings__list .row .switch { flex: none; }
+[data-theme='x360'] .xsettings__list .row-heading {
+  padding: 0.95rem 1.2rem 0.35rem; font-size: 1.05rem; letter-spacing: 0.06em; text-transform: uppercase; color: #6a7072;
+  background: #d3d8d8; border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+[data-theme='x360'] .xsettings__list .row-heading:first-child { padding-top: 0.6rem; }
+[data-theme='x360'] .xsettings__box { max-width: 92rem; height: min(52rem, calc(100vh - 24rem)); }
+[data-theme='x360'] .xsettings__infohead { font-size: 1.9rem; }
+.row-heading { padding: 0.8rem 0.4rem 0.3rem; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }

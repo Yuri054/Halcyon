@@ -29,16 +29,18 @@ export function createSettings() {
   const el = h('section', { class: 'view view--settings' }, scroller, xs);
   let openCat = null;
   const CAT_TEXT = {
-    display: 'The screen, the theme, colours and sounds.',
-    library: 'Which games Halcyon finds and lists.',
-    artwork: 'Covers and backgrounds, and where they come from.',
-    steam: 'Steam, its downloads, installs and Big Picture.',
-    system: 'Controllers, the Home button, start-up, storage and power.',
+    system: 'Controllers, the Home button, starting up and system info.',
+    display: 'The screen, the theme and its background, colours and animations.',
+    audio: 'Interface sounds, sound packs, and which speakers play.',
+    library: 'Which games Halcyon finds and shows, and their artwork.',
+    steam: 'Steam on this computer, its downloads and Big Picture.',
+    accounts: 'Achievements, and the accounts Halcyon signs in to.',
   };
+
   const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
-  const CAT_ORDER = ['system', 'display', 'library', 'artwork', 'steam', 'youtube'];
-  const CAT_LABEL = { system: 'System', display: 'Display', library: 'Library', artwork: 'Artwork', steam: 'Steam', youtube: 'YouTube' };
-  const CAT_ICON = { system: 'x-console', display: 'screen', library: 'list', artwork: 'image', steam: 'cloud', youtube: 'video' };
+  const CAT_ORDER = ['system', 'display', 'audio', 'library', 'steam', 'accounts'];
+  const CAT_LABEL = { system: 'System', display: 'Display', audio: 'Audio', library: 'Library', steam: 'Steam', accounts: 'Accounts' };
+  const CAT_ICON = { system: 'x-console', display: 'screen', audio: 'x-speaker', library: 'list', steam: 'cloud', accounts: 'x-people' };
   function showInfo(target) {
     if (!target) return;
     const key = target.dataset.key || '';
@@ -80,8 +82,8 @@ export function createSettings() {
       xsGrid.replaceChildren(...tiles);
       return;
     }
-    xsTitle.textContent = CAT_LABEL[openCat] || cap(openCat);
-    xsList.replaceChildren(...cards.find((c) => c.dataset.cat === openCat).querySelectorAll('.card > .row'));
+    xsTitle.textContent = `${CAT_LABEL[openCat] || cap(openCat)} Settings`;
+    xsList.replaceChildren(...cards.find((c) => c.dataset.cat === openCat).querySelectorAll('.card > .row, .card > .row-heading'));
     showInfo(focus.base().current && xs.contains(focus.base().current) ? focus.base().current : xsList.querySelector('[data-focus]'));
   }
   let info = null;
@@ -92,7 +94,7 @@ export function createSettings() {
   function row({ key, label, sub, iconName, value, toggle, swatch, danger, onSelect, tip }) {
     if (tip) help.set(key, tip);
     const r = h('div', { class: `row${danger ? ' row--danger' : ''}`, 'data-focus': Boolean(onSelect), 'data-key': key },
-      iconName && icon(iconName, 'row__icon'),
+      iconName && icon(iconName, 'row__icon row__icon--x'),
       h('div', { class: 'row__text' }, h('div', { class: 'row__label' }, label), sub && h('div', { class: 'row__sub' }, sub)),
       value != null && h('div', { class: 'row__hint' }, value),
       swatch && h('div', { class: 'row__swatch', 'data-accent': swatch }),
@@ -100,6 +102,9 @@ export function createSettings() {
     if (onSelect) r.addEventListener('click', onSelect);
     return r;
   }
+
+  /** A small title between groups of rows (in the 360 list too). */
+  const heading = (text) => h('div', { class: 'row-heading' }, text);
 
   const card = (title, rows) => h('div', { class: 'block block--card' },
     h('h3', { class: 'block__title' }, title), h('div', { class: 'card' }, rows.filter(Boolean)));
@@ -208,78 +213,96 @@ export function createSettings() {
     const theme = THEMES.find((t) => t[0] === s.theme) || THEMES[0];
     help.clear();
 
+    const x360 = s.theme === 'x360';
     scroller.replaceChildren(
+      card('system', [
+        heading('Controllers'),
+        row({ key: 'pads', label: 'Controllers', iconName: 'pad', sub: state.pads.length ? state.pads.map((p) => p.name).join(', ') : 'None connected — plug one in at any time', value: state.pads.length ? `${state.pads.length} connected` : 'None' }),
+        row({ key: 'homeButton', label: 'Home button opens the Guide', iconName: 'home', toggle: s.homeButtonGuide !== false,
+          sub: s.homeButtonGuide === false ? 'Steam keeps the Home button' : home.steamReleased ? 'Over any game · Steam told to leave it alone' : home.steamConnected === false ? 'Over any game · turn on Steam download controls too' : 'Over any game',
+          onSelect: () => set({ homeButtonGuide: s.homeButtonGuide === false }),
+          tip: 'Opens Halcyon’s Guide over any game or the desktop. While Halcyon runs it turns off Steam’s “Guide button focuses Steam”, and turns it back on when Halcyon closes.' }),
+        heading('Startup and Shutdown'),
+        row({ key: 'autostart', label: 'Start Halcyon on login', iconName: 'login', toggle: autostart, onSelect: toggleAutostart, tip: 'Boots straight into the dashboard when you sign in to your desktop' }),
+        row({ key: 'dim', label: 'Dim the screen when idle', iconName: 'moon', toggle: s.dimWhenIdle !== false, onSelect: () => set({ dimWhenIdle: s.dimWhenIdle === false }), tip: 'After five minutes without input. Any button wakes it. Never while a video or music plays.' }),
+        !x360 && row({ key: 'storage', label: 'Storage', iconName: 'folder', sub: 'What your games take up on each drive; uninstall from here', onSelect: () => app.storage() }),
+        !x360 && row({ key: 'power', label: 'Power', iconName: 'power', sub: 'Sleep, restart, shut down or exit', danger: true, onSelect: () => app.guide({ select: 'power:suspend' }) }),
+        heading('System Info'),
+        row({ key: 'about', label: 'Halcyon', iconName: 'info', value: info?.version || '', sub: info ? info.configFile : '', onSelect: () => {}, tip: info ? `Version ${info.version} · Electron ${info.electron}. Settings are kept in ${info.configFile}.` : '' }),
+      ]),
       card('display', [
-        row({ key: 'fullscreen', label: 'Fullscreen', iconName: 'screen', toggle: s.fullscreen, onSelect: () => set({ fullscreen: !s.fullscreen }), tip: 'F11 also toggles fullscreen' }),
-        row({ key: 'launchScene', label: 'Game start animation', iconName: 'spark', toggle: s.launchScene !== false, onSelect: () => set({ launchScene: s.launchScene === false }), sub: s.launchScene !== false ? 'The Halcyon intro plays while a game starts' : 'Off: a simple loading card', tip: 'Dawn over the sea, a kingfisher, the Halcyon card, then the game’s title until it opens. Off shows the simple loading card.' }),
+        heading('Screen'),
         row({ key: 'monitor', label: 'Monitor', iconName: 'screen', value: s.monitor ? (s.monitor.split(' - ')[1] || s.monitor) : 'Automatic', onSelect: pickMonitor, tip: 'Which screen Halcyon fills' }),
-        row({ key: 'monitorAudio', label: 'Sound follows the monitor', iconName: 'sound', value: Array.isArray(s.monitorAudio) ? (s.monitorAudio.length ? s.monitorAudio.map((x) => x.split(' - ')[1] || x).join(', ') : 'Off') : 'TVs', onSelect: pickSound, tip: 'Switches the sound to a TV’s HDMI while Halcyon is on it' }),
+        row({ key: 'fullscreen', label: 'Fullscreen', iconName: 'screen', toggle: s.fullscreen, onSelect: () => set({ fullscreen: !s.fullscreen }), tip: 'F11 also toggles fullscreen' }),
+        heading('Theme'),
         row({ key: 'theme', label: 'Theme', iconName: 'layers', value: theme[1],
           onSelect: () => set({ theme: THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length][0] }), tip: `${theme[2]}. Select to switch; the accent color applies to every theme.` }),
-        s.theme === 'x360' && row({ key: 'x360Bg', label: 'Background', iconName: 'image', value: (X360_BACKGROUNDS.find(([k]) => k === x360Background()) || X360_BACKGROUNDS[0])[1], onSelect: pickBackground, tip: 'The 360 theme’s backdrop: the soft grey glow, the 2011 dashboard’s, or a few others' }),
-        s.theme === 'x360' && row({ key: 'themeOptions', label: 'Theme options', iconName: 'gear', value: `${X360_OPTIONS.filter(([k]) => x360Option(k)).length} of ${X360_OPTIONS.length} on`, onSelect: pickThemeOptions, tip: 'The 360 theme’s own touches, each one on or off' }),
+        x360 && row({ key: 'x360Bg', label: 'Background', iconName: 'image', value: (X360_BACKGROUNDS.find(([k]) => k === x360Background()) || X360_BACKGROUNDS[0])[1], onSelect: pickBackground, tip: 'The 360 theme’s backdrop: the soft grey glow, the 2011 dashboard’s, or a few others' }),
+        x360 && row({ key: 'themeOptions', label: 'Theme options', iconName: 'gear', value: `${X360_OPTIONS.filter(([k]) => x360Option(k)).length} of ${X360_OPTIONS.length} on`, onSelect: pickThemeOptions, tip: 'The 360 theme’s own touches, each one on or off' }),
         row({ key: 'accent', label: 'Accent color', iconName: 'palette', value: s.accent[0].toUpperCase() + s.accent.slice(1), swatch: s.accent,
           onSelect: () => set({ accent: ACCENTS[(ACCENTS.indexOf(s.accent) + 1) % ACCENTS.length] }), tip: 'Cycles through the available accent colors' }),
-        row({ key: 'sounds', label: 'Interface sounds', iconName: 'sound', toggle: s.sounds, onSelect: () => set({ sounds: !s.sounds }) }),
-        row({ key: 'soundPack', label: 'Sound pack', iconName: 'sound', value: packName(s.soundPack), onSelect: pickSoundPack, tip: 'Steam Deck sound loader packs work as they are. Packs live in your Halcyon config folder under “sounds”.' }),
-        row({ key: 'dim', label: 'Dim the screen when idle', iconName: 'moon', toggle: s.dimWhenIdle !== false, onSelect: () => set({ dimWhenIdle: s.dimWhenIdle === false }), tip: 'After five minutes without input. Any button wakes it.' }),
+        heading('Animations'),
+        row({ key: 'bootAnimation', label: 'Start-up animation', iconName: 'spark', toggle: s.bootAnimation !== false, onSelect: () => set({ bootAnimation: s.bootAnimation === false }), tip: 'The Halcyon mark drawing itself when Halcyon opens' }),
+        row({ key: 'launchScene', label: 'Game start animation', iconName: 'spark', toggle: s.launchScene !== false, onSelect: () => set({ launchScene: s.launchScene === false }), sub: s.launchScene !== false ? 'The Halcyon intro plays while a game starts' : 'Off: a simple loading card', tip: 'Dawn over the sea, a kingfisher, the Halcyon card, then the game’s title until it opens. Off shows the simple loading card.' }),
+      ]),
+      card('audio', [
+        row({ key: 'sounds', label: 'Interface sounds', iconName: 'sound', toggle: s.sounds, onSelect: () => set({ sounds: !s.sounds }), tip: 'The sounds for moving, selecting, menus and notifications' }),
+        row({ key: 'soundPack', label: 'Sound pack', iconName: 'music', value: packName(s.soundPack), onSelect: pickSoundPack, tip: 'Steam Deck sound loader packs work as they are. Packs live in your Halcyon config folder under “sounds”.' }),
+        row({ key: 'monitorAudio', label: 'Sound follows the monitor', iconName: 'tv', value: Array.isArray(s.monitorAudio) ? (s.monitorAudio.length ? s.monitorAudio.map((x) => x.split(' - ')[1] || x).join(', ') : 'Off') : 'TVs', onSelect: pickSound, tip: 'Switches the sound to a TV’s HDMI while Halcyon is on it, and back when it moves or closes' }),
       ]),
       card('library', [
-        row({ key: 'rescan', label: 'Rescan library', iconName: 'refresh', sub: `${fmt.count(state.lib.games.length, 'game')} found`, onSelect: () => report(api.library.rescan()) }),
-        row({ key: 'add', label: 'Add a game', iconName: 'plus', sub: 'Any program or command', onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); } }),
+        heading('Games'),
+        row({ key: 'rescan', label: 'Rescan library', iconName: 'refresh', value: fmt.count(state.lib.games.length, 'game'), onSelect: () => report(api.library.rescan()), tip: 'Looks again for Steam games, emulated games and PC ports' }),
+        row({ key: 'add', label: 'Add a game', iconName: 'plus', sub: 'Any program or command', onSelect: async () => { const id = await addGame(); if (id) app.go('games', { filter: 'all', enter: true, focusKey: `g:${id}` }); }, tip: 'Any program or command, with its own artwork' }),
+        row({ key: 'systems', label: 'Emulators and ROM folders', iconName: 'chip', onSelect: () => app.go('systems', { enter: true }), tip: 'Which systems Halcyon finds games for, where their ROMs are, and the emulators that play them' }),
+        heading('What’s shown'),
         row({ key: 'controllerOnly', label: 'Hide games without controller support', iconName: 'pad', toggle: s.controllerOnly,
           sub: s.controllerOnly ? `${fmt.count(noPadGames().length, 'game')} hidden` : null,
           onSelect: () => set({ controllerOnly: !s.controllerOnly }),
           tip: 'Uses Steam’s store listing. Change a single game from its options menu; hidden ones are under Collections › No controller.' }),
-        row({ key: 'showHidden', label: 'Show hidden games', iconName: 'eyeOff', toggle: s.showHidden, onSelect: () => set({ showHidden: !s.showHidden }) }),
-        row({ key: 'systems', label: 'Emulators and ROM folders', iconName: 'chip', onSelect: () => app.go('systems', { enter: true }) }),
-        row({ key: 'retro', label: 'RetroAchievements', iconName: 'star', value: state.lib.retro ? state.lib.retro.user : 'Not signed in', onSelect: retroMenu,
-          sub: state.lib.retro ? `${Object.keys(state.lib.retroGames || {}).length} games with achievements` : null,
-          tip: 'Achievements from retroachievements.org for emulated games. Sign in with your username and the Web API key from your RetroAchievements settings page; the key stays on this computer.' }),
-      ]),
-      card('artwork', [
+        row({ key: 'showHidden', label: 'Show hidden games', iconName: 'eyeOff', toggle: s.showHidden, onSelect: () => set({ showHidden: !s.showHidden }), tip: 'Games you hid from their options menu come back into view' }),
+        account.hasKey && row({ key: 'steam:uninstalled', label: 'Show games that are not installed', iconName: 'download', toggle: s.showUninstalled !== false, onSelect: () => set({ showUninstalled: s.showUninstalled === false }), tip: 'Steam games you own but haven’t installed, ready to install from Halcyon' }),
+        heading('Artwork'),
         row({ key: 'remoteArt', label: 'Use Steam’s artwork server', iconName: 'image', toggle: s.remoteArt, onSelect: () => set({ remoteArt: !s.remoteArt }), tip: 'Fetches Steam covers from Steam’s CDN when they are not cached locally' }),
         row({ key: 'sgdbKey', label: 'SteamGridDB API key', iconName: 'key', value: hasKey ? 'Saved' : 'Not set', onSelect: editKey, tip: 'Free from steamgriddb.com › Preferences › API. Ctrl+V pastes into the keyboard.' }),
-        row({ key: 'scrape', label: 'Fetch missing artwork', iconName: 'download', sub: scrapeStatus || (hasKey ? 'Covers and backgrounds from SteamGridDB' : 'Add an API key first'), onSelect: hasKey ? fetchArt : editKey }),
+        row({ key: 'scrape', label: 'Fetch missing artwork', iconName: 'download', sub: scrapeStatus || (hasKey ? 'Covers and backgrounds from SteamGridDB' : 'Add an API key first'), onSelect: hasKey ? fetchArt : editKey, tip: 'Covers and backgrounds from SteamGridDB for every game that has none' }),
       ]),
       card('steam', [
+        heading('Steam on this computer'),
         ...installs.map((inst, i) => row({
-          key: `steam:${i}`, label: KIND[inst.kind] || 'Steam', iconName: 'cloud',
+          key: `steam:${i}`, label: KIND[inst.kind] || 'Steam', iconName: 'cloud', value: fmt.count(inst.gameCount, 'game'),
           sub: `${fmt.count(inst.gameCount, 'game')} · ${fmt.count(inst.libraries.length, 'library folder')}`,
           onSelect: inst.kind === 'custom' ? () => removeRoot(inst.root) : () => showLibraries(inst),
           tip: inst.root,
         })),
         !installs.length && row({ key: 'steam:none', label: 'Steam not detected', iconName: 'warn', sub: 'Add your Steam folder below if it lives somewhere unusual' }),
-        row({ key: 'steam:add', label: 'Add Steam folder', iconName: 'plus', sub: 'A folder that contains “steamapps”', onSelect: addRoot }),
+        row({ key: 'steam:add', label: 'Add Steam folder', iconName: 'plus', sub: 'A folder that contains “steamapps”', onSelect: addRoot, tip: 'A folder that contains “steamapps”, if Steam lives somewhere unusual' }),
         installs.length > 0 && row({ key: 'steam:key', label: 'Steam Web API key', iconName: 'key', value: account.hasKey ? `${account.owned} owned` : 'Not set', onSelect: editSteamKey,
-          tip: 'Lets Halcyon list games you own but have not installed. Free from steamcommunity.com/dev/apikey; keep it private.' }),
-        account.hasKey && row({ key: 'steam:uninstalled', label: 'Show games that are not installed', iconName: 'download', toggle: s.showUninstalled !== false, onSelect: () => set({ showUninstalled: s.showUninstalled === false }) }),
+          tip: 'Lets Halcyon list games you own but have not installed, and show achievements. Free from steamcommunity.com/dev/apikey; keep it private.' }),
+        installs.length > 0 && heading('Downloads and launching'),
         installs.length > 0 && row({ key: 'steam:downloads', label: 'Download controls', iconName: 'download', toggle: dl.enabled,
           sub: dl.enabled ? (dl.connected ? 'Connected to Steam' : 'Restart Steam to finish') : 'Pause, resume, reorder and update from Halcyon',
           onSelect: toggleDownloads, tip: 'Uses Steam’s debugging port (the Decky Loader method). While on, any program on this computer can control Steam.' }),
-        installs.length > 0 && row({ key: 'steam:queue', label: 'Downloads', iconName: 'download', onSelect: () => app.downloads() }),
+        installs.length > 0 && row({ key: 'steam:queue', label: 'Downloads', iconName: 'download', onSelect: () => app.downloads(), tip: 'What Steam is downloading, in the 360-style download manager' }),
         installs.length > 0 && row({ key: 'steam:shaders', label: 'Skip shader processing', iconName: 'spark', toggle: Boolean(s.steamSkipShaders), onSelect: () => set({ steamSkipShaders: !s.steamSkipShaders }),
           sub: s.steamSkipShaders ? 'Skipped automatically' : 'Press A on the launch screen to skip',
           tip: 'Steam’s “Processing Vulkan shaders” before a game. Skipping starts the game sooner; it may stutter a little at first. Needs download controls.' }),
+        installs.length > 0 && heading('Big Picture'),
         installs.length > 0 && row({ key: 'steam:bigpicture', label: 'Big Picture for store and installs', iconName: 'pad', toggle: Boolean(s.steamBigPicture), onSelect: () => set({ steamBigPicture: !s.steamBigPicture }),
           tip: 'Switches Steam to Big Picture when you buy or install a game, so Steam’s own screens work with the controller. Games themselves start without it.' }),
-        installs.length > 0 && row({ key: 'steam:bpm', label: 'Open Big Picture', iconName: 'pad', sub: 'Steam’s controller mode; close it again from the Guide', onSelect: () => report(api.steam.openBigPicture()) }),
-        installs.length > 0 && row({ key: 'steam:open', label: 'Open Steam', iconName: 'screen', onSelect: () => report(api.steam.open()) }),
+        installs.length > 0 && row({ key: 'steam:bpm', label: 'Open Big Picture', iconName: 'tv', sub: 'Steam’s controller mode; close it again from the Guide', onSelect: () => report(api.steam.openBigPicture()), tip: 'Steam’s controller mode; close it again from the Guide' }),
+        installs.length > 0 && row({ key: 'steam:open', label: 'Open Steam', iconName: 'screen', onSelect: () => report(api.steam.open()), tip: 'Steam’s desktop window' }),
       ]),
-      card('system', [
-        row({ key: 'pads', label: 'Controllers', iconName: 'pad', sub: state.pads.length ? state.pads.map((p) => p.name).join(', ') : 'None connected — plug one in at any time' }),
-        row({ key: 'homeButton', label: 'Home button opens the Guide', iconName: 'pad', toggle: s.homeButtonGuide !== false,
-          sub: s.homeButtonGuide === false ? 'Steam keeps the Home button' : home.steamReleased ? 'Over any game · Steam told to leave it alone' : home.steamConnected === false ? 'Over any game · turn on Steam download controls too' : 'Over any game',
-          onSelect: () => set({ homeButtonGuide: s.homeButtonGuide === false }),
-          tip: 'Opens Halcyon’s Guide over any game or the desktop. While Halcyon runs it turns off Steam’s “Guide button focuses Steam”, and turns it back on when Halcyon closes.' }),
-        row({ key: 'autostart', label: 'Start Halcyon on login', iconName: 'login', toggle: autostart, onSelect: toggleAutostart, tip: 'Boots straight into the dashboard when you sign in to your desktop' }),
-        row({ key: 'bootAnimation', label: 'Start-up animation', iconName: 'spark', toggle: s.bootAnimation !== false, onSelect: () => set({ bootAnimation: s.bootAnimation === false }) }),
-        row({ key: 'achToasts', label: 'Achievement notifications', iconName: 'star', toggle: s.achievementToasts !== false, onSelect: () => set({ achievementToasts: s.achievementToasts === false }),
+      card('accounts', [
+        heading('Achievements'),
+        row({ key: 'retro', label: 'RetroAchievements', iconName: 'trophy', value: state.lib.retro ? state.lib.retro.user : 'Not signed in', onSelect: retroMenu,
+          sub: state.lib.retro ? `${Object.keys(state.lib.retroGames || {}).length} games with achievements` : null,
+          tip: 'Achievements from retroachievements.org for emulated games. Sign in with your username and the Web API key from your RetroAchievements settings page; the key stays on this computer.' }),
+        row({ key: 'achToasts', label: 'Achievement notifications', iconName: 'x-note', toggle: s.achievementToasts !== false, onSelect: () => set({ achievementToasts: s.achievementToasts === false }),
           sub: s.achievementToasts !== false ? 'Shown over your game when you unlock one' : 'Off', tip: 'An Xbox 360-style “Achievement unlocked”, with your sound pack’s achievement sound. Steam ones appear the moment they unlock; RetroAchievements within a minute.' }),
-        s.achievementToasts !== false && row({ key: 'achTest', label: 'Try the achievement notification', iconName: 'play', onSelect: () => api.achievements.testToast() }),
-        row({ key: 'storage', label: 'Storage', iconName: 'folder', sub: 'What your games take up on each drive; uninstall from here', onSelect: () => app.storage() }),
-        row({ key: 'about', label: `Halcyon ${info?.version || ''}`, iconName: 'info', sub: info ? info.configFile : '' }),
-        row({ key: 'power', label: 'Power', iconName: 'power', sub: 'Sleep, restart, shut down or exit', danger: true, onSelect: () => app.guide({ select: 'power:suspend' }) }),
+        s.achievementToasts !== false && row({ key: 'achTest', label: 'Try the achievement notification', iconName: 'play', onSelect: () => api.achievements.testToast(), tip: 'Shows one now, as it would look over a game' }),
+        heading('YouTube'),
+        row({ key: 'youtubeSignOut', label: 'Sign out of YouTube', iconName: 'exit', danger: true, onSelect: () => report(api.youtube.signOut()), tip: 'Forgets the TV sign-in Halcyon keeps for YouTube' }),
       ]));
     if (document.body.dataset.theme === 'x360') consoleLayout();
     else { xs.hidden = true; scroller.hidden = false; }

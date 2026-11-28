@@ -184,10 +184,21 @@ and games installed in place of a Gamerscore).
 
 ## Home tiles
 
-The home page's tile section starts with **Games, Settings and Power**. Y on a tile moves it left
-or right or removes it; the **+** tile adds one from the catalog (favorites, recently played,
-Steam, emulated, PC ports, achievements, TV & movies, music, downloads, storage, search, add a
-game, Open Steam, Big Picture). *Back to the usual tiles* resets it.
+Every tile on the home page is yours to arrange, the big first section included. Y on a tile:
+
+- **Move**: the tile lifts; the d-pad carries it, swapping places with whatever is in that
+  direction (across sections too), A puts it down, B puts it back.
+- **Change it**: put something else in its place: your last game (play, or resume while it
+  runs), a recently played game, a favorite game, one particular game, or a tile from the
+  catalog (games, favorites, recently played, Steam, emulated, PC ports, achievements,
+  TV & movies, music, YouTube, downloads, storage, search, add a game, Open Steam, Big Picture,
+  settings, power).
+- **Remove from home**: in the first section the place stays as an empty space (A fills it);
+  in the tile section the tile goes.
+- **Back to the usual layout** resets everything.
+
+The **+** tile at the end of the tile section adds one. On a game tile, Y's menu also has the
+game's own options (Start opens them directly).
 
 ## Achievements
 

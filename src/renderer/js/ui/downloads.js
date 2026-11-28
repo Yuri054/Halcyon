@@ -183,7 +183,8 @@ async function itemMenu(panel, item, queue, isActive) {
       !isActive && n > 0 && { label: 'Move to the top', value: 'top', iconName: 'up', sub: 'Next after what is downloading now' },
       !isActive && n > 0 && { label: 'Move up', value: 'up', iconName: 'up' },
       !isActive && n >= 0 && n < queue.length - 1 && { label: 'Move down', value: 'down', iconName: 'up' },
-      { label: 'Remove from the queue', value: 'remove', iconName: 'trash', danger: true, sub: 'Steam keeps what is already downloaded' },
+      { label: 'Remove from the queue', value: 'remove', iconName: 'clock', sub: 'Steam keeps what is already downloaded' },
+      cancelItem(item.appid),
     ],
   });
   if (pick === 'pause') await act('pause', item.appid);
@@ -193,6 +194,47 @@ async function itemMenu(panel, item, queue, isActive) {
   if (pick === 'up') await act('move', item.appid, queue[n - 1].position);
   if (pick === 'down') await act('move', item.appid, queue[n + 1].position);
   if (pick === 'remove') await act('remove', item.appid);
+  if (pick === 'cancel') await cancelDownload(panel, item.appid);
+}
+
+/** A new install, or an update to a game that is already installed? */
+const isUpdate = (appid) => Boolean(findGame(`steam:${appid}`)?.download?.update ?? findGame(`steam:${appid}`)?.installed);
+
+function cancelItem(appid) {
+  return isUpdate(appid)
+    ? { label: 'Cancel update', value: 'cancel', iconName: 'exit', danger: true, sub: 'The game stays as it is; the update waits until you start it' }
+    : { label: 'Cancel download', value: 'cancel', iconName: 'trash', danger: true, sub: 'Stops it and deletes what has downloaded so far' };
+}
+
+/**
+ * Cancel a download, after asking. An update is taken off Steam's list (the game stays playable
+ * as it was). A new install is stopped and its files deleted, the way Steam's own Cancel does it:
+ * Steam uninstalls the partly downloaded game.
+ */
+async function cancelDownload(panel, appid) {
+  const update = isUpdate(appid);
+  const name = nameOf(appid);
+  const sure = await panel.ask({
+    title: update ? `Cancel the update to ${name}?` : `Cancel downloading ${name}?`,
+    subtitle: update ? 'The game stays as it is. Steam asks for the update again when you start it.' : 'What has downloaded so far is deleted. You can install it again any time.',
+    selected: 'no',
+    items: [
+      { label: update ? 'Cancel update' : 'Cancel download', value: 'yes', iconName: update ? 'exit' : 'trash', danger: true },
+      { label: 'Keep downloading', value: 'no', iconName: 'download' },
+    ],
+  });
+  if (sure !== 'yes') return false;
+  if (update) {
+    const ok = await act('remove', appid);
+    if (ok) toast('The update was cancelled.', { title: name, iconName: 'download' });
+    return ok;
+  }
+  await act('pause', appid);
+  const r = await api.steam.uninstall(appid);
+  if (r && r.ok === false) { toast(r.error || 'Steam didn’t cancel it.', { type: 'error', title: name }); return false; }
+  await act('remove', appid);
+  toast('The download was cancelled and its files removed.', { title: name, iconName: 'trash' });
+  return true;
 }
 
 /** An update Steam has put off until later: start it now, queue it, or drop it. */
@@ -386,11 +428,12 @@ export async function openDownloads({ focusApp = null } = {}) {
     detail.show(detailFor(m, focusedValue ?? selected));
     // X pauses or resumes the selected download; Y opens what can be done with it.
     const onAction = (action) => {
-      if (!m.connected || (action !== 'x' && action !== 'y')) return false;
+      if (!m.connected || (action !== 'x' && action !== 'y' && action !== 'start')) return false;
       const v = focusedValue || (m.active ? `item:${m.active.appid}` : null);
       const appid = v && /^item:(\d+)$/.exec(v)?.[1];
       if (!appid) return false;
       if (action === 'y') { quick = v; panel.cancel(); return true; }
+      if (action === 'start') { quick = `cancel:${appid}`; panel.cancel(); return true; }
       const isActive = m.active && m.active.appid === appid;
       const paused = isActive ? m.paused : m.queue.find((i) => i.appid === appid)?.paused;
       act(isActive && !paused ? 'pause' : 'resume', appid);
@@ -398,7 +441,7 @@ export async function openDownloads({ focusApp = null } = {}) {
     };
     let quick = null;
     const pick0 = await panel.ask({ title: 'active downloads', subtitle, items, selected, onAction,
-      hints: m.connected ? [{ a: 'x', label: 'Pause / resume' }, { a: 'y', label: 'Options' }] : [] });
+      hints: m.connected ? [{ a: 'x', label: 'Pause / resume' }, { a: 'y', label: 'Options' }, { a: 'start', label: 'Cancel' }] : [] });
     const pick = quick || pick0;
     clearInterval(timer);
     onNamed = null;
@@ -409,6 +452,7 @@ export async function openDownloads({ focusApp = null } = {}) {
     if (pick === 'pauseAll' || pick === 'resumeAll') { await act(pick); selected = pick === 'pauseAll' ? 'resumeAll' : 'pauseAll'; }
     else if (pick === 'steam') { const r = await api.steam.action('downloads'); if (r && r.ok === false) toast(r.error, { type: 'error' }); }
     else if (pick === 'enable') await enableControls();
+    else if (pick.startsWith('cancel:')) { await cancelDownload(panel, pick.slice(7)); selected = 'active'; }
     else if (pick.startsWith('queue:')) await act('update', pick.slice(6));
     else if (pick.startsWith('sched:')) await scheduledMenu(panel, pick.slice(6));
     else if (pick.startsWith('clear:')) await act('remove', pick.slice(6));

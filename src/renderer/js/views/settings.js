@@ -264,7 +264,7 @@ export function createSettings() {
         row({ key: 'homeButton', label: 'Home button opens the Guide', iconName: 'home', toggle: s.homeButtonGuide !== false,
           sub: s.homeButtonGuide === false ? 'Steam keeps the Home button' : home.steamReleased ? 'Over any game · Steam told to leave it alone' : home.steamConnected === false ? 'Over any game · turn on Steam download controls too' : 'Over any game',
           onSelect: () => set({ homeButtonGuide: s.homeButtonGuide === false }),
-          tip: 'Opens Halcyon’s Guide over any game or the desktop. While Halcyon runs it turns off Steam’s “Guide button focuses Steam”, and turns it back on when Halcyon closes.' }),
+          tip: 'Opens Halcyon’s Guide over any game or the desktop. It keeps Steam’s “Guide button focuses Steam” turned off, checking every few seconds and when a controller connects, since Steam sometimes turns it back on. Turning this off hands the Home button back to Steam.' }),
         heading('Startup and Shutdown'),
         row({ key: 'autostart', label: 'Start Halcyon on login', iconName: 'login', toggle: autostart, onSelect: toggleAutostart, tip: 'Boots straight into the dashboard when you sign in to your desktop' }),
         row({ key: 'dim', label: 'Dim the screen when idle', iconName: 'moon', toggle: s.dimWhenIdle !== false, onSelect: () => set({ dimWhenIdle: s.dimWhenIdle === false }), tip: 'After five minutes without input. Any button wakes it. Never while a video or music plays.' }),

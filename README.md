@@ -386,8 +386,10 @@ seconds** to close a game Halcyon started, for when a game has frozen. Select + 
 as Home on controllers without one.
 
 While Halcyon runs it turns off Steam's own *Guide button focuses Steam* (through Steam's settings,
-so **Download controls** must be on) so Steam stays put when you press Home, and turns it back on
-when Halcyon quits. Steam's in-game overlay stays on (Steam Input needs it to pass the controller to
+so **Download controls** must be on) so Steam stays put when you press Home. Steam sometimes turns
+that back on by itself (when a controller reconnects, for one), so Halcyon checks it every 15 seconds
+and whenever a controller connects, and turns it off again. It stays off after Halcyon closes;
+turning off *Home button opens the Guide* in Halcyon hands the button back to Steam. Steam's in-game overlay stays on (Steam Input needs it to pass the controller to
 Steam games); inside a Steam game Halcyon opens its Guide a moment after Steam's overlay, on top of it.
 
 ## Themes

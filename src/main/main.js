@@ -335,6 +335,8 @@ if (!app.requestSingleInstanceLock()) {
     return { ok: true, opened: true, ready };
   }
   const padWatch = new PadWatch({
+    // Steam can switch "Guide button focuses Steam" back on when a controller connects.
+    onConnect: () => setTimeout(() => claimHomeButton().catch(() => {}), 2500),
     onPress: () => {
       // The Guide is up: this press is for closing it, which the Guide does itself. Do not
       // open another one a moment later.
@@ -370,14 +372,32 @@ if (!app.requestSingleInstanceLock()) {
   // off while it runs (through Steam's own settings, so download controls must be on) and
   // turns it back on when it quits.
   // Each change is tracked on its own, so Halcyon only ever hands back what it took.
-  async function claimHomeButton() {
+  let claiming = null;
+  /** One check at a time (the 15 s check and a controller connecting can coincide). */
+  function claimHomeButton() {
+    if (!claiming) claiming = claimHomeButtonNow().finally(() => { claiming = null; });
+    return claiming;
+  }
+  async function claimHomeButtonNow() {
     const d = store.data;
     const want = d.settings.homeButtonGuide !== false;
     if (process.env.HALCYON_DRY_RUN && !process.env.HALCYON_STEAM_CEF_PORT) return { ok: true, dryRun: true };
     let result = { ok: true, unchanged: true };
-    if (want !== d.steamGuideFocusOff) {
-      result = await steamClient.setGuideFocusesSteam(!want);
-      if (result.ok) d.steamGuideFocusOff = want;
+    // Steam's own setting as it is now (Steam turns it back on now and then, e.g. when a
+    // controller reconnects), rather than what Halcyon last set.
+    const now = await steamClient.guideFocusesSteam();
+    if (want && (now === true || (now === null && !d.steamGuideFocusOff))) {
+      result = await steamClient.setGuideFocusesSteam(false);
+      if (result.ok) {
+        if (now === true && d.steamGuideFocusOff) diary.log('home button: Steam had turned “Guide button focuses Steam” back on; turned it off again');
+        d.steamGuideFocusOff = true;
+      }
+    } else if (want && now === false) {
+      d.steamGuideFocusOff = true;
+    } else if (!want && d.steamGuideFocusOff) {
+      // "Home button opens the Guide" turned off in Halcyon: Steam gets its button back.
+      result = await steamClient.setGuideFocusesSteam(true);
+      if (result.ok) d.steamGuideFocusOff = false;
     }
     // Steam's in-game overlay must stay on: Steam Input delivers the controller to Steam games
     // through it. (An earlier version turned it off; turn it back on if so.)
@@ -391,7 +411,9 @@ if (!app.requestSingleInstanceLock()) {
   async function releaseHomeButton() {
     if (!store) return;
     const d = store.data;
-    if (d.steamGuideFocusOff && (await steamClient.setGuideFocusesSteam(true)).ok) d.steamGuideFocusOff = false;
+    // "Guide button focuses Steam" stays off when Halcyon closes: turning it back on here would
+    // undo the person's own choice in Steam. (Turning off "Home button opens the Guide" in
+    // Halcyon's settings is what hands it back.)
     if (d.steamOverlayOff && (await steamClient.setInGameOverlay(true)).ok) d.steamOverlayOff = false;
     store.flush();
   }
@@ -1207,7 +1229,8 @@ if (!app.requestSingleInstanceLock()) {
     hooks();
     setInterval(hooks, 20000).unref();   // Steam may start (or restart) after Halcyon
     // Steam may start after Halcyon: try again until it answers.
-    setInterval(() => { if ((store.data.settings.homeButtonGuide !== false && !store.data.steamGuideFocusOff) || store.data.steamOverlayOff) claimHomeButton().catch(() => {}); }, 30000).unref();
+    // Every 15 s: Steam's real setting, turned off again if Steam has switched it back on.
+    setInterval(() => { if (store.data.settings.homeButtonGuide !== false || store.data.steamOverlayOff) claimHomeButton().catch(() => {}); }, 15000).unref();
     setInterval(pollDownloads, Number(process.env.HALCYON_POLL_MS) || 4000).unref();
 
     let lastBatteries = '';
@@ -1239,7 +1262,7 @@ if (!app.requestSingleInstanceLock()) {
     padWatch.stop();
     monitorAudio.restoreSync();   // sound back to where it was before Halcyon
     if (store) store.flush();
-    if (released || !store || !(store.data.steamGuideFocusOff || store.data.steamOverlayOff)) return;
+    if (released || !store || !store.data.steamOverlayOff) return;
     e.preventDefault();
     released = true;
     Promise.race([releaseHomeButton(), new Promise((r) => setTimeout(r, 2500))]).finally(() => app.quit());

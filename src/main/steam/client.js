@@ -436,8 +436,16 @@ async function leaveBigPicture() {
 }
 
 /** Turn Steam's "Guide button focuses Steam" on or off. */
+/** Steam's "Guide button focuses Steam" as it is now: true, false, or null if Steam can't say. */
+async function guideFocusesSteam() {
+  try {
+    const v = await evaluate('(() => { const s = typeof settingsStore !== "undefined" && settingsStore.m_ClientSettings; return s && typeof s.controller_guide_button_focus_steam === "boolean" ? s.controller_guide_button_focus_steam : null; })()');
+    return typeof v === 'boolean' ? v : null;
+  } catch { return null; }
+}
+
 function setGuideFocusesSteam(on) {
   return run(`SteamClient.Settings.SetSetting(${JSON.stringify(boolSetting(GUIDE_FOCUS_FIELD, on))})`);
 }
 
-module.exports = { evaluate, enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, terminateApp, uninstallApp, installApp, installFolders, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, takeAchievements, boolSetting, PORT };
+module.exports = { evaluate, enabled, setEnabled, downloads, control, flattenItems, activeFrom, setGuideFocusesSteam, guideFocusesSteam, setInGameOverlay, leaveBigPicture, gameActions, skipShaders, runGame, terminateApp, uninstallApp, installApp, installFolders, hideMainWindow, installLaunchHooks, launchHookStatus, blockOverlayFor, takeAchievements, boolSetting, PORT };

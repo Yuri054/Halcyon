@@ -28,8 +28,9 @@ function gamepadNodes() {
 
 class PadWatch {
   /** onPress(): Home pressed (or Select+Start together). onHold(): still held after holdMs. */
-  constructor({ onPress, onHold, holdMs = 2000 }) {
+  constructor({ onPress, onHold, onConnect = () => {}, holdMs = 2000 }) {
     this.onPress = onPress;
+    this.onConnect = onConnect;   // a controller was plugged in or switched on
     this.onHold = onHold;
     this.holdMs = holdMs;
     this.streams = new Map(); // node -> { fd, down:Set, rest:Buffer }
@@ -48,6 +49,7 @@ class PadWatch {
   start() {
     if (this.timer) return;
     this.rescan();
+    this.started = true;   // controllers found from here on are new connections
     this.timer = setInterval(() => this.rescan(), 3000); // hot-plug
     this.timer.unref();
     // Devices are opened non-blocking and drained on a short timer. (Blocking reads would
@@ -76,6 +78,7 @@ class PadWatch {
     try {
       const fd = fs.openSync(node, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
       this.streams.set(node, { fd, down: new Set(), rest: Buffer.alloc(0) });
+      if (this.started) this.onConnect(node);
     } catch (err) {
       // No permission will not fix itself; anything else may (the pad is still settling).
       if (err.code === 'EACCES' || err.code === 'EPERM') this.unreadable.add(node);

@@ -82,6 +82,25 @@ export function applyCrop(img, crop) {
   img.style.transform = z > 1 ? `scale(${z})` : '';
 }
 
+/**
+ * A tile that is just a logo on a plain face, as the console showed apps (YouTube, ESPN...):
+ * no caption bar. The name stays in the tile for the hints and screen readers.
+ */
+export function brandTile({ key, label, logo, face = '#ffffff', size = 'square', index = 0, onSelect }) {
+  const el = h('div', {
+    class: `tile tile--action tile--brand tile--${size}`,
+    'data-focus': true,
+    'data-key': key,
+    'aria-label': label,
+    style: { '--i': Math.min(index, 22), '--brand-face': face },
+  }, h('div', { class: 'tile__body' },
+    h('img', { class: 'tile__brandlogo', src: logo, alt: '', draggable: false }),
+    h('div', { class: 'tile__label tile__label--hidden' }, label),
+    h('div', { class: 'tile__sheen' })));
+  if (onSelect) el.addEventListener('click', onSelect);
+  return el;
+}
+
 /** Flat coloured tile with an icon — navigation and actions. */
 export function actionTile({ key, label, sub, iconName, tone = 'accent', size = 'square', count, onSelect, index = 0, art }) {
   const el = h('div', {

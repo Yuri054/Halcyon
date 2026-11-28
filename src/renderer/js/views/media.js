@@ -5,7 +5,7 @@ import { h, icon, flash } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import { api, state } from '../core/state.js';
 import { app } from '../core/bus.js';
-import { actionTile } from '../ui/tile.js';
+import { actionTile, brandTile } from '../ui/tile.js';
 import { openPanel, menu } from '../ui/dialog.js';
 import { keyboard } from '../ui/osk.js';
 import { toast } from '../ui/toast.js';
@@ -62,7 +62,7 @@ export function createMedia({ id: sectionId = 'tv', label: sectionLabel = 'tv & 
   }
 
   // YouTube's TV app, offered on tv & movies whether or not Jellyfin is set up.
-  const youTubeTile = (index) => actionTile({ key: 'mx:youtube', label: 'YouTube', sub: 'The TV app', iconName: 'video', tone: 'danger', index, onSelect: openYouTube });
+  const youTubeTile = (index) => brandTile({ key: 'mx:youtube', label: 'YouTube', logo: 'img/youtube-2011.svg', index, onSelect: openYouTube });
 
   function render() {
     if (library) { renderLibrary(); return; }

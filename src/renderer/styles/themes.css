@@ -1128,3 +1128,5 @@ body[data-theme='x360']:has(.layer--achlist:not(.is-closing)) #top { opacity: 0;
 [data-theme='x360'] .tile--emptyslot .tile__body { background: rgba(255, 255, 255, 0.28); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55); color: #2a2a2a; }
 [data-theme='x360'] .tile.is-moving .tile__body { transform: scale(1.06) translateY(-0.3rem); box-shadow: 0 0 0 0.35rem var(--x-lime), 0 1.2rem 2.4rem rgba(0, 0, 0, 0.4); }
 [data-theme='x360'] body.is-arranging .view--home::after, body[data-theme='x360'].is-arranging .view--home::after { background: rgba(40, 40, 40, 0.78); }
+/* App logo tiles keep their own plain face in every theme. */
+[data-theme] .tile--brand .tile__body { background: var(--brand-face, #fff); }

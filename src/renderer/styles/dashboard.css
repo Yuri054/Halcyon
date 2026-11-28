@@ -252,3 +252,9 @@ body.is-arranging .view--home .tile--peek { opacity: 0.35; }
 body.is-arranging .view--home::after { content: 'Arranging home'; position: fixed; right: 4rem; bottom: 5.2rem; padding: 0.45rem 1rem; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 1rem; letter-spacing: 0.02em; pointer-events: none; z-index: 5; }
 body.is-arranging .view--home [data-slot]:not(.is-focused):not(.is-moving) .tile__body { filter: saturate(0.85) brightness(0.97); }
 .tile.is-moving { z-index: 4; }
+
+/* App tiles that are just a logo on a plain face (YouTube), like the console's. */
+.tile--brand .tile__body { background: var(--brand-face, #fff); display: grid; place-items: center; }
+.tile--brand .tile__brandlogo { width: 78%; max-height: 62%; object-fit: contain; filter: drop-shadow(0 0.08rem 0.12rem rgba(0, 0, 0, 0.18)); }
+.tile--brand.tile--hero .tile__brandlogo { width: 56%; }
+.tile__label--hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -3,7 +3,7 @@ import { h } from '../core/dom.js';
 import * as focus from '../core/focus.js';
 import { state, visibleGames, sortGames, game as findGame, gameContext, fmt, isPlaying } from '../core/state.js';
 import { app } from '../core/bus.js';
-import { gameTile, actionTile } from '../ui/tile.js';
+import { gameTile, actionTile, brandTile } from '../ui/tile.js';
 import { gameMenu, editCustomGame, addGame } from '../ui/gamemenu.js';
 import { api } from '../core/state.js';
 import { toast } from '../ui/toast.js';
@@ -31,7 +31,7 @@ const TILES = {
   achievements: { label: 'Achievements', iconName: 'star', count: () => gamerscore() || undefined, go: () => app.achievements?.() },
   tv: { label: 'TV & movies', iconName: 'film', go: () => app.go('tv', { enter: true }) },
   music: { label: 'Music', iconName: 'music', go: () => app.go('music', { enter: true }) },
-  youtube: { label: 'YouTube', iconName: 'video', go: openYouTube },
+  youtube: { label: 'YouTube', iconName: 'video', logo: 'img/youtube-2011.svg', go: openYouTube },
   downloads: { label: 'Downloads', iconName: 'download', go: () => app.downloads() },
   storage: { label: 'Storage', iconName: 'folder', go: () => app.storage() },
   search: { label: 'Search', iconName: 'search', go: () => app.search() },
@@ -143,6 +143,9 @@ export function createHome() {
     if (picked) {
       t = gameTile(picked.game, size === 'hero' ? 'hero' : 'wide', index);
       if (picked.caption) { const title = t.querySelector('.tile__title'); if (title) title.textContent = picked.caption; }
+    } else if (TILES[id]?.logo) {
+      // An app tile: its logo on a plain face, as the console showed YouTube.
+      t = brandTile({ key: `s:${slot}`, label: TILES[id].label, logo: TILES[id].logo, size: big, index, onSelect: TILES[id].go });
     } else if (TILES[id]) {
       const c = TILES[id];
       t = actionTile({ key: `s:${slot}`, label: c.label, count: c.count ? c.count(visibleGames().filter((g) => g.installed)) : undefined, iconName: c.iconName, tone, size: big, index, onSelect: c.go });

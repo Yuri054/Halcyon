@@ -184,21 +184,22 @@ and games installed in place of a Gamerscore).
 
 ## Home tiles
 
-Every tile on the home page is yours to arrange, the big first section included. Y on a tile:
+Every tile on the home page is yours to arrange, the big first section included. **Y** on a
+tile starts arranging; the home shows exactly how it will look as you go:
 
-- **Move**: the tile lifts; the d-pad carries it, swapping places with whatever is in that
-  direction (across sections too), A puts it down, B puts it back.
-- **Change it**: put something else in its place: your last game (play, or resume while it
-  runs), a recently played game, a favorite game, one particular game, or a tile from the
-  catalog (games, favorites, recently played, Steam, emulated, PC ports, achievements,
-  TV & movies, music, YouTube, downloads, storage, search, add a game, Open Steam, Big Picture,
-  settings, power).
-- **Remove from home**: in the first section the place stays as an empty space (A fills it);
-  in the tile section the tile goes.
-- **Back to the usual layout** resets everything.
+- **A** picks a tile up; the d-pad carries it, the other tiles sliding out of its way (across
+  sections too); **A** puts it down, **B** puts it back where it was. A game tile takes its game
+  with it.
+- **Y** on a tile: **Change it** (your last game, a recently played or favorite game, one
+  particular game, or a tile from the catalog: games, favorites, recently played, Steam,
+  emulated, PC ports, achievements, TV & movies, music, YouTube, downloads, storage, search,
+  add a game, Open Steam, Big Picture, settings, power), **Remove from home** (in the first
+  section the place stays as an empty space; A fills it), **Add a tile**, or **Back to the usual
+  layout**. The **+** tile adds one too.
+- **Start** (or B) when you're done: *Save changes*, *Discard changes* or *Keep arranging*.
+  Nothing changes until you save.
 
-The **+** tile at the end of the tile section adds one. On a game tile, Y's menu also has the
-game's own options (Start opens them directly).
+Outside arranging, **Start** on a game tile opens the game's options.
 
 ## Achievements
 

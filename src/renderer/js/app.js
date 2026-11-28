@@ -213,12 +213,14 @@ function buildTabs() {
 // --------------------------------------------------------------- launching
 
 let launchUi = null;
+const LAUNCH_GRACE_MS = 1500;   // how long B can still call off a game that's about to start
 
 function closeLaunchUi() {
   if (!launchUi) return;
   const ui = launchUi;
   launchUi = null;
   clearTimeout(ui.timer);
+  if (ui.cancel) ui.cancel();   // still waiting to start: it won't now
   focus.popLayer(ui.layer);
   ui.el.classList.add('is-closing');
   if (ui.dispose) setTimeout(ui.dispose, 500);
@@ -298,7 +300,6 @@ async function launch(id) {
   if (!g || launchUi) return;
   if (isPlaying(id)) { resumeGame(id); return; }
   if (!g.installed) { installGame(g); return; }
-  stopBackground();   // music playing in the background stops when a game starts
 
   // The launch scene (an intro card, like the ones games open with), or the plain card.
   const intro = state.lib.settings.launchScene !== false ? createIntro(g) : null;
@@ -317,11 +318,14 @@ async function launch(id) {
     // Swallow everything while a game is coming up; A skips Steam's shader processing,
     // B returns once the game has been handed over.
     onAction: (action, _target, repeat) => {
+      // A moment to change your mind: B before the game is actually started calls it off.
+      if (action === 'back' && !repeat && launchUi?.cancel) { sfx.back(); const cancel = launchUi.cancel; closeLaunchUi(); cancel(); return true; }
       if (action === 'accept' && !repeat && launchUi?.shaderAction) { sfx.select(); skipShaders(); return true; }
       if (action === 'back' && !repeat && launchUi?.dismissable) { sfx.back(); closeLaunchUi(); }
       return true;
     },
     hints: () => [
+      launchUi?.cancel && { a: 'back', label: 'Cancel' },
       launchUi?.shaderAction && { a: 'accept', label: 'Skip shader processing' },
       launchUi?.dismissable && { a: 'back', label: 'Return to dashboard' },
     ].filter(Boolean),
@@ -329,7 +333,19 @@ async function launch(id) {
   const bar = el.querySelector('.launch__bar');
   launchUi = { el, layer, status, bar, id, dispose: intro ? intro.dispose : null, dismissable: false, blurred: false, timer: null, shaderAction: 0, task: null };
   sfx.launch();
-  refreshChrome();
+
+  // Started by accident? The game isn't started for a moment, while B can still call it off.
+  const ui = launchUi;
+  const go = await new Promise((resolve) => {
+    ui.cancel = () => resolve(false);
+    ui.graceTimer = setTimeout(() => resolve(true), LAUNCH_GRACE_MS);
+    refreshChrome();
+  });
+  clearTimeout(ui.graceTimer);
+  ui.cancel = null;
+  if (!go || launchUi !== ui) return;
+  renderHints();
+  stopBackground();   // music playing in the background stops when a game starts
 
   const [result] = await Promise.all([api.game.launch(id), wait(700)]);
   if (!launchUi) return;

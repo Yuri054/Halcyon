@@ -4,7 +4,7 @@ import { h, icon, flash } from './core/dom.js';
 import * as focus from './core/focus.js';
 import * as input from './core/input.js';
 import { sfx, setEnabled as setSounds, setPack } from './core/sfx.js';
-import { api, state, game as findGame, isPlaying, fmt, X360_OPTIONS, x360Option } from './core/state.js';
+import { api, state, game as findGame, isPlaying, fmt, X360_OPTIONS, x360Option, x360Background } from './core/state.js';
 import { menu } from './ui/dialog.js';
 import { app, wait } from './core/bus.js';
 import { setBackdrop, artImg, fallbackArt } from './ui/art.js';
@@ -133,6 +133,7 @@ function applySettings() {
   document.body.dataset.theme = s.theme || 'halcyon';
   // The 360 theme's options are classes on <body> (x360-glow, x360-names, ...).
   for (const [key] of X360_OPTIONS) document.body.classList.toggle(`x360-${key}`, x360Option(key));
+  document.body.dataset.xbg = x360Background();
   setSounds(s.sounds !== false);
   renderProfile();
 }

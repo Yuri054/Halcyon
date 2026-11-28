@@ -1,7 +1,7 @@
 // Settings: display, library, Steam and system options as Metro-style cards.
 import { h, icon } from '../core/dom.js';
 import * as focus from '../core/focus.js';
-import { api, state, ACCENTS, THEMES, fmt, noPadGames, X360_OPTIONS, x360Option } from '../core/state.js';
+import { api, state, ACCENTS, THEMES, fmt, noPadGames, X360_OPTIONS, x360Option, X360_BACKGROUNDS, x360Background } from '../core/state.js';
 import { app } from '../core/bus.js';
 import { browse } from '../ui/browser.js';
 import { menu } from '../ui/dialog.js';
@@ -9,6 +9,7 @@ import { keyboard } from '../ui/osk.js';
 import { toast } from '../ui/toast.js';
 import { editCustomGame, addGame, report } from '../ui/gamemenu.js';
 import { enableControls, disableControls } from '../ui/downloads.js';
+import { actionTile } from '../ui/tile.js';
 
 const KIND = { native: 'Native install', flatpak: 'Flatpak', snap: 'Snap', custom: 'Added folder' };
 
@@ -21,7 +22,10 @@ export function createSettings() {
   const xsHead = h('div', { class: 'xsettings__infohead' });
   const xsValue = h('div', { class: 'xsettings__value' });
   const xsText = h('div', { class: 'xsettings__text' });
-  const xs = h('div', { class: 'xsettings', hidden: true }, xsTitle, h('div', { class: 'xsettings__box' }, xsList, h('div', { class: 'xsettings__info' }, xsHead, xsValue, xsText)));
+  // The 360 settings front page: a grid of big green tiles, as on the console.
+  const xsGrid = h('div', { class: 'xsgrid', 'data-focus-group': true, 'data-focus-restore': true });
+  const xsBox = h('div', { class: 'xsettings__box' }, xsList, h('div', { class: 'xsettings__info' }, xsHead, xsValue, xsText));
+  const xs = h('div', { class: 'xsettings', hidden: true }, xsTitle, xsGrid, xsBox);
   const el = h('section', { class: 'view view--settings' }, scroller, xs);
   let openCat = null;
   const CAT_TEXT = {
@@ -32,6 +36,9 @@ export function createSettings() {
     system: 'Controllers, the Home button, start-up, storage and power.',
   };
   const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  const CAT_ORDER = ['system', 'display', 'library', 'artwork', 'steam', 'youtube'];
+  const CAT_LABEL = { system: 'System', display: 'Display', library: 'Library', artwork: 'Artwork', steam: 'Steam', youtube: 'YouTube' };
+  const CAT_ICON = { system: 'pad', display: 'screen', library: 'grid', artwork: 'image', steam: 'cloud', youtube: 'video' };
   function showInfo(target) {
     if (!target) return;
     const key = target.dataset.key || '';
@@ -55,19 +62,26 @@ export function createSettings() {
     for (const c of cards) c.dataset.cat = c.querySelector('.block__title')?.textContent || '';
     scroller.hidden = true;
     xs.hidden = false;
-    if (!openCat || !cards.some((c) => c.dataset.cat === openCat)) {
+    const front = !openCat || !cards.some((c) => c.dataset.cat === openCat);
+    xsTitle.hidden = front;
+    xsGrid.hidden = !front;
+    xsBox.hidden = front;
+    if (front) {
       openCat = null;
-      xsTitle.textContent = 'Settings';
-      xsList.replaceChildren(...cards.map((c) => {
-        const r = h('div', { class: 'row', 'data-focus': true, 'data-key': `cat:${c.dataset.cat}`, 'data-verb': 'Open' },
-          h('div', { class: 'row__text' }, h('div', { class: 'row__label' }, cap(c.dataset.cat))));
-        r.addEventListener('click', () => { openCat = c.dataset.cat; render(); const first = xsList.querySelector('[data-focus]'); if (first) focus.focus(first, { layer: focus.base() }); app.refreshChrome(); });
-        return r;
+      // The categories, System first as on the console, then Storage and Turn off.
+      const order = (cat) => { const i = CAT_ORDER.indexOf(cat); return i < 0 ? CAT_ORDER.length : i; };
+      const tiles = cards.map((c) => c.dataset.cat).sort((a, b) => order(a) - order(b)).map((cat, i) => actionTile({
+        key: `cat:${cat}`, label: CAT_LABEL[cat] || cap(cat), iconName: CAT_ICON[cat] || 'gear', tone: 'accent', size: 'square', index: i,
+        onSelect: () => { openCat = cat; render(); const first = xsList.querySelector('[data-focus]'); if (first) focus.focus(first, { layer: focus.base() }); app.refreshChrome(); },
       }));
-    } else {
-      xsTitle.textContent = cap(openCat);
-      xsList.replaceChildren(...cards.find((c) => c.dataset.cat === openCat).querySelectorAll('.card > .row'));
+      tiles.push(
+        actionTile({ key: 'xs:storage', label: 'Storage', iconName: 'folder', tone: 'accent', size: 'square', index: tiles.length, onSelect: () => app.storage() }),
+        actionTile({ key: 'xs:power', label: 'Turn Off', iconName: 'power', tone: 'accent', size: 'square', index: tiles.length + 1, onSelect: () => app.guide({ select: 'power:suspend' }) }));
+      xsGrid.replaceChildren(...tiles);
+      return;
     }
+    xsTitle.textContent = CAT_LABEL[openCat] || cap(openCat);
+    xsList.replaceChildren(...cards.find((c) => c.dataset.cat === openCat).querySelectorAll('.card > .row'));
     showInfo(focus.base().current && xs.contains(focus.base().current) ? focus.base().current : xsList.querySelector('[data-focus]'));
   }
   let info = null;
@@ -108,6 +122,20 @@ export function createSettings() {
       selected = pick;
       const on = list.filter((o) => o.on).map((o) => o.label);
       await set({ monitorAudio: on.includes(pick) ? on.filter((x) => x !== pick) : [...on, pick] });
+    }
+  }
+
+  /** The 360 theme's background. Each choice shows straight away behind the list. */
+  async function pickBackground() {
+    let selected = x360Background();
+    for (;;) {
+      const pick = await menu({
+        title: 'Background', subtitle: 'Xbox 360 theme', selected,
+        items: X360_BACKGROUNDS.map(([key, label, sub]) => ({ label, value: key, sub, checked: key === x360Background(), verb: 'Use' })),
+      });
+      if (pick == null || pick === x360Background()) return;
+      selected = pick;
+      await set({ x360Bg: pick });
     }
   }
 
@@ -188,6 +216,7 @@ export function createSettings() {
         row({ key: 'monitorAudio', label: 'Sound follows the monitor', iconName: 'sound', value: Array.isArray(s.monitorAudio) ? (s.monitorAudio.length ? s.monitorAudio.map((x) => x.split(' - ')[1] || x).join(', ') : 'Off') : 'TVs', onSelect: pickSound, tip: 'Switches the sound to a TV’s HDMI while Halcyon is on it' }),
         row({ key: 'theme', label: 'Theme', iconName: 'layers', value: theme[1],
           onSelect: () => set({ theme: THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length][0] }), tip: `${theme[2]}. Select to switch; the accent color applies to every theme.` }),
+        s.theme === 'x360' && row({ key: 'x360Bg', label: 'Background', iconName: 'image', value: (X360_BACKGROUNDS.find(([k]) => k === x360Background()) || X360_BACKGROUNDS[0])[1], onSelect: pickBackground, tip: 'The 360 theme’s backdrop: the soft grey glow, the 2011 dashboard’s, or a few others' }),
         s.theme === 'x360' && row({ key: 'themeOptions', label: 'Theme options', iconName: 'gear', value: `${X360_OPTIONS.filter(([k]) => x360Option(k)).length} of ${X360_OPTIONS.length} on`, onSelect: pickThemeOptions, tip: 'The 360 theme’s own touches, each one on or off' }),
         row({ key: 'accent', label: 'Accent color', iconName: 'palette', value: s.accent[0].toUpperCase() + s.accent.slice(1), swatch: s.accent,
           onSelect: () => set({ accent: ACCENTS[(ACCENTS.indexOf(s.accent) + 1) % ACCENTS.length] }), tip: 'Cycles through the available accent colors' }),
@@ -383,7 +412,7 @@ export function createSettings() {
     label: 'settings',
     el,
     render,
-    defaultFocus: () => (xs.hidden ? scroller : xsList).querySelector('[data-focus]'),
+    defaultFocus: () => (xs.hidden ? scroller : openCat ? xsList : xsGrid).querySelector('[data-focus]'),
     onAction: () => false,
     onBack() {
       // In a category (360 layout), B goes back to the list of categories.
@@ -398,7 +427,7 @@ export function createSettings() {
       }
       return false;
     },
-    hints: (target) => [{ a: 'accept', label: target?.querySelector('.switch') ? 'Toggle' : 'Select' }],
+    hints: (target) => [{ a: 'accept', label: target?.querySelector('.switch') ? 'Toggle' : target?.classList.contains('tile') ? 'Open' : 'Select' }],
     context(target) {
       const label = target?.querySelector('.row__label')?.textContent;
       return label ? { title: label, meta: [help.get(target.dataset.key) || target.querySelector('.row__sub')?.textContent].filter(Boolean) } : null;

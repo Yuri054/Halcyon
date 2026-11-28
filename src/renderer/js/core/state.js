@@ -24,6 +24,16 @@ export const X360_OPTIONS = [
 ];
 export const x360Option = (key) => (state.lib.settings.x360 || {})[key] !== false;
 
+// The 360 theme's backgrounds (settings.x360Bg).
+export const X360_BACKGROUNDS = [
+  ['glow', 'Soft glow', 'Light grey, brightest in the middle (the one Halcyon has used)'],
+  ['dash2011', '2011 dashboard', 'Dark at the top, fading down to soft silver, as the console was'],
+  ['night', 'Night', 'Deep graphite with a faint green glow rising from the bottom'],
+  ['ribbons', 'Ribbons', 'Silver, with thin bands of green and teal light sweeping across'],
+  ['dusk', 'Dusk', 'Slate blue at the top warming to amber at the horizon'],
+];
+export const x360Background = () => (X360_BACKGROUNDS.some(([k]) => k === state.lib.settings.x360Bg) ? state.lib.settings.x360Bg : 'glow');
+
 export const SORTS = [
   ['recent', 'Recently played'],
   ['name', 'A – Z'],

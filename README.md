@@ -157,8 +157,11 @@ guest*. The sign-in is kept in its own storage, apart from the rest of Halcyon.
 - Home opens the Guide over it: *Resume YouTube* or *Close YouTube*. Closing it brings Halcyon
   back, and music playing in the background stops when it opens.
 - The screen stays on while it is open.
-- It's YouTube's own app, so it shows what YouTube's TV app shows, ads included. YouTube serves
-  it to TVs only; Halcyon presents itself as one, which YouTube could stop allowing.
+- **Ads are blocked.** Halcyon takes YouTube’s ad bookings out of the TV app’s own API replies
+  before it reads them, and stops its ad-tracking requests, so the player never goes to an ad
+  in the first place. It can be turned off under Settings › YouTube › *Block YouTube ads*.
+- It’s YouTube’s own app, so it shows what YouTube’s TV app shows, apart from the ads. YouTube
+  serves it to TVs only; Halcyon presents itself as one, which YouTube could stop allowing.
 
 ## PC ports and recomps
 

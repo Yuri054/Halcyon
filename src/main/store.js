@@ -72,6 +72,7 @@ const DEFAULTS = {
     steamBigPicture: false,   // for the store and installs only
     steamSkipShaders: true,   // skip Steam's "Processing Vulkan shaders" step without asking
     homeButtonGuide: true,   // Home opens Halcyon's Guide anywhere, and Steam is told to leave it alone
+    youtubeAdblock: true,    // take YouTube TV's ad bookings out of its API replies
     soundPack: '',     // folder name under <config>/sounds, or '' for the built-in tones
   },
   steam: { extraRoots: [] },

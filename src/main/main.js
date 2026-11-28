@@ -803,6 +803,7 @@ if (!app.requestSingleInstanceLock()) {
       if ('steamSkipShaders' in patch) steamClient.installLaunchHooks({ skipShaders: patch.steamSkipShaders !== false }).catch(() => {});
       if ('homeButtonGuide' in patch) { syncPadWatch(); const r = await claimHomeButton(); if (!r.ok && patch.homeButtonGuide) notice('Turn on Steam download controls so Halcyon can stop Steam taking the Home button.', { title: 'Home button', type: 'error' }); }
       if ('showUninstalled' in patch && patch.showUninstalled !== before.showUninstalled) { library.addUninstalled(); pushLibrary(); checkControllers(); }
+      if ('youtubeAdblock' in patch && youtube) youtube.setAdblock(patch.youtubeAdblock !== false);
       return { ok: true };
     });
     handle('ui:set', (patch) => {
@@ -1096,6 +1097,7 @@ if (!app.requestSingleInstanceLock()) {
         await cosmicWindows.activateWindow((w) => w.title === title).catch(() => '');
       },
       onClosed: () => {},
+      adblockEnabled: () => store.data.settings.youtubeAdblock !== false,
     });
     registerIpc();
 

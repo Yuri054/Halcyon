@@ -9,6 +9,7 @@
 const path = require('path');
 const { BrowserWindow, ipcMain, powerSaveBlocker } = require('electron');
 const diary = require('./log');
+const adblock = require('./youtube-adblock');
 
 const ID = 'app:youtube';
 const URL_TV = 'https://www.youtube.com/tv';
@@ -21,12 +22,14 @@ const KEYS = { up: 'Up', down: 'Down', left: 'Left', right: 'Right', accept: 'En
 class YouTube {
   /**
    * opts: { launcher, title, chosenDisplay: () => display|null, boundsOn: (display) => rect,
-   *         place: async (title) => void, onClosed: () => void }
+   *         place: async (title) => void, onClosed: () => void,
+   *         adblockEnabled: () => boolean }
    */
   constructor(opts) {
     Object.assign(this, opts);
     this.win = null;
     this.awake = null;
+    this.stopAdblock = null;
     ipcMain.on('yt:key', (e, name) => {
       if (!this.win || this.win.isDestroyed() || e.sender !== this.win.webContents) return;
       const keyCode = KEYS[name];
@@ -74,6 +77,7 @@ class YouTube {
     });
     w.on('closed', () => {
       if (this.win === w) this.win = null;
+      if (this.stopAdblock) { this.stopAdblock(); this.stopAdblock = null; }
       if (this.awake != null) { powerSaveBlocker.stop(this.awake); this.awake = null; }
       this.launcher.endedApp(ID);
       diary.log('youtube: closed');
@@ -83,13 +87,39 @@ class YouTube {
     this.awake = powerSaveBlocker.start('prevent-display-sleep');
     this.launcher.startedApp({ id: ID, name: 'YouTube', close: () => this.close() });
     w.webContents.once('did-finish-load', () => { this.place(this.title).catch(() => {}); });
-    w.loadURL(URL_TV).catch((err) => diary.log('youtube: load failed', err.message));
+    // Strip YouTube's ad bookings from its API replies before its TV app reads them: set up
+    // before the page loads, so its first replies are covered too.
+    if (!this.adblockEnabled || this.adblockEnabled()) await this.startAdblock();
+    if (!w.isDestroyed()) w.loadURL(URL_TV).catch((err) => diary.log('youtube: load failed', err.message));
     diary.log('youtube: opened');
     return { ok: true };
   }
 
   close() {
     if (this.open) this.win.close();
+    return { ok: true };
+  }
+
+  async startAdblock() {
+    if (!this.open || this.stopAdblock || this.adblockStarting) return;
+    const w = this.win;
+    this.adblockStarting = true;
+    try {
+      const stop = await adblock.install(w.webContents, { onLost: () => { if (this.win === w) this.stopAdblock = null; } });
+      // Turned off, or the window closed, while it was starting.
+      if (stop && (this.win !== w || w.isDestroyed() || (this.adblockEnabled && !this.adblockEnabled()))) stop();
+      else this.stopAdblock = stop;
+    } catch (err) {
+      diary.log('youtube: adblock could not start', err.message);
+    } finally {
+      this.adblockStarting = false;
+    }
+  }
+
+  /** Turn the adblock on or off; takes effect on the open window straight away. */
+  async setAdblock(enabled) {
+    if (enabled) await this.startAdblock();
+    else if (this.stopAdblock) { this.stopAdblock(); this.stopAdblock = null; }
     return { ok: true };
   }
 

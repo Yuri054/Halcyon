@@ -302,6 +302,10 @@ export function createSettings() {
           sub: s.achievementToasts !== false ? 'Shown over your game when you unlock one' : 'Off', tip: 'An Xbox 360-style “Achievement unlocked”, with your sound pack’s achievement sound. Steam ones appear the moment they unlock; RetroAchievements within a minute.' }),
         s.achievementToasts !== false && row({ key: 'achTest', label: 'Try the achievement notification', iconName: 'play', onSelect: () => api.achievements.testToast(), tip: 'Shows one now, as it would look over a game' }),
         heading('YouTube'),
+        row({ key: 'youtubeAdblock', label: 'Block YouTube ads', iconName: 'video', toggle: s.youtubeAdblock !== false,
+          sub: s.youtubeAdblock !== false ? 'Ads are left out of YouTube TV before it plays them' : 'YouTube TV plays its ads',
+          onSelect: () => set({ youtubeAdblock: s.youtubeAdblock === false }),
+          tip: 'Halcyon removes the ad bookings from YouTube’s own TV replies, so the TV app never asks for an ad. Takes effect even while YouTube is open.' }),
         row({ key: 'youtubeSignOut', label: 'Sign out of YouTube', iconName: 'exit', danger: true, onSelect: () => report(api.youtube.signOut()), tip: 'Forgets the TV sign-in Halcyon keeps for YouTube' }),
       ]));
     if (document.body.dataset.theme === 'x360') consoleLayout();
